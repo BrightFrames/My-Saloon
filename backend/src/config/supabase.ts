@@ -1,9 +1,8 @@
-import { createClient } from '@supabase/supabase-js';
-import { env } from './env';
+import { createClient } from "@supabase/supabase-js";
+import { env } from "./env";
 
-// Initialize the Supabase client
-export const supabase = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY, {
-  auth: {
-    persistSession: false // For a server-to-server or API scenario
-  }
-});
+// Initialize the Supabase client (v2 requires both URL and anon key)
+export const supabase = createClient(
+	env.SUPABASE_URL as string,
+	env.SUPABASE_ANON_KEY as string
+);

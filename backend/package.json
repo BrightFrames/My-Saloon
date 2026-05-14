@@ -10,21 +10,25 @@
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.105.1",
-    "cors": "^2.8.5",
-    "dotenv": "^16.4.5",
-    "express": "^4.19.2",
+    "cors": "^2.8.6",
+    "dotenv": "^16.6.1",
+    "express": "^4.22.2",
     "express-async-handler": "^1.2.0",
+    "express-session": "^1.19.0",
     "helmet": "^8.1.0",
     "morgan": "^1.10.1",
+    "nodemailer": "^8.0.7",
     "zod": "^4.4.2"
   },
   "devDependencies": {
-    "@types/cors": "^2.8.17",
-    "@types/express": "^4.17.21",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^4.17.25",
+    "@types/express-session": "^1.19.0",
     "@types/morgan": "^1.9.10",
-    "@types/node": "^20.12.7",
-    "nodemon": "^3.1.0",
+    "@types/node": "^20.19.41",
+    "@types/nodemailer": "^8.0.0",
+    "nodemon": "^3.1.14",
     "ts-node": "^10.9.2",
-    "typescript": "^5.4.5"
+    "typescript": "^5.9.3"
   }
 }

@@ -16,8 +16,18 @@ export class SalonsController {
   public getSalons = asyncHandler(async (req: Request, res: Response) => {
     // Example: parsing query params if necessary
     const limit = req.query.limit ? parseInt(req.query.limit as string) : 20;
+    const city = req.query.city ? String(req.query.city) : undefined;
+    const lat = req.query.lat ? parseFloat(String(req.query.lat)) : undefined;
+    const lon = req.query.lon ? parseFloat(String(req.query.lon)) : undefined;
+    const radius = req.query.radius ? parseFloat(String(req.query.radius)) : undefined;
 
-    const salons = await this.salonsService.findAllSalons(limit);
+    const salons = await this.salonsService.findAllSalons(
+      limit,
+      city,
+      lat,
+      lon,
+      radius ?? 10,
+    );
     
     res.status(200).json({
       success: true,

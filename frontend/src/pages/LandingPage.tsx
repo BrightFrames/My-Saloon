@@ -1,3 +1,4 @@
+import React, { useEffect, useState } from "react";
 import {
   MapPin,
   Search,
@@ -8,7 +9,7 @@ import {
   Loader2,
 } from "lucide-react";
 
-import { useNavigate } from "react-router-dom";
+import { useNavigate, NavLink } from "react-router-dom";
 
 interface LandingPageProps {
   location: string;
@@ -16,6 +17,8 @@ interface LandingPageProps {
   isLoadingLocation: boolean;
   onUseMyLocation: () => void;
   onSelectSalon?: (salon: string) => void;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export function LandingPageWrapper(
@@ -36,10 +39,36 @@ export function LandingPage({
   isLoadingLocation,
   onUseMyLocation,
   onSelectSalon,
+  latitude,
+  longitude,
 }: LandingPageProps) {
   const navigate = useNavigate();
   const isVerified = sessionStorage.getItem("isVerified") === "true";
   const userName = sessionStorage.getItem("userName");
+  const [salons, setSalons] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchSalons = async () => {
+      try {
+        const base = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000/api/v1";
+        let url = `${base}/salons`;
+        if (typeof latitude === "number" && typeof longitude === "number") {
+          url = `${base}/salons?lat=${latitude}&lon=${longitude}&radius=10`;
+        } else if (location) {
+          const city = location ? location.split(",")[0] : "";
+          url = city ? `${base}/salons?city=${encodeURIComponent(city)}` : `${base}/salons`;
+        }
+
+        const res = await fetch(url);
+        const body = await res.json();
+        if (body && body.success) setSalons(body.data || []);
+      } catch (err) {
+        console.error("Failed to fetch salons:", err);
+      }
+    };
+
+    fetchSalons();
+  }, [location, latitude, longitude]);
   return (
     <div className="min-h-screen bg-[#FDFBF9] font-sans text-stone-800">
       {/* Navbar */}
@@ -49,21 +78,40 @@ export function LandingPage({
         </div>
 
         <div className="hidden md:flex items-center space-x-8 text-sm tracking-wide font-medium text-stone-600">
-          <a
-            href="#"
-            className="text-stone-900 border-b-2 border-stone-900 pb-1"
+          <NavLink
+            to="/treatments"
+            className={({ isActive }) =>
+              isActive
+                ? "text-stone-900 border-b-2 border-stone-900 pb-1"
+                : "hover:text-stone-900 transition-colors"
+            }
           >
             DISCOVER
-          </a>
-          <a href="#" className="hover:text-stone-900 transition-colors">
+          </NavLink>
+          <NavLink
+            to="/treatments"
+            className={({ isActive }) =>
+              isActive ? "text-stone-900 border-b-2 border-stone-900 pb-1" : "hover:text-stone-900 transition-colors"
+            }
+          >
             TREATMENTS
-          </a>
-          <a href="#" className="hover:text-stone-900 transition-colors">
+          </NavLink>
+          <NavLink
+            to="/memberships"
+            className={({ isActive }) =>
+              isActive ? "text-stone-900 border-b-2 border-stone-900 pb-1" : "hover:text-stone-900 transition-colors"
+            }
+          >
             MEMBERSHIPS
-          </a>
-          <a href="#" className="hover:text-stone-900 transition-colors">
+          </NavLink>
+          <NavLink
+            to="/concierge"
+            className={({ isActive }) =>
+              isActive ? "text-stone-900 border-b-2 border-stone-900 pb-1" : "hover:text-stone-900 transition-colors"
+            }
+          >
             CONCIERGE
-          </a>
+          </NavLink>
         </div>
 
         <div className="flex items-center space-x-6">
@@ -125,6 +173,19 @@ export function LandingPage({
               {isLoadingLocation ? "Locating..." : "Use My Location"}
             </button>
             <div className="relative w-full max-w-[320px]">
+              {location && !isLoadingLocation && (
+                <div className="mb-2 flex items-center gap-2 text-sm text-stone-500">
+                  <MapPin size={14} className="text-stone-400" />
+                  <span className="truncate">Detected: {location}</span>
+                  <button
+                    onClick={() => setLocation("")}
+                    className="ml-2 text-xs text-stone-400 hover:text-stone-600"
+                    aria-label="Edit detected location"
+                  >
+                    Edit
+                  </button>
+                </div>
+              )}
               <input
                 type="text"
                 value={location}
@@ -200,158 +261,47 @@ export function LandingPage({
             </div>
 
             {/* Salon Cards */}
-            <div className="flex flex-col gap-5">
-              {/* Card 1 */}
-              <div
-                onClick={() => onSelectSalon && onSelectSalon("aura")}
-                className="bg-white rounded-2xl p-4 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] border border-stone-100 flex gap-5 hover:shadow-md transition-shadow group cursor-pointer"
-              >
-                <div className="w-[120px] h-[120px] shrink-0 rounded-xl overflow-hidden bg-stone-100">
-                  <img
-                    src="https://images.unsplash.com/photo-1595476108010-b4d1f10d5e43?q=80&w=800&auto=format&fit=crop"
-                    alt="The Aura Collective"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="flex-1 flex flex-col justify-between py-1">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-serif text-xl font-medium text-stone-800 mb-1 group-hover:text-[#C49B89] transition-colors">
-                        The Aura Collective
-                      </h3>
-                      <div className="flex items-center gap-2 text-sm text-stone-400">
-                        <span className="flex items-center gap-1 text-stone-500">
-                          <Star
-                            size={12}
-                            fill="#C49B89"
-                            className="text-[#C49B89]"
-                          />{" "}
-                          4.9
-                        </span>
-                        <span>•</span>
-                        <span>1.2km away</span>
+              <div className="flex flex-col gap-5">
+                {salons.length === 0 ? (
+                  <div className="text-stone-500">No salons found nearby.</div>
+                ) : (
+                  salons.map((s) => (
+                    <div
+                      key={s.id}
+                      onClick={() => onSelectSalon && onSelectSalon(s.id)}
+                      className="bg-white rounded-2xl p-4 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] border border-stone-100 flex gap-5 hover:shadow-md transition-shadow group cursor-pointer"
+                    >
+                      <div className="w-[120px] h-[120px] shrink-0 rounded-xl overflow-hidden bg-stone-100">
+                        <img src={s.image || "https://images.unsplash.com/photo-1595476108010-b4d1f10d5e43?q=80&w=800&auto=format&fit=crop"} alt={s.name} className="w-full h-full object-cover" />
+                      </div>
+                      <div className="flex-1 flex flex-col justify-between py-1">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="font-serif text-xl font-medium text-stone-800 mb-1 group-hover:text-[#C49B89] transition-colors">{s.name}</h3>
+                            <div className="flex items-center gap-2 text-sm text-stone-400">
+                              <span className="flex items-center gap-1 text-stone-500">
+                                <Star size={12} fill="#C49B89" className="text-[#C49B89]" /> {s.rating || "-"}
+                              </span>
+                              <span>•</span>
+                              <span>{s.distance || "—"}</span>
+                            </div>
+                          </div>
+                          <button className="text-stone-300 hover:text-red-400 mt-1 transition-colors">
+                            <Heart size={20} />
+                          </button>
+                        </div>
+                        <div className="flex justify-between items-end">
+                          <div>
+                            <p className="text-[10px] text-stone-400 uppercase tracking-wider mb-0.5">Starts From</p>
+                            <p className="font-semibold text-stone-800">${s.starting_price || "—"}</p>
+                          </div>
+                          <button className="bg-[#6B554D] hover:bg-[#5C4841] text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors">Book Now</button>
+                        </div>
                       </div>
                     </div>
-                    <button className="text-stone-300 hover:text-red-400 mt-1 transition-colors">
-                      <Heart size={20} />
-                    </button>
-                  </div>
-                  <div className="flex justify-between items-end">
-                    <div>
-                      <p className="text-[10px] text-stone-400 uppercase tracking-wider mb-0.5">
-                        Starts From
-                      </p>
-                      <p className="font-semibold text-stone-800">$85</p>
-                    </div>
-                    <button className="bg-[#6B554D] hover:bg-[#5C4841] text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors">
-                      Book Now
-                    </button>
-                  </div>
-                </div>
+                  ))
+                )}
               </div>
-
-              {/* Card 2 */}
-              <div
-                onClick={() => onSelectSalon && onSelectSalon("noir")}
-                className="bg-white rounded-2xl p-4 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] border border-stone-100 flex gap-5 hover:shadow-md transition-shadow group cursor-pointer"
-              >
-                <div className="w-[120px] h-[120px] shrink-0 rounded-xl overflow-hidden bg-stone-100">
-                  <img
-                    src="https://images.unsplash.com/photo-1600334089648-b0d9d3028eb2?q=80&w=800&auto=format&fit=crop"
-                    alt="Noir Facials & Spa"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-                <div className="flex-1 flex flex-col justify-between py-1">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-serif text-xl font-medium text-stone-800 mb-1 group-hover:text-[#C49B89] transition-colors">
-                        Noir Facials & Spa
-                      </h3>
-                      <div className="flex items-center gap-2 text-sm text-stone-400">
-                        <span className="flex items-center gap-1 text-stone-500">
-                          <Star
-                            size={12}
-                            fill="#C49B89"
-                            className="text-[#C49B89]"
-                          />{" "}
-                          4.8
-                        </span>
-                        <span>•</span>
-                        <span>2.4km away</span>
-                      </div>
-                    </div>
-                    <button className="text-stone-300 hover:text-red-400 mt-1 transition-colors">
-                      <Heart size={20} />
-                    </button>
-                  </div>
-                  <div className="flex justify-between items-end">
-                    <div>
-                      <p className="text-[10px] text-stone-400 uppercase tracking-wider mb-0.5">
-                        Starts From
-                      </p>
-                      <p className="font-semibold text-stone-800">$120</p>
-                    </div>
-                    <button className="bg-[#6B554D] hover:bg-[#5C4841] text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors">
-                      Book Now
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Card 3 */}
-              <div className="bg-white rounded-2xl p-4 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.04)] border border-stone-100 flex gap-5 hover:shadow-md transition-shadow group">
-                <div className="w-[120px] h-[120px] shrink-0 rounded-xl overflow-hidden bg-stone-100 relative">
-                  <div className="absolute inset-0 bg-black/60 z-10 flex items-center justify-center">
-                    <span className="text-[9px] font-bold text-white tracking-widest uppercase px-2 text-center leading-tight">
-                      Fully Booked
-                      <br />
-                      Today
-                    </span>
-                  </div>
-                  <img
-                    src="https://images.unsplash.com/photo-1503951914875-452162b0f3f1?q=80&w=800&auto=format&fit=crop"
-                    alt="Luxe Grooming"
-                    className="w-full h-full object-cover grayscale"
-                  />
-                </div>
-                <div className="flex-1 flex flex-col justify-between py-1">
-                  <div className="flex justify-between items-start opacity-70">
-                    <div>
-                      <h3 className="font-serif text-xl font-medium text-stone-800 mb-1">
-                        Luxe Grooming
-                      </h3>
-                      <div className="flex items-center gap-2 text-sm text-stone-400">
-                        <span className="flex items-center gap-1 text-stone-500">
-                          <Star
-                            size={12}
-                            fill="#C49B89"
-                            className="text-[#C49B89]"
-                          />{" "}
-                          4.7
-                        </span>
-                        <span>•</span>
-                        <span>0.8km away</span>
-                      </div>
-                    </div>
-                    <button className="text-stone-300 hover:text-red-400 mt-1 transition-colors">
-                      <Heart size={20} />
-                    </button>
-                  </div>
-                  <div className="flex justify-between items-end">
-                    <div className="opacity-70">
-                      <p className="text-[10px] text-stone-400 uppercase tracking-wider mb-0.5">
-                        Starts From
-                      </p>
-                      <p className="font-semibold text-stone-800">$55</p>
-                    </div>
-                    <button className="bg-stone-100 text-stone-400 px-5 py-2 rounded-lg text-sm font-medium cursor-not-allowed">
-                      Waitlist
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
           </div>
 
           {/* Right Column: Map */}

@@ -1,5 +1,5 @@
 import React from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, NavLink } from "react-router-dom";
 
 const Navbar: React.FC = () => {
   const navigate = useNavigate();
@@ -16,6 +16,45 @@ const Navbar: React.FC = () => {
     <nav className="flex items-center justify-between px-8 py-5 mx-auto w-full max-w-7xl">
       <div className="text-2xl font-semibold font-serif text-[#C49B89]">
         Glowup
+      </div>
+
+      <div className="hidden md:flex items-center space-x-8 text-sm tracking-wide font-medium text-stone-600">
+        <NavLink
+          to="/treatments"
+          className={({ isActive }) =>
+            isActive
+              ? "text-stone-900 border-b-2 border-stone-900 pb-1"
+              : "hover:text-stone-900 transition-colors"
+          }
+        >
+          DISCOVER
+        </NavLink>
+
+        <NavLink
+          to="/treatments"
+          className={({ isActive }) =>
+            isActive ? "text-stone-900 border-b-2 border-stone-900 pb-1" : "hover:text-stone-900 transition-colors"
+          }
+        >
+          TREATMENTS
+        </NavLink>
+
+        <NavLink
+          to="/memberships"
+          className={({ isActive }) =>
+            isActive ? "text-stone-900 border-b-2 border-stone-900 pb-1" : "hover:text-stone-900 transition-colors"
+          }
+        >
+          MEMBERSHIPS
+        </NavLink>
+        <NavLink
+          to="/concierge"
+          className={({ isActive }) =>
+            isActive ? "text-stone-900 border-b-2 border-stone-900 pb-1" : "hover:text-stone-900 transition-colors"
+          }
+        >
+          CONCIERGE
+        </NavLink>
       </div>
       <div className="flex items-center space-x-6">
         {!isVerified ? (

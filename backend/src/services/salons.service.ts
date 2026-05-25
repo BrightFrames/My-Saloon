@@ -108,8 +108,8 @@ export class SalonsService {
       }
       const salon = salonRes.rows[0];
 
-      const servicesRes = await query('SELECT * FROM services WHERE salon_id = $1', [id]);
-      const reviewsRes = await query('SELECT * FROM reviews WHERE salon_id = $1', [id]);
+      const servicesRes = await query('SELECT * FROM services WHERE salon_id = $1', [id]).catch(() => ({ rows: [] }));
+      const reviewsRes = await query('SELECT * FROM reviews WHERE salon_id = $1', [id]).catch(() => ({ rows: [] }));
 
       return {
         ...salon,
@@ -119,6 +119,32 @@ export class SalonsService {
     } catch (err: any) {
       if (err instanceof ApiError) throw err;
       throw ApiError.internal(`Failed to fetch salon: ${err.message}`, 'DB_FETCH_ERROR');
+    }
+  }
+
+  /**
+   * Create a new salon
+   */
+  public async createSalon(data: { name: string; city: string; latitude?: number; longitude?: number; starting_price?: number }) {
+    try {
+      const sql = `
+        INSERT INTO salons (name, city, latitude, longitude, rating, starting_price)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        RETURNING *;
+      `;
+      const values = [
+        data.name,
+        data.city,
+        data.latitude || null,
+        data.longitude || null,
+        0, // default rating
+        data.starting_price || 0
+      ];
+      
+      const res = await query(sql, values);
+      return res.rows[0];
+    } catch (err: any) {
+      throw ApiError.internal(`Failed to create salon: ${err.message}`, 'DB_CREATE_ERROR');
     }
   }
 }

@@ -7,7 +7,7 @@ import { auth } from './services/auth'
 import ProtectedRoute from './routes/ProtectedRoute'
 
 function App() {
-  const [user, setUser] = useState<string | null>(null)
+  const [user, setUser] = useState<any | null>(null)
 
   useEffect(() => {
     const existing = auth.getCurrent()
@@ -27,7 +27,7 @@ function App() {
           path="/"
           element={
             <ProtectedRoute>
-              <Dashboard user={user ?? 'Admin'} onLogout={handleLogout} />
+              <Dashboard user={user} onLogout={handleLogout} />
             </ProtectedRoute>
           }
         />

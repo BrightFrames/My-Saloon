@@ -22,8 +22,8 @@
 .lead { margin-top: 6px; color: var(--muted); }
 .login-form { display:flex; flex-direction:column; gap:12px; margin-top:16px }
 .login-form label { display:flex; flex-direction:column; font-size:13px; color:var(--muted) }
-.login-form input { margin-top:8px; padding:12px 14px; border-radius:10px; border:1px solid var(--input-border); background:var(--input-bg); font-size:14px }
-.login-form input::placeholder { color:#bfb7b2 }
+.login-form input { margin-top:8px; padding:12px 14px; border-radius:10px; border:1px solid var(--input-border); background: #ffffff; color: #111111; font-size:14px; width: 100%; box-sizing: border-box; }
+.login-form input::placeholder { color:#8b7c75 }
 .btn-primary { margin-top:8px; padding:10px 12px; background:var(--accent); color:white; border-radius:8px; border:none; font-weight:600 }
 .hint { margin-top:12px; font-size:13px; color:#8b7c75 }
 .error { color:#b00020; font-size:13px }

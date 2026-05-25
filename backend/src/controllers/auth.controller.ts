@@ -1,6 +1,9 @@
 import { Request, Response } from "express";
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
+import { query } from "../config/db";
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 
 // Ensure env vars are loaded before creating transporter
 dotenv.config();
@@ -92,4 +95,70 @@ export const verifyOtp = (req: Request, res: Response) => {
     verified: false,
     message: "Invalid OTP",
   });
+};
+
+export const adminLogin = async (req: Request, res: Response) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ message: "Email and password are required" });
+  }
+
+  try {
+    const result = await query('SELECT * FROM users WHERE email = $1 AND role = $2', [email, 'admin']);
+    const user = result.rows[0];
+
+    if (!user) {
+      return res.status(401).json({ message: "Invalid credentials or not an admin" });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role, salon_id: user.salon_id },
+      process.env.JWT_SECRET || 'fallback_secret',
+      { expiresIn: '1d' }
+    );
+
+    res.json({ token, user: { id: user.id, email: user.email, role: user.role, salon_id: user.salon_id } });
+  } catch (err: any) {
+    console.error("Admin login error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const superAdminLogin = async (req: Request, res: Response) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ message: "Email and password are required" });
+  }
+
+  try {
+    const result = await query('SELECT * FROM users WHERE email = $1 AND role = $2', [email, 'superadmin']);
+    const user = result.rows[0];
+
+    if (!user) {
+      return res.status(401).json({ message: "Invalid credentials or not a superadmin" });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid credentials" });
+    }
+
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role, salon_id: user.salon_id },
+      process.env.JWT_SECRET || 'fallback_secret',
+      { expiresIn: '1d' }
+    );
+
+    res.json({ token, user: { id: user.id, email: user.email, role: user.role, salon_id: user.salon_id } });
+  } catch (err: any) {
+    console.error("Super Admin login error:", err);
+    res.status(500).json({ message: "Internal server error" });
+  }
 };

@@ -46,12 +46,21 @@ export class SalonsController {
    * @route   GET /api/v1/salons/:id
    * @desc    Get single salon details
    */
-  public getSalonById = asyncHandler(async (req: Request, res: Response) => {
-    const { id } = req.params;
+  /**
+   * @route   POST /api/v1/salons
+   * @desc    Create a new salon
+   */
+  public createSalon = asyncHandler(async (req: Request, res: Response) => {
+    const { name, city, latitude, longitude, starting_price } = req.body;
     
-    const salon = await this.salonsService.findSalonById(id);
+    if (!name || !city) {
+      res.status(400);
+      throw new Error('Please provide name and city');
+    }
 
-    res.status(200).json({
+    const salon = await this.salonsService.createSalon({ name, city, latitude, longitude, starting_price });
+
+    res.status(201).json({
       success: true,
       data: salon
     });

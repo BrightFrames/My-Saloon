@@ -17,25 +17,6 @@
   }
 }
 
-:root {
-  --bg: #faf7f5;
-  --panel-bg: #ffffff;
-  --accent: #6b4b3a;
-  --muted: #7a6a63;
-  --border: #efe9e6;
-  --shadow: 0 6px 18px rgba(16,24,40,0.06);
-  --input-bg: #ffffff;
-  --input-border: #d2c9c5;
-  --success: #0f8b4f;
-  --text: #1a1a1a;
-  --text-h: #111111;
-}
-
-input, textarea, select {
-  color: #111111;
-  background-color: #ffffff;
-}
-
 .hero {
   position: relative;
 

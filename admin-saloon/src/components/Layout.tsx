@@ -4,7 +4,7 @@ import '../pages/login.css'
 
 type Props = {
   children: React.ReactNode
-  user: string
+  user: any
   onLogout: () => void
 }
 

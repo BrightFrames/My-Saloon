@@ -146,9 +146,18 @@ export function CheckoutPage() {
       const tax = basePrice * 0.08;
       const finalPrice = basePrice + tax;
 
+      let salonId = undefined;
+      try {
+        const storedSalon = sessionStorage.getItem("selectedSalon");
+        if (storedSalon) {
+          salonId = JSON.parse(storedSalon).id;
+        }
+      } catch(e) {}
+
       const payload = {
         ...bookingData,
         total_price: finalPrice,
+        salon_id: salonId,
       };
 
       const res = await fetch("http://localhost:3000/api/v1/bookings", {

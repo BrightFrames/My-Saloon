@@ -6,6 +6,6 @@ const salonsController = new SalonsController();
 
 router.get('/', salonsController.getSalons);
 router.get('/:id', salonsController.getSalonById);
-// router.post('/', salonsController.createSalon);
+router.post('/', salonsController.createSalon);
 
 export default router;

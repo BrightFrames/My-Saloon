@@ -95,6 +95,11 @@ p {
   margin: 0;
 }
 
+input, select, textarea {
+  color: #111111 !important;
+  background-color: #ffffff;
+}
+
 code,
 .counter {
   font-family: var(--mono);

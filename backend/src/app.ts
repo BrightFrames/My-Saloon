@@ -19,7 +19,16 @@ app.use(helmet());
 // CORS - accept any localhost port in development
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://localhost:5174", "http://localhost:5175", "http://localhost:5176", "http://127.0.0.1:5173", "http://127.0.0.1:5174", "http://127.0.0.1:5175", "http://127.0.0.1:5176"],
+    origin: (origin, callback) => {
+      if (!origin) return callback(null, true);
+      // Check if origin is localhost or 127.0.0.1 on any port
+      const isLocal = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+      if (isLocal) {
+        callback(null, true);
+      } else {
+        callback(new Error("Not allowed by CORS"));
+      }
+    },
 
     credentials: true,
 
@@ -62,6 +71,7 @@ app.use(morgan("dev"));
 
 // Routes
 app.use("/api/v1", routes);
+app.use("/api", routes);
 
 // Health Check
 app.get("/health", (req, res) => {

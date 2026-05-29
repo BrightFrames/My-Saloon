@@ -1,4 +1,13 @@
-import React from 'react'
+
+import { NavLink } from 'react-router-dom'
+
+const navItems = [
+  { to: '/', label: 'Dashboard', icon: '/icons-high/dashboard.svg' },
+  { to: '/bookings', label: 'Bookings', icon: '/icons-high/calendar.svg' },
+  { to: '/services', label: 'Services', icon: '/icons-high/briefcase.svg' },
+  { to: '/team', label: 'Team', icon: '/icons-high/users.svg' },
+  { to: '/salon-profile', label: 'Salon Profile', icon: '/icons-high/settings.svg' },
+]
 
 export default function Sidebar() {
   return (
@@ -6,14 +15,28 @@ export default function Sidebar() {
       <div className="brand">Glowup</div>
       <nav>
         <ul>
-          <li className="active"><img className="nav-icon" src="/icons-high/dashboard.svg" alt=""/>Dashboard</li>
-          <li><img className="nav-icon" src="/icons-high/calendar.svg" alt=""/>Bookings</li>
-          <li><img className="nav-icon" src="/icons-high/briefcase.svg" alt=""/>Services</li>
-          <li><img className="nav-icon" src="/icons-high/users.svg" alt=""/>Team</li>
-          <li><img className="nav-icon" src="/icons-high/settings.svg" alt=""/>Salon Profile</li>
+          {navItems.map((item) => (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.to === '/'}
+              className={({ isActive }) => (isActive ? 'active' : '')}
+              style={{ textDecoration: 'none' }}
+            >
+              <li>
+                <img className="nav-icon" src={item.icon} alt="" />
+                {item.label}
+              </li>
+            </NavLink>
+          ))}
         </ul>
       </nav>
-      <button className="new-booking"><img className="btn-icon" src="/icons-high/plus.svg" alt=""/>New Booking</button>
+      <NavLink to="/bookings" style={{ textDecoration: 'none' }}>
+        <button className="new-booking">
+          <img className="btn-icon" src="/icons-high/plus.svg" alt="" />
+          New Booking
+        </button>
+      </NavLink>
     </aside>
   )
 }

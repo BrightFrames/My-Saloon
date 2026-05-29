@@ -8,6 +8,10 @@ if (!env.SUPABASE_DB_URL) {
 
 export const pool = new Pool({
   connectionString: env.SUPABASE_DB_URL,
+  ssl: { rejectUnauthorized: false },
+  connectionTimeoutMillis: 10000,
+  idleTimeoutMillis: 30000,
+  max: 10,
 });
 
 // Test initial connection and log status

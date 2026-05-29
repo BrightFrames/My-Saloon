@@ -73,16 +73,22 @@ async function sendBookingConfirmationEmail(booking: any) {
 const bookingSchema = z.object({
   customer_name: z.string().min(1, "Name is required"),
   customer_email: z.string().email("Invalid email format"),
-  mobile: z.string().min(1, "Mobile number is required"),
-  country_code: z.string().min(1, "Country code is required"),
-  hairstyle: z.string().min(1, "Hairstyle is required"),
+  phone: z.string().optional(),
+  mobile: z.string().optional(),
+  country_code: z.string().min(1, "Country code is required").default("+91"),
+  service_name: z.string().optional(),
+  serviceName: z.string().optional(),
+  hairstyle: z.string().optional(),
   stylist: z.string().min(1, "Stylist is required"),
-  booking_date: z.string().min(1, "Booking date is required"),
-  booking_time: z.string().min(1, "Booking time is required"),
+  appointment_date: z.string().optional(),
+  booking_date: z.string().optional(),
+  appointment_time: z.string().optional(),
+  booking_time: z.string().optional(),
   payment_method: z.string().min(1, "Payment method is required"),
   notes: z.string().optional(),
   total_price: z.number().min(0, "Total price must be valid"),
   salon_id: z.string().uuid("Valid salon ID required").optional().nullable(),
+  user_id: z.number().optional().nullable(),
 });
 
 export const createBooking = asyncHandler(
@@ -90,17 +96,32 @@ export const createBooking = asyncHandler(
     try {
       const validatedData = bookingSchema.parse(req.body);
 
-      const bookingDate = new Date(validatedData.booking_date);
+      // Resolve synchronized fields
+      const phone = validatedData.phone || validatedData.mobile || "";
+      const mobile = validatedData.mobile || validatedData.phone || "";
+      const service_name = validatedData.service_name || validatedData.serviceName || validatedData.hairstyle || "";
+      const hairstyle = validatedData.hairstyle || validatedData.serviceName || validatedData.service_name || "";
+      const appointment_date = validatedData.appointment_date || validatedData.booking_date || "";
+      const booking_date = validatedData.booking_date || validatedData.appointment_date || "";
+      const appointment_time = validatedData.appointment_time || validatedData.booking_time || "";
+      const booking_time = validatedData.booking_time || validatedData.appointment_time || "";
+
+      if (!appointment_date) {
+        res.status(400).json({ success: false, message: "Booking date is required." });
+        return;
+      }
+
+      const bookingDateObj = new Date(appointment_date);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      if (bookingDate < today) {
+      if (bookingDateObj < today) {
         res.status(400).json({ success: false, message: "Cannot book for a past date." });
         return;
       }
 
       const checkRes = await query(
-        `SELECT id FROM public.bookings WHERE booking_date = $1 AND booking_time = $2 AND stylist = $3 AND booking_status = 'confirmed'`,
-        [validatedData.booking_date, validatedData.booking_time, validatedData.stylist]
+        `SELECT id FROM public.bookings WHERE appointment_date = $1 AND appointment_time = $2 AND stylist = $3 AND booking_status = 'confirmed'`,
+        [appointment_date, appointment_time, validatedData.stylist]
       );
       
       if (checkRes.rows.length > 0) {
@@ -110,26 +131,32 @@ export const createBooking = asyncHandler(
 
       const q = `
         INSERT INTO public.bookings (
-          customer_name, customer_email, mobile, country_code,
-          hairstyle, stylist, booking_date, booking_time,
-          payment_method, notes, total_price, booking_status, salon_id
+          customer_name, customer_email, phone, mobile, country_code,
+          service_name, hairstyle, stylist, appointment_date, booking_date,
+          appointment_time, booking_time, payment_method, notes, total_price,
+          booking_status, payment_status, salon_id, user_id
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'confirmed', $12
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'confirmed', 'pending', $16, $17
         ) RETURNING *;
       `;
       const values = [
         validatedData.customer_name,
         validatedData.customer_email,
-        validatedData.mobile,
+        phone,
+        mobile,
         validatedData.country_code,
-        validatedData.hairstyle,
+        service_name,
+        hairstyle,
         validatedData.stylist,
-        validatedData.booking_date,
-        validatedData.booking_time,
+        appointment_date,
+        booking_date,
+        appointment_time,
+        booking_time,
         validatedData.payment_method,
         validatedData.notes || null,
         validatedData.total_price,
-        validatedData.salon_id || null
+        validatedData.salon_id || null,
+        validatedData.user_id || null
       ];
 
       const result = await query(q, values);
@@ -252,7 +279,7 @@ export const getAllBookings = asyncHandler(
   }
 
   const result = await query(
-    'SELECT * FROM public.bookings WHERE salon_id =  ORDER BY booking_date DESC, booking_time ASC',
+    'SELECT * FROM public.bookings WHERE salon_id = $1 OR salon_id IS NULL ORDER BY booking_date DESC, booking_time ASC',
     [salon_id]
   );
 
@@ -273,24 +300,209 @@ export const allocateBarber = asyncHandler(async (req: Request, res: Response) =
   }
 
   // Ensure this booking belongs to the admin's salon
-  const checkResult = await query('SELECT salon_id FROM public.bookings WHERE id = ', [id]);
+  const checkResult = await query('SELECT salon_id FROM public.bookings WHERE id = $1', [id]);
   if (checkResult.rows.length === 0) {
     res.status(404).json({ message: "Booking not found" });
     return;
   }
-  if (checkResult.rows[0].salon_id !== salon_id) {
+  if (checkResult.rows[0].salon_id !== salon_id && checkResult.rows[0].salon_id !== null) {
     res.status(403).json({ message: "Forbidden: Booking belongs to another salon" });
     return;
   }
 
   const result = await query(
-    'UPDATE public.bookings SET stylist =  WHERE id =  RETURNING *',
-    [stylist, id]
+    'UPDATE public.bookings SET stylist = $1, salon_id = $2 WHERE id = $3 RETURNING *',
+    [stylist, salon_id, id]
   );
 
   res.json({
     success: true,
     message: "Barber allocated successfully",
     data: result.rows[0]
+  });
+});
+
+// GET /api/admin/bookings (Fetch all bookings with query, pagination, filters, searching)
+export const getAdminBookings = asyncHandler(async (req: Request, res: Response) => {
+  const { salon_id } = (req as any).user;
+  
+  if (!salon_id) {
+    res.status(403).json({ message: "Salon ID missing from authenticated user." });
+    return;
+  }
+
+  const { status, search, page = 1, limit = 50 } = req.query;
+  const parsedLimit = parseInt(String(limit), 10);
+  const parsedPage = parseInt(String(page), 10);
+  const offset = (parsedPage - 1) * parsedLimit;
+
+  let queryParams: any[] = [salon_id];
+  let paramIndex = 2;
+  let whereClauses: string[] = ["(salon_id = $1 OR salon_id IS NULL)"];
+
+  if (status && status !== "all") {
+    whereClauses.push(`booking_status = $${paramIndex}`);
+    queryParams.push(status);
+    paramIndex++;
+  }
+
+  if (search) {
+    whereClauses.push(`(customer_name ILIKE $${paramIndex} OR customer_email ILIKE $${paramIndex} OR service_name ILIKE $${paramIndex} OR hairstyle ILIKE $${paramIndex})`);
+    queryParams.push(`%${search}%`);
+    paramIndex++;
+  }
+
+  const whereStr = whereClauses.join(" AND ");
+
+  // Count query
+  const countRes = await query(`SELECT COUNT(*) FROM public.bookings WHERE ${whereStr}`, queryParams);
+  const total = parseInt(countRes.rows[0].count, 10);
+
+  // Paginated query (latest first)
+  const dataQuery = `
+    SELECT * FROM public.bookings 
+    WHERE ${whereStr} 
+    ORDER BY appointment_date DESC, created_at DESC 
+    LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
+  `;
+  
+  const finalParams = [...queryParams, parsedLimit, offset];
+  const dataRes = await query(dataQuery, finalParams);
+
+  res.json({
+    success: true,
+    total,
+    page: parsedPage,
+    limit: parsedLimit,
+    data: dataRes.rows
+  });
+});
+
+// GET /api/admin/bookings/:id (Fetch single booking)
+export const getAdminBookingById = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { salon_id } = (req as any).user;
+
+  const result = await query("SELECT * FROM public.bookings WHERE id = $1", [id]);
+  if (result.rows.length === 0) {
+    res.status(404).json({ success: false, message: "Booking not found" });
+    return;
+  }
+
+  const booking = result.rows[0];
+  if (booking.salon_id !== salon_id && booking.salon_id !== null) {
+    res.status(403).json({ success: false, message: "Forbidden: booking belongs to another salon" });
+    return;
+  }
+
+  res.json({ success: true, data: booking });
+});
+
+// PUT /api/admin/bookings/:id (Update booking status or details)
+export const updateAdminBooking = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { salon_id } = (req as any).user;
+  const { booking_status, payment_status, stylist, customer_name, customer_email, total_price, appointment_date, appointment_time } = req.body;
+
+  const checkResult = await query('SELECT * FROM public.bookings WHERE id = $1', [id]);
+  if (checkResult.rows.length === 0) {
+    res.status(404).json({ message: "Booking not found" });
+    return;
+  }
+  
+  const booking = checkResult.rows[0];
+  if (booking.salon_id !== salon_id && booking.salon_id !== null) {
+    res.status(403).json({ message: "Forbidden: booking belongs to another salon" });
+    return;
+  }
+
+  const updates: string[] = [];
+  const values: any[] = [];
+  let paramIndex = 1;
+
+  if (booking_status !== undefined) {
+    updates.push(`booking_status = $${paramIndex}`);
+    values.push(booking_status);
+    paramIndex++;
+  }
+  
+  if (payment_status !== undefined) {
+    updates.push(`payment_status = $${paramIndex}`);
+    values.push(payment_status);
+    paramIndex++;
+  }
+  
+  if (stylist !== undefined) {
+    updates.push(`stylist = $${paramIndex}`);
+    values.push(stylist);
+    paramIndex++;
+  }
+
+  if (customer_name !== undefined) {
+    updates.push(`customer_name = $${paramIndex}`);
+    values.push(customer_name);
+    paramIndex++;
+  }
+
+  if (customer_email !== undefined) {
+    updates.push(`customer_email = $${paramIndex}`);
+    values.push(customer_email);
+    paramIndex++;
+  }
+
+  if (total_price !== undefined) {
+    updates.push(`total_price = $${paramIndex}`);
+    values.push(total_price);
+    paramIndex++;
+  }
+
+  if (appointment_date !== undefined) {
+    updates.push(`appointment_date = $${paramIndex}`);
+    updates.push(`booking_date = $${paramIndex}`);
+    values.push(appointment_date);
+    paramIndex++;
+  }
+
+  if (appointment_time !== undefined) {
+    updates.push(`appointment_time = $${paramIndex}`);
+    updates.push(`booking_time = $${paramIndex}`);
+    values.push(appointment_time);
+    paramIndex++;
+  }
+
+  updates.push(`updated_at = NOW()`);
+
+  values.push(id);
+  const q = `UPDATE public.bookings SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`;
+  const result = await query(q, values);
+
+  res.json({
+    success: true,
+    message: "Booking updated successfully",
+    data: result.rows[0]
+  });
+});
+
+// DELETE /api/admin/bookings/:id (Delete booking)
+export const deleteAdminBooking = asyncHandler(async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { salon_id } = (req as any).user;
+
+  const checkResult = await query('SELECT salon_id FROM public.bookings WHERE id = $1', [id]);
+  if (checkResult.rows.length === 0) {
+    res.status(404).json({ message: "Booking not found" });
+    return;
+  }
+
+  if (checkResult.rows[0].salon_id !== salon_id && checkResult.rows[0].salon_id !== null) {
+    res.status(403).json({ message: "Forbidden: booking belongs to another salon" });
+    return;
+  }
+
+  await query('DELETE FROM public.bookings WHERE id = $1', [id]);
+
+  res.json({
+    success: true,
+    message: "Booking deleted successfully"
   });
 });

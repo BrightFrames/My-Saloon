@@ -1,0 +1,451 @@
+/* ─── Shared Admin Page Styles ─────────────────────────────── */
+
+.page-root {
+  padding: 28px 0;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.page-header h1 {
+  font-size: 26px;
+  color: #36221a;
+  margin: 0;
+  font-weight: 700;
+}
+
+.page-header .subtitle {
+  color: var(--muted);
+  font-size: 13px;
+  margin-top: 4px;
+}
+
+/* ─── Action Buttons ──────────────────────────────────────── */
+
+.btn-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  background: var(--accent);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+
+.btn-add:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 24px rgba(107, 75, 58, 0.15);
+}
+
+.btn-sm {
+  padding: 6px 14px;
+  font-size: 12px;
+  border-radius: 8px;
+  border: 1px solid var(--input-border);
+  background: var(--panel-bg);
+  cursor: pointer;
+  color: var(--muted);
+  transition: all 0.15s;
+}
+
+.btn-sm:hover {
+  background: #fcf7f6;
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.btn-sm.danger {
+  color: #a02a2a;
+  border-color: #e8c4c4;
+}
+
+.btn-sm.danger:hover {
+  background: #fff6f6;
+  border-color: #a02a2a;
+}
+
+.btn-sm.save {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.btn-sm.save:hover {
+  background: #5a3d2e;
+}
+
+/* ─── Data Table ──────────────────────────────────────────── */
+
+.data-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 4px 14px rgba(16, 24, 40, 0.03);
+}
+
+.data-table thead {
+  background: #faf7f5;
+}
+
+.data-table th {
+  padding: 14px 18px;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border);
+}
+
+.data-table td {
+  padding: 16px 18px;
+  font-size: 14px;
+  color: #35221a;
+  border-bottom: 1px solid #f6f2f1;
+  vertical-align: middle;
+}
+
+.data-table tbody tr {
+  transition: background 0.12s, transform 0.12s;
+}
+
+.data-table tbody tr:hover {
+  background: #fffaf8;
+}
+
+.data-table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.td-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+/* ─── Status Badge ────────────────────────────────────────── */
+
+.badge {
+  display: inline-block;
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.badge.confirmed {
+  background: #e9f9f2;
+  color: #0f8b4f;
+}
+
+.badge.completed {
+  background: #e0f2fe;
+  color: #0369a1;
+}
+
+.badge.pending {
+  background: #fff3e6;
+  color: #a65a0a;
+}
+
+.badge.cancelled {
+  background: #fff6f6;
+  color: #a02a2a;
+}
+
+.badge.admin {
+  background: #f0e6ff;
+  color: #7c3aed;
+}
+
+.badge.superadmin {
+  background: #fef3c7;
+  color: #b45309;
+}
+
+/* ─── Modal / Inline Form ─────────────────────────────────── */
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: fadeIn 0.2s ease;
+}
+
+.modal-card {
+  background: var(--panel-bg);
+  border-radius: 16px;
+  padding: 32px;
+  width: 460px;
+  max-width: 90vw;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
+  animation: slideUp 0.25s ease;
+}
+
+.modal-card h2 {
+  font-size: 20px;
+  color: #36221a;
+  margin: 0 0 20px;
+  font-weight: 700;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.form-group label {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+  padding: 10px 14px;
+  border: 1px solid var(--input-border);
+  border-radius: 10px;
+  font-size: 14px;
+  background: #ffffff;
+  color: #111111;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.form-group input:focus,
+.form-group textarea:focus {
+  outline: none;
+  border-color: rgba(107, 75, 58, 0.9);
+  box-shadow: 0 0 0 4px rgba(107, 75, 58, 0.08);
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 24px;
+}
+
+.btn-cancel {
+  padding: 10px 20px;
+  background: transparent;
+  border: 1px solid var(--input-border);
+  border-radius: 10px;
+  cursor: pointer;
+  color: var(--muted);
+  font-size: 14px;
+  transition: background 0.15s;
+}
+
+.btn-cancel:hover {
+  background: #f9f5f3;
+}
+
+/* ─── Profile Card ────────────────────────────────────────── */
+
+.profile-card {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 4px 14px rgba(16, 24, 40, 0.03);
+  max-width: 600px;
+}
+
+.profile-field {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 0;
+  border-bottom: 1px solid #f6f2f1;
+}
+
+.profile-field:last-child {
+  border-bottom: none;
+}
+
+.profile-field .field-label {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.profile-field .field-value {
+  font-size: 15px;
+  color: #35221a;
+  font-weight: 600;
+}
+
+/* ─── Empty State ─────────────────────────────────────────── */
+
+.empty-state {
+  text-align: center;
+  padding: 48px 20px;
+  color: var(--muted);
+}
+
+.empty-state .empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.4;
+}
+
+.empty-state h3 {
+  font-size: 18px;
+  color: #45322b;
+  margin: 0 0 8px;
+}
+
+.empty-state p {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* ─── Allocate Input ──────────────────────────────────────── */
+
+.allocate-group {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.allocate-group input {
+  padding: 6px 10px;
+  border: 1px solid #d2c9c5;
+  border-radius: 8px;
+  font-size: 12px;
+  width: 110px;
+  background: #fff;
+  color: #111;
+}
+
+.allocate-group button {
+  padding: 6px 12px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 12px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+
+.allocate-group button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(107, 75, 58, 0.2);
+}
+
+/* ─── Stats Cards Row ─────────────────────────────────────── */
+
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.stat-card {
+  background: var(--panel-bg);
+  border: 1px solid var(--border);
+  padding: 20px;
+  border-radius: 12px;
+  transition: transform 0.12s, box-shadow 0.12s;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 30px rgba(16, 24, 40, 0.06);
+}
+
+.stat-card .stat-label {
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.stat-card .stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--accent);
+  margin-top: 6px;
+}
+
+/* ─── Filter Bar ──────────────────────────────────────────── */
+
+.filter-bar {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.filter-bar select,
+.filter-bar input {
+  padding: 8px 14px;
+  border: 1px solid var(--input-border);
+  border-radius: 10px;
+  font-size: 13px;
+  background: #fff;
+  color: #111;
+}
+
+/* ─── Animations ──────────────────────────────────────────── */
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Responsive ──────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .stats-row {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .data-table {
+    font-size: 13px;
+  }
+
+  .modal-card {
+    padding: 24px;
+  }
+}
+
+@media (max-width: 600px) {
+  .stats-row {
+    grid-template-columns: 1fr;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+}

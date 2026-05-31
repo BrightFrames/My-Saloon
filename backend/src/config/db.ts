@@ -14,6 +14,10 @@ export const pool = new Pool({
   max: 10,
 });
 
+pool.on('error', (err) => {
+  console.error('[db]: Unexpected idle client error:', err.message || err);
+});
+
 // Test initial connection and log status
 (async () => {
   try {
@@ -27,13 +31,7 @@ export const pool = new Pool({
 })();
 
 export async function query(text: string, params?: any[]) {
-  const client = await pool.connect();
-  try {
-    const res = await client.query(text, params);
-    return res;
-  } finally {
-    client.release();
-  }
+  return pool.query(text, params);
 }
 
 export default { query };

@@ -10,8 +10,15 @@ import {
   allocateBarber
 } from "../controllers/bookings.controller";
 import { authenticateJWT, requireAdmin } from "../middlewares/auth";
+import { createRateLimit } from "../middlewares/rateLimit";
 
 const router = Router();
+const writeLimiter = createRateLimit({
+  windowMs: 60_000,
+  max: 10,
+  code: "RATE_LIMIT_EXCEEDED",
+  message: "Too many booking actions. Please wait a moment and try again.",
+});
 
 // Order matters: specific routes before parameterized ones
 
@@ -22,8 +29,8 @@ router.patch("/admin/:id/allocate", authenticateJWT, requireAdmin, allocateBarbe
 router.get("/all", getAllBookings); // <--- Added endpoint for admins
 router.get("/slots", getAvailableSlots);
 router.get("/user/:email", getUserBookings);
-router.post("/", createBooking);
+router.post("/", writeLimiter, createBooking);
 router.get("/:id", getBooking);
-router.patch("/:id/cancel", cancelBooking);
+router.patch("/:id/cancel", writeLimiter, cancelBooking);
 
 export default router;

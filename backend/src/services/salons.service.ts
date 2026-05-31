@@ -23,7 +23,7 @@ export class SalonsService {
       let selectFields = "s.*";
       const fromClause = "salons s";
       const whereClauses: string[] = [];
-      let orderBy = "s.rating DESC";
+      let orderBy = "s.rating DESC NULLS LAST, s.starting_price ASC";
 
       // 1. Distance / Haversine formula
       if (typeof lat === "number" && typeof lon === "number") {
@@ -43,7 +43,7 @@ export class SalonsService {
         queryParams.push(radiusKm);
         paramIndex += 1;
 
-        orderBy = "distance_km ASC";
+        orderBy = "distance_km ASC, s.rating DESC NULLS LAST, s.starting_price ASC";
       }
 
       // 2. Filter by city

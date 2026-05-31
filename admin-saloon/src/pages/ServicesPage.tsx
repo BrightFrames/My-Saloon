@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Layout from '../components/Layout'
 import { api } from '../services/api'
 import './pages.css'
@@ -15,12 +15,36 @@ type Service = {
   duration: string
 }
 
+const SERVICE_OPTIONS = [
+  'Signature Haircut',
+  'Premium Balayage',
+  'Signature Silk Facial',
+  'Keratin Treatment',
+  'Haircut',
+  'Beard Trim',
+  'Hair Color',
+  'Hair Spa',
+  'Facial',
+  'Threading',
+  'Waxing',
+  'Manicure',
+  'Pedicure',
+  'Massage',
+  'Bridal Package',
+  'Kids Haircut',
+];
+
+const CUSTOM_SERVICE_VALUE = '__custom__';
+
 export default function ServicesPage({ user, onLogout }: Props) {
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [form, setForm] = useState({ name: '', price: '', duration: '' });
+  const [customServiceName, setCustomServiceName] = useState('');
+  const submitLockRef = useRef(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const fetchServices = async () => {
     try {
@@ -41,30 +65,46 @@ export default function ServicesPage({ user, onLogout }: Props) {
   const openCreate = () => {
     setEditingService(null);
     setForm({ name: '', price: '', duration: '' });
+    setCustomServiceName('');
     setShowModal(true);
   };
 
   const openEdit = (s: Service) => {
     setEditingService(s);
-    setForm({ name: s.name, price: String(s.price), duration: s.duration });
+    const isKnownService = SERVICE_OPTIONS.includes(s.name);
+    setForm({
+      name: isKnownService ? s.name : CUSTOM_SERVICE_VALUE,
+      price: String(s.price),
+      duration: s.duration,
+    });
+    setCustomServiceName(isKnownService ? '' : s.name);
     setShowModal(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form.name || !form.price || !form.duration) return alert('All fields are required.');
+    const serviceName = form.name === CUSTOM_SERVICE_VALUE ? customServiceName.trim() : form.name;
+    if (!serviceName || !form.price || !form.duration) return alert('All fields are required.');
+    if (submitLockRef.current) return;
+
+    submitLockRef.current = true;
+    setIsSubmitting(true);
 
     try {
-      const payload = { name: form.name, price: parseFloat(form.price), duration: form.duration };
+      const payload = { name: serviceName, price: parseFloat(form.price), duration: form.duration };
       if (editingService) {
         await api.updateService(editingService.id, payload);
       } else {
         await api.createService(payload);
       }
       setShowModal(false);
+      setCustomServiceName('');
       fetchServices();
     } catch (err: any) {
       alert(err.message || 'Failed to save service.');
+    } finally {
+      submitLockRef.current = false;
+      setIsSubmitting(false);
     }
   };
 
@@ -133,11 +173,23 @@ export default function ServicesPage({ user, onLogout }: Props) {
               <form onSubmit={handleSubmit}>
                 <div className="form-group">
                   <label>Service Name</label>
-                  <input
+                  <select
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
-                    placeholder="e.g. Premium Haircut"
-                  />
+                  >
+                    <option value="">Select a salon service</option>
+                    {SERVICE_OPTIONS.map((option) => (
+                      <option key={option} value={option}>{option}</option>
+                    ))}
+                    <option value={CUSTOM_SERVICE_VALUE}>Other / Custom</option>
+                  </select>
+                  {form.name === CUSTOM_SERVICE_VALUE && (
+                    <input
+                      value={customServiceName}
+                      onChange={(e) => setCustomServiceName(e.target.value)}
+                      placeholder="Enter custom service name"
+                    />
+                  )}
                 </div>
                 <div className="form-group">
                   <label>Price (₹)</label>
@@ -158,7 +210,7 @@ export default function ServicesPage({ user, onLogout }: Props) {
                 </div>
                 <div className="modal-actions">
                   <button type="button" className="btn-cancel" onClick={() => setShowModal(false)}>Cancel</button>
-                  <button type="submit" className="btn-add">{editingService ? 'Save Changes' : 'Add Service'}</button>
+                  <button type="submit" className="btn-add" disabled={isSubmitting}>{isSubmitting ? (editingService ? 'Saving...' : 'Adding...') : editingService ? 'Save Changes' : 'Add Service'}</button>
                 </div>
               </form>
             </div>

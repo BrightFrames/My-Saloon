@@ -1,7 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import Layout from '../components/Layout'
 import { api } from '../services/api'
 import './pages.css'
+import dayjs from 'dayjs'
+import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
+import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
+import { DatePicker } from '@mui/x-date-pickers/DatePicker'
 
 type Props = {
   user: any
@@ -10,11 +14,14 @@ type Props = {
 
 export default function BookingsPage({ user, onLogout }: Props) {
   const [bookings, setBookings] = useState<any[]>([]);
+  const [services, setServices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [allocationStylist, setAllocationStylist] = useState<Record<string, string>>({});
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewModal, setShowNewModal] = useState(false);
+  const submittingBookingRef = useRef(false);
+  const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
   const [newForm, setNewForm] = useState({
     customer_name: '',
     customer_email: '',
@@ -40,8 +47,18 @@ export default function BookingsPage({ user, onLogout }: Props) {
     }
   };
 
+  const fetchServices = async () => {
+    try {
+      const res = await api.getServices();
+      setServices(res.data || []);
+    } catch (err) {
+      console.error('Failed to fetch services', err);
+    }
+  };
+
   useEffect(() => {
     fetchBookings(statusFilter, searchQuery);
+    fetchServices();
     // Check if ?new=true in URL
     if (window.location.search.includes('new=true')) {
       setShowNewModal(true);
@@ -113,6 +130,10 @@ export default function BookingsPage({ user, onLogout }: Props) {
       return alert("Please fill required fields.");
     }
 
+    if (submittingBookingRef.current) return;
+    submittingBookingRef.current = true;
+    setIsSubmittingBooking(true);
+
     try {
       const payload = {
         ...newForm,
@@ -144,6 +165,9 @@ export default function BookingsPage({ user, onLogout }: Props) {
       }
     } catch (err: any) {
       alert(err.message || "Error creating booking.");
+    } finally {
+      submittingBookingRef.current = false;
+      setIsSubmittingBooking(false);
     }
   };
 
@@ -308,8 +332,24 @@ export default function BookingsPage({ user, onLogout }: Props) {
                     <input value={newForm.mobile} onChange={e => setNewForm({...newForm, mobile: e.target.value})} required />
                   </div>
                   <div className="form-group">
-                    <label>Service / Hairstyle</label>
-                    <input value={newForm.hairstyle} onChange={e => setNewForm({...newForm, hairstyle: e.target.value})} required />
+                    <label>Service</label>
+                    <select
+                      value={newForm.hairstyle}
+                      onChange={e => setNewForm({...newForm, hairstyle: e.target.value})}
+                      required
+                    >
+                      <option value="">Select a service</option>
+                      {services.map((service) => (
+                        <option key={service.id} value={service.name}>
+                          {service.name}
+                        </option>
+                      ))}
+                    </select>
+                    {services.length === 0 && (
+                      <div style={{ fontSize: '12px', color: '#7f6f69' }}>
+                        No salon services found yet. Add services first.
+                      </div>
+                    )}
                   </div>
                   <div className="form-group">
                     <label>Stylist</label>
@@ -321,7 +361,34 @@ export default function BookingsPage({ user, onLogout }: Props) {
                   </div>
                   <div className="form-group">
                     <label>Date</label>
-                    <input type="date" value={newForm.booking_date} onChange={e => setNewForm({...newForm, booking_date: e.target.value})} required />
+                    <LocalizationProvider dateAdapter={AdapterDayjs}>
+                      <DatePicker
+                        value={newForm.booking_date ? dayjs(newForm.booking_date) : null}
+                        onChange={(date) =>
+                          setNewForm({
+                            ...newForm,
+                            booking_date: date ? date.format('YYYY-MM-DD') : '',
+                          })
+                        }
+                        label="Select Date"
+                        format="DD-MM-YYYY"
+                        slotProps={{
+                          textField: {
+                            fullWidth: true,
+                            required: true,
+                            sx: {
+                              '& .MuiInputBase-root': {
+                                height: 44,
+                                borderRadius: '10px',
+                              },
+                              '& .MuiInputBase-input': {
+                                padding: '10px 14px',
+                              },
+                            },
+                          },
+                        }}
+                      />
+                    </LocalizationProvider>
                   </div>
                   <div className="form-group">
                     <label>Time</label>
@@ -335,7 +402,7 @@ export default function BookingsPage({ user, onLogout }: Props) {
                 </div>
                 <div className="modal-actions">
                   <button type="button" className="btn-cancel" onClick={() => setShowNewModal(false)}>Cancel</button>
-                  <button type="submit" className="btn-add">Create Booking</button>
+                  <button type="submit" className="btn-add" disabled={isSubmittingBooking}>{isSubmittingBooking ? 'Creating...' : 'Create Booking'}</button>
                 </div>
               </form>
             </div>

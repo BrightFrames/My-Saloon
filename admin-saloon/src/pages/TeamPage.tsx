@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Layout from "../components/Layout";
 import { api } from "../services/api";
 import "./pages.css";
@@ -22,6 +22,8 @@ export default function TeamPage({ user, onLogout }: Props) {
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [editingMember, setEditingMember] = useState<TeamMember | null>(null);
+  const submitLockRef = useRef(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [form, setForm] = useState({
     name: "",
     role: "",
@@ -78,6 +80,10 @@ export default function TeamPage({ user, onLogout }: Props) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.role) return alert("Name and role are required.");
+    if (submitLockRef.current) return;
+
+    submitLockRef.current = true;
+    setIsSubmitting(true);
 
     try {
       const payload = { ...form };
@@ -90,6 +96,9 @@ export default function TeamPage({ user, onLogout }: Props) {
       fetchTeam();
     } catch (err: any) {
       alert(err.message || "Failed to save team member.");
+    } finally {
+      submitLockRef.current = false;
+      setIsSubmitting(false);
     }
   };
 
@@ -236,8 +245,8 @@ export default function TeamPage({ user, onLogout }: Props) {
                   >
                     Cancel
                   </button>
-                  <button type="submit" className="btn-add">
-                    {editingMember ? "Save Changes" : "Add Member"}
+                  <button type="submit" className="btn-add" disabled={isSubmitting}>
+                    {isSubmitting ? (editingMember ? "Saving..." : "Adding...") : editingMember ? "Save Changes" : "Add Member"}
                   </button>
                 </div>
               </form>

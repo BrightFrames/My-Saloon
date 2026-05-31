@@ -74,6 +74,7 @@ export function LandingPage({
   const isVerified = sessionStorage.getItem("isVerified") === "true";
   const userName = sessionStorage.getItem("userName");
   const [salons, setSalons] = useState<any[]>([]);
+  const hasAreaSearch = typeof latitude === "number" && typeof longitude === "number";
 
   // Search & Filter States
   const [searchName, setSearchName] = useState("");
@@ -346,8 +347,14 @@ export function LandingPage({
             {salons.length === 0 ? (
               <div className="bg-white rounded-2xl p-12 border border-stone-100 text-center text-stone-500 shadow-sm">
                 <Loader2 size={32} className="mx-auto text-[#C49B89] animate-spin mb-3" />
-                <h3 className="font-serif text-lg font-medium text-stone-700 mb-1">No matching salons found</h3>
-                <p className="text-stone-400 text-sm">Try relaxing your search terms or filters.</p>
+                <h3 className="font-serif text-lg font-medium text-stone-700 mb-1">
+                  {hasAreaSearch ? "No salons in your area affiliated with us" : "No matching salons found"}
+                </h3>
+                <p className="text-stone-400 text-sm">
+                  {hasAreaSearch
+                    ? "Try expanding your search radius or switching to a nearby city."
+                    : "Try relaxing your search terms or filters."}
+                </p>
               </div>
             ) : (
               salons.map((s) => {

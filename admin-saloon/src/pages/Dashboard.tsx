@@ -13,7 +13,6 @@ type Props = {
 export default function Dashboard({ user, onLogout }: Props) {
   const [bookings, setBookings] = useState<any[]>([]);
   const [stats, setStats] = useState({ total_bookings: 0, total_revenue: 0, today_appointments: 0, pending_bookings: 0 });
-  const [allocationStylist, setAllocationStylist] = useState<Record<string, string>>({});
 
   const fetchData = async () => {
     try {
@@ -34,23 +33,6 @@ export default function Dashboard({ user, onLogout }: Props) {
     const intervalId = setInterval(fetchData, 5000);
     return () => clearInterval(intervalId);
   }, [user]);
-
-  const handleAllocate = async (bookingId: string) => {
-    const stylist = allocationStylist[bookingId];
-    if (!stylist) return alert("Please enter a barber's name.");
-
-    try {
-      const data = await api.allocateBarber(bookingId, stylist);
-      if (data.success) {
-        alert("Barber allocated successfully!");
-        fetchData();
-      } else {
-        alert(data.message || "Failed to allocate.");
-      }
-    } catch (err: any) {
-      alert(err.message || "Error allocating barber.");
-    }
-  };
 
   const today = new Date().toLocaleDateString('en-US', {
     weekday: 'long',

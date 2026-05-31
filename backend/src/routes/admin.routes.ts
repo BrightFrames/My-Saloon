@@ -22,8 +22,15 @@ import {
   updateAdminBooking,
   deleteAdminBooking,
 } from "../controllers/bookings.controller";
+import { createRateLimit } from "../middlewares/rateLimit";
 
 const router = Router();
+const writeLimiter = createRateLimit({
+  windowMs: 60_000,
+  max: 8,
+  code: "RATE_LIMIT_EXCEEDED",
+  message: "Too many write requests. Please slow down and try again.",
+});
 
 // Dashboard
 router.get("/dashboard-stats", getDashboardStats);
@@ -31,30 +38,30 @@ router.get("/dashboard-stats", getDashboardStats);
 // Bookings management
 router.get("/bookings", getAdminBookings);
 router.get("/bookings/:id", getAdminBookingById);
-router.put("/bookings/:id", updateAdminBooking);
-router.delete("/bookings/:id", deleteAdminBooking);
+router.put("/bookings/:id", writeLimiter, updateAdminBooking);
+router.delete("/bookings/:id", writeLimiter, deleteAdminBooking);
 
 // Services CRUD
 router.get("/services", getServices);
-router.post("/services", createService);
-router.put("/services/:id", updateService);
-router.delete("/services/:id", deleteService);
+router.post("/services", writeLimiter, createService);
+router.put("/services/:id", writeLimiter, updateService);
+router.delete("/services/:id", writeLimiter, deleteService);
 
 // Team
 router.get("/team", getTeam);
-router.post("/team", createTeamMember);
-router.put("/team/:id", updateTeamMember);
-router.delete("/team/:id", deleteTeamMember);
+router.post("/team", writeLimiter, createTeamMember);
+router.put("/team/:id", writeLimiter, updateTeamMember);
+router.delete("/team/:id", writeLimiter, deleteTeamMember);
 
 // Salon Profile
 router.get("/salon-profile", getSalonProfile);
-router.post("/salon-profile", createSalonProfile);
-router.put("/salon-profile", updateSalonProfile);
+router.post("/salon-profile", writeLimiter, createSalonProfile);
+router.put("/salon-profile", writeLimiter, updateSalonProfile);
 
 // SuperAdmin Salon Management
 import { requireSuperAdmin } from "../middlewares/auth";
-router.post("/salons", requireSuperAdmin, createSuperAdminSalon);
-router.put("/salons/:id", requireSuperAdmin, updateSuperAdminSalon);
-router.delete("/salons/:id", requireSuperAdmin, deleteSuperAdminSalon);
+router.post("/salons", requireSuperAdmin, writeLimiter, createSuperAdminSalon);
+router.put("/salons/:id", requireSuperAdmin, writeLimiter, updateSuperAdminSalon);
+router.delete("/salons/:id", requireSuperAdmin, writeLimiter, deleteSuperAdminSalon);
 
 export default router;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Layout from "../components/Layout";
 
 export default function Salons() {
@@ -6,6 +6,12 @@ export default function Salons() {
   const [showAdminModal, setShowAdminModal] = useState(false);
   const [salons, setSalons] = useState<any[]>([]);
   const [editingSalonId, setEditingSalonId] = useState<string | null>(null);
+  const [isResolvingLocation, setIsResolvingLocation] = useState(false);
+  const submittingSalonRef = useRef(false);
+  const [isSubmittingSalon, setIsSubmittingSalon] = useState(false);
+
+  const submittingAdminRef = useRef(false);
+  const [isSubmittingAdmin, setIsSubmittingAdmin] = useState(false);
 
   // Salon state
   const [form, setForm] = useState({
@@ -88,6 +94,9 @@ export default function Salons() {
   };
 
   const handleCreateOrUpdate = async () => {
+    if (submittingSalonRef.current) return;
+    submittingSalonRef.current = true;
+    setIsSubmittingSalon(true);
     try {
       const payload = {
         ...form,
@@ -119,6 +128,55 @@ export default function Salons() {
     } catch (e) {
       console.error(e);
     }
+    finally {
+      submittingSalonRef.current = false;
+      setIsSubmittingSalon(false);
+    }
+  };
+
+  const handleResolveLocation = async () => {
+    const query = [form.address, form.city, form.state, form.country]
+      .map((value) => value.trim())
+      .filter(Boolean)
+      .join(", ");
+
+    if (!query) {
+      alert("Please enter at least an address or city first.");
+      return;
+    }
+
+    try {
+      setIsResolvingLocation(true);
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(query)}`,
+        {
+          headers: {
+            Accept: "application/json",
+          },
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error("Unable to resolve location");
+      }
+
+      const results = await response.json();
+      if (!Array.isArray(results) || results.length === 0) {
+        alert("No matching location was found. Try a more specific address.");
+        return;
+      }
+
+      const resolved = results[0];
+      setForm({
+        ...form,
+        latitude: resolved.lat || "",
+        longitude: resolved.lon || "",
+      });
+    } catch (error: any) {
+      alert(error.message || "Failed to resolve location.");
+    } finally {
+      setIsResolvingLocation(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -142,6 +200,9 @@ export default function Salons() {
   };
 
   const handleCreateAdmin = async () => {
+    if (submittingAdminRef.current) return;
+    submittingAdminRef.current = true;
+    setIsSubmittingAdmin(true);
     try {
       const res = await fetch(`${VITE_BACKEND_URL}/auth/create-salon-admin`, {
         method: "POST",
@@ -167,6 +228,9 @@ export default function Salons() {
       }
     } catch (e) {
       console.error(e);
+    } finally {
+      submittingAdminRef.current = false;
+      setIsSubmittingAdmin(false);
     }
   };
 
@@ -480,6 +544,22 @@ export default function Salons() {
                   color: "#111",
                 }}
               />
+              <button
+                type="button"
+                onClick={handleResolveLocation}
+                disabled={isResolvingLocation}
+                style={{
+                  gridColumn: "span 2",
+                  background: "#f5f5f5",
+                  border: "1px solid #ccc",
+                  color: "#111",
+                  padding: "10px",
+                  borderRadius: "6px",
+                  cursor: isResolvingLocation ? "not-allowed" : "pointer",
+                }}
+              >
+                {isResolvingLocation ? "Resolving Location..." : "Auto-fill Coordinates from Address"}
+              </button>
               <input
                 placeholder="Google Maps Link"
                 value={form.google_maps_link}
@@ -508,17 +588,18 @@ export default function Salons() {
               >
                 <button
                   onClick={handleCreateOrUpdate}
+                  disabled={isSubmittingSalon}
                   style={{
                     flex: 1,
-                    background: "#000",
+                    background: isSubmittingSalon ? "#666" : "#000",
                     color: "#fff",
                     padding: "10px",
                     borderRadius: "6px",
                     border: "none",
-                    cursor: "pointer",
+                    cursor: isSubmittingSalon ? "not-allowed" : "pointer",
                   }}
                 >
-                  Save Salon
+                  {isSubmittingSalon ? "Saving..." : "Save Salon"}
                 </button>
                 <button
                   onClick={() => setShowModal(false)}
@@ -600,6 +681,7 @@ export default function Salons() {
               <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
                 <button
                   onClick={handleCreateAdmin}
+                  disabled={isSubmittingAdmin}
                   style={{
                     flex: 1,
                     background: "#000",
@@ -607,10 +689,10 @@ export default function Salons() {
                     padding: "10px",
                     borderRadius: "6px",
                     border: "none",
-                    cursor: "pointer",
+                    cursor: isSubmittingAdmin ? "not-allowed" : "pointer",
                   }}
                 >
-                  Create Account
+                  {isSubmittingAdmin ? "Creating..." : "Create Account"}
                 </button>
                 <button
                   onClick={() => setShowAdminModal(false)}

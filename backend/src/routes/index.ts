@@ -14,10 +14,17 @@ import {
   requireSuperAdmin,
   requireAdmin,
 } from "../middlewares/auth";
+import { createRateLimit } from "../middlewares/rateLimit";
 import bookingRoutes from "./bookings.routes";
 import adminRoutes from "./admin.routes";
 
 const router = Router();
+const authLimiter = createRateLimit({
+  windowMs: 10 * 60 * 1000,
+  max: 8,
+  code: 'RATE_LIMIT_EXCEEDED',
+  message: 'Too many authentication attempts. Please wait and try again.',
+});
 
 // Mount all modular routes
 router.use("/salons", salonsRoutes);
@@ -28,15 +35,16 @@ router.use("/bookings", bookingRoutes);
 router.use("/admin", authenticateJWT, requireAdmin, adminRoutes);
 
 // Auth routes
-router.post("/auth/send-otp", sendOtp);
-router.post("/auth/verify-otp", verifyOtp);
-router.post("/auth/admin-login", adminLogin);
-router.post("/auth/superadmin-login", superAdminLogin);
+router.post("/auth/send-otp", authLimiter, sendOtp);
+router.post("/auth/verify-otp", authLimiter, verifyOtp);
+router.post("/auth/admin-login", authLimiter, adminLogin);
+router.post("/auth/superadmin-login", authLimiter, superAdminLogin);
 // Admin creation route (SuperAdmin only)
 router.post(
   "/auth/create-salon-admin",
   authenticateJWT,
   requireSuperAdmin,
+  authLimiter,
   createSalonAdmin,
 );
 

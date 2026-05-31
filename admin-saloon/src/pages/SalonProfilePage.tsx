@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Layout from "../components/Layout";
 import { api } from "../services/api";
 import "./pages.css";
@@ -13,6 +13,9 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [showAddSalonModal, setShowAddSalonModal] = useState(false);
+  const submitLockRef = useRef(false);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [isCreatingSalon, setIsCreatingSalon] = useState(false);
   const [form, setForm] = useState({
     name: "",
     city: "",
@@ -58,6 +61,10 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
     e.preventDefault();
     if (!form.name || !form.city || !form.starting_price)
       return alert("Name, city, and starting price are required.");
+    if (submitLockRef.current) return;
+
+    submitLockRef.current = true;
+    setIsSavingProfile(true);
 
     try {
       await api.updateSalonProfile({
@@ -75,6 +82,9 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
       alert("Salon profile updated successfully!");
     } catch (err: any) {
       alert(err.message || "Failed to update profile.");
+    } finally {
+      submitLockRef.current = false;
+      setIsSavingProfile(false);
     }
   };
 
@@ -88,6 +98,10 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
       alert("Salon Name, City, and Starting Price are required.");
       return;
     }
+    if (submitLockRef.current) return;
+
+    submitLockRef.current = true;
+    setIsCreatingSalon(true);
 
     try {
       await api.createSalonProfile({
@@ -117,6 +131,9 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
       alert("Salon created successfully!");
     } catch (err: any) {
       alert(err.message || "Failed to create salon.");
+    } finally {
+      submitLockRef.current = false;
+      setIsCreatingSalon(false);
     }
   };
 
@@ -213,8 +230,8 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
                   >
                     Cancel
                   </button>
-                  <button type="submit" className="btn-add">
-                    Save Profile
+                  <button type="submit" className="btn-add" disabled={isSavingProfile}>
+                    {isSavingProfile ? "Saving..." : "Save Profile"}
                   </button>
                 </div>
               </form>
@@ -346,8 +363,8 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
                   >
                     Cancel
                   </button>
-                  <button type="submit" className="btn-add">
-                    Save Salon
+                  <button type="submit" className="btn-add" disabled={isCreatingSalon}>
+                    {isCreatingSalon ? "Creating..." : "Save Salon"}
                   </button>
                 </div>
               </form>

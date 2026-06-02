@@ -10,11 +10,9 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-<<<<<<< HEAD
 import { PopupDialog } from "../components/PopupDialog";
-=======
+
 import { formatINR } from "../utils/currency";
->>>>>>> 300454248344c82598174d6c64d3d76e1e2f9d38
 
 export function SalonDetailsPage() {
   const navigate = useNavigate();
@@ -342,7 +340,7 @@ export function SalonDetailsPage() {
                             pampering session.
                           </p>
                           <p className="text-[#C49B89] font-semibold text-lg">
-                             {formatINR(service.price)}
+                            {formatINR(service.price)}
                           </p>
                         </div>
                         <button
@@ -384,7 +382,7 @@ export function SalonDetailsPage() {
                     </p>
                   </div>
                   <span className="text-stone-600 font-semibold text-sm">
-                      {formatINR(s.price)}
+                    {formatINR(s.price)}
                   </span>
                 </div>
               ))}

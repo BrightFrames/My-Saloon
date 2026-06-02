@@ -303,6 +303,7 @@ export function CheckoutPage() {
 
       const payload = {
         ...bookingData,
+        service_name: bookingData.serviceName || bookingData.hairstyle,
         total_price: finalPrice,
         salon_id: salonId,
       };

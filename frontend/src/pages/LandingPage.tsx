@@ -10,11 +10,8 @@ import {
   ExternalLink,
   Search,
   Filter,
-
   DollarSign,
-
-  IndianRupee
-
+  IndianRupee,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
@@ -497,17 +494,21 @@ export function LandingPage({
                       {/* Pricing & Booking CTA */}
                       <div className="flex justify-between items-end mt-2 pt-2 border-t border-stone-50">
                         <div>
-<<<<<<< HEAD
                           <p className="text-[9px] text-stone-400 uppercase tracking-wider mb-0.5">
                             Starts From
                           </p>
                           <p className="font-bold text-stone-800 text-base">
                             ${s.starting_price || "—"}
                           </p>
-=======
-                          <p className="text-[9px] text-stone-400 uppercase tracking-wider mb-0.5">Starts From</p>
-                          <p className="font-bold text-stone-800 text-base">{s.starting_price ? formatINR(s.starting_price) : "—"}</p>
->>>>>>> 300454248344c82598174d6c64d3d76e1e2f9d38
+
+                          <p className="text-[9px] text-stone-400 uppercase tracking-wider mb-0.5">
+                            Starts From
+                          </p>
+                          <p className="font-bold text-stone-800 text-base">
+                            {s.starting_price
+                              ? formatINR(s.starting_price)
+                              : "—"}
+                          </p>
                         </div>
                         <div className="flex gap-2">
                           <button
@@ -639,11 +640,13 @@ export function LandingPage({
                             <span className="text-stone-700">
                               Starts from ${s.starting_price}
                             </span>
-<<<<<<< HEAD
-=======
-                            <span className="text-stone-400 font-normal">•</span>
-                            <span className="text-stone-700">Starts from {formatINR(s.starting_price)}</span>
->>>>>>> 300454248344c82598174d6c64d3d76e1e2f9d38
+
+                            <span className="text-stone-400 font-normal">
+                              •
+                            </span>
+                            <span className="text-stone-700">
+                              Starts from {formatINR(s.starting_price)}
+                            </span>
                           </div>
 
                           <div className="flex gap-2 mt-2">

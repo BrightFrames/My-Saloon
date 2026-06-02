@@ -16,16 +16,25 @@ async function sendBookingConfirmationEmail(booking: any) {
       },
     });
 
-    const paymentLabel = booking.payment_method.replace('_', ' ').toUpperCase();
-    const formattedDate = new Date(booking.booking_date).toLocaleDateString('en-US', {
-      weekday: 'long',
-      month: 'long',
-      day: 'numeric',
-      year: 'numeric'
-    });
+    const paymentLabel = booking.payment_method.replace("_", " ").toUpperCase();
+    const serviceLabel =
+      booking.service_name ||
+      booking.serviceName ||
+      booking.hairstyle ||
+      "Service";
+    const formattedDate = new Date(booking.booking_date).toLocaleDateString(
+      "en-US",
+      {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      },
+    );
 
     await transporter.sendMail({
-      from: process.env.SMTP_FROM || process.env.SMTP_USER || "noreply@glowup.com",
+      from:
+        process.env.SMTP_FROM || process.env.SMTP_USER || "noreply@glowup.com",
       to: booking.customer_email,
       subject: `Your Glamour Session is Booked! Glowup Salon (ID: ${booking.id})`,
       html: `
@@ -45,7 +54,7 @@ async function sendBookingConfirmationEmail(booking: any) {
             <div style="font-family: 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.6; color: #555555;">
               <div style="margin-bottom: 16px; display: flex; justify-content: space-between;">
                 <span style="color: #8C8682;">Hairstyle / Treatment:</span>
-                <strong style="color: #313131;">${booking.hairstyle}</strong>
+                <strong style="color: #313131;">${serviceLabel}</strong>
               </div>
               <div style="margin-bottom: 16px; display: flex; justify-content: space-between;">
                 <span style="color: #8C8682;">Stylist:</span>
@@ -62,11 +71,16 @@ async function sendBookingConfirmationEmail(booking: any) {
             </div>
           </div>
         </div>
-      `
+      `,
     });
-    console.log(`Booking confirmation email sent successfully to ${booking.customer_email}`);
+    console.log(
+      `Booking confirmation email sent successfully to ${booking.customer_email}`,
+    );
   } catch (err: any) {
-    console.error("Failed to send booking confirmation email:", err?.message || err);
+    console.error(
+      "Failed to send booking confirmation email:",
+      err?.message || err,
+    );
   }
 }
 
@@ -99,15 +113,29 @@ export const createBooking = asyncHandler(
       // Resolve synchronized fields
       const phone = validatedData.phone || validatedData.mobile || "";
       const mobile = validatedData.mobile || validatedData.phone || "";
-      const service_name = validatedData.service_name || validatedData.serviceName || validatedData.hairstyle || "";
-      const hairstyle = validatedData.hairstyle || validatedData.serviceName || validatedData.service_name || "";
-      const appointment_date = validatedData.appointment_date || validatedData.booking_date || "";
-      const booking_date = validatedData.booking_date || validatedData.appointment_date || "";
-      const appointment_time = validatedData.appointment_time || validatedData.booking_time || "";
-      const booking_time = validatedData.booking_time || validatedData.appointment_time || "";
+      const service_name =
+        validatedData.service_name ||
+        validatedData.serviceName ||
+        validatedData.hairstyle ||
+        "";
+      const hairstyle =
+        validatedData.hairstyle ||
+        validatedData.serviceName ||
+        validatedData.service_name ||
+        "";
+      const appointment_date =
+        validatedData.appointment_date || validatedData.booking_date || "";
+      const booking_date =
+        validatedData.booking_date || validatedData.appointment_date || "";
+      const appointment_time =
+        validatedData.appointment_time || validatedData.booking_time || "";
+      const booking_time =
+        validatedData.booking_time || validatedData.appointment_time || "";
 
       if (!appointment_date) {
-        res.status(400).json({ success: false, message: "Booking date is required." });
+        res
+          .status(400)
+          .json({ success: false, message: "Booking date is required." });
         return;
       }
 
@@ -115,17 +143,24 @@ export const createBooking = asyncHandler(
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       if (bookingDateObj < today) {
-        res.status(400).json({ success: false, message: "Cannot book for a past date." });
+        res
+          .status(400)
+          .json({ success: false, message: "Cannot book for a past date." });
         return;
       }
 
       const checkRes = await query(
         `SELECT id FROM public.bookings WHERE appointment_date = $1 AND appointment_time = $2 AND stylist = $3 AND booking_status = 'confirmed'`,
-        [appointment_date, appointment_time, validatedData.stylist]
+        [appointment_date, appointment_time, validatedData.stylist],
       );
-      
+
       if (checkRes.rows.length > 0) {
-        res.status(400).json({ success: false, message: "Slot already booked for this stylist." });
+        res
+          .status(400)
+          .json({
+            success: false,
+            message: "Slot already booked for this stylist.",
+          });
         return;
       }
 
@@ -156,7 +191,7 @@ export const createBooking = asyncHandler(
         validatedData.notes || null,
         validatedData.total_price,
         validatedData.salon_id || null,
-        validatedData.user_id || null
+        validatedData.user_id || null,
       ];
 
       const result = await query(q, values);
@@ -171,73 +206,107 @@ export const createBooking = asyncHandler(
       });
     } catch (error) {
       if (error instanceof z.ZodError) {
-        res.status(400).json({ success: false, message: "Validation Error", errors: error.issues });
+        res
+          .status(400)
+          .json({
+            success: false,
+            message: "Validation Error",
+            errors: error.issues,
+          });
         return;
       }
       console.error("Create booking error:", error);
       res.status(500).json({ success: false, message: "Server Error" });
     }
-  }
+  },
 );
 
 export const getBooking = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
     if (!id) {
-      res.status(400).json({ success: false, message: "Booking ID is required" });
+      res
+        .status(400)
+        .json({ success: false, message: "Booking ID is required" });
       return;
     }
-    const result = await query("SELECT * FROM public.bookings WHERE id = $1", [id]);
+    const result = await query("SELECT * FROM public.bookings WHERE id = $1", [
+      id,
+    ]);
     if (result.rows.length === 0) {
       res.status(404).json({ success: false, message: "Booking not found" });
       return;
     }
     res.status(200).json({ success: true, data: result.rows[0] });
-  }
+  },
 );
 
 export const cancelBooking = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const { id } = req.params;
     if (!id) {
-      res.status(400).json({ success: false, message: "Booking ID is required" });
+      res
+        .status(400)
+        .json({ success: false, message: "Booking ID is required" });
       return;
     }
     const result = await query(
       "UPDATE public.bookings SET booking_status = 'cancelled' WHERE id = $1 RETURNING *",
-      [id]
+      [id],
     );
     if (result.rows.length === 0) {
       res.status(404).json({ success: false, message: "Booking not found" });
       return;
     }
-    res.status(200).json({ success: true, message: "Booking cancelled successfully", data: result.rows[0] });
-  }
+    res
+      .status(200)
+      .json({
+        success: true,
+        message: "Booking cancelled successfully",
+        data: result.rows[0],
+      });
+  },
 );
 
 export const getAvailableSlots = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
     const { date, stylist } = req.query;
     if (!date || !stylist) {
-      res.status(400).json({ success: false, message: "Date and stylist parameters are required" });
+      res
+        .status(400)
+        .json({
+          success: false,
+          message: "Date and stylist parameters are required",
+        });
       return;
     }
 
     const allSlots = [
-      "09:00 AM", "10:00 AM", "11:00 AM", "12:00 PM",
-      "01:00 PM", "02:00 PM", "03:00 PM", "04:00 PM",
-      "05:00 PM", "06:00 PM", "07:00 PM", "08:00 PM"
+      "09:00 AM",
+      "10:00 AM",
+      "11:00 AM",
+      "12:00 PM",
+      "01:00 PM",
+      "02:00 PM",
+      "03:00 PM",
+      "04:00 PM",
+      "05:00 PM",
+      "06:00 PM",
+      "07:00 PM",
+      "08:00 PM",
     ];
 
     let bookedSlots: string[] = [];
     const checkRes = await query(
       "SELECT booking_time FROM public.bookings WHERE booking_date = $1 AND stylist = $2 AND booking_status = 'confirmed'",
-      [date, stylist]
+      [date, stylist],
     );
-    bookedSlots = checkRes.rows.map(b => b.booking_time);
-    const availableSlots = allSlots.filter((slot) => !bookedSlots.includes(slot));
+    bookedSlots = checkRes.rows.map((b) => b.booking_time);
+    const availableSlots = allSlots.filter(
+      (slot) => !bookedSlots.includes(slot),
+    );
     res.status(200).json({ success: true, date, stylist, availableSlots });
-  }
+  },
 );
 
 export const getUserBookings = asyncHandler(
@@ -247,9 +316,12 @@ export const getUserBookings = asyncHandler(
       res.status(400).json({ success: false, message: "Email is required" });
       return;
     }
-    const result = await query("SELECT * FROM public.bookings WHERE customer_email = $1 ORDER BY created_at DESC", [email]);
+    const result = await query(
+      "SELECT * FROM public.bookings WHERE customer_email = $1 ORDER BY created_at DESC",
+      [email],
+    );
     res.status(200).json({ success: true, data: result.rows });
-  }
+  },
 );
 
 // Admin / Superadmin handlers
@@ -259,9 +331,14 @@ export const getAllBookings = asyncHandler(
 
     let result;
     if (salon_id) {
-      result = await query("SELECT * FROM public.bookings WHERE salon_id = $1 ORDER BY created_at DESC", [salon_id]);
+      result = await query(
+        "SELECT * FROM public.bookings WHERE salon_id = $1 ORDER BY created_at DESC",
+        [salon_id],
+      );
     } else {
-      result = await query("SELECT * FROM public.bookings ORDER BY created_at DESC");
+      result = await query(
+        "SELECT * FROM public.bookings ORDER BY created_at DESC",
+      );
     }
 
     res.status(200).json({
@@ -269,240 +346,299 @@ export const getAllBookings = asyncHandler(
       count: result.rows.length,
       data: result.rows,
     });
-  }
-);export const getSalonBookings = asyncHandler(async (req: Request, res: Response) => {
-  const { salon_id } = (req as any).user;
-  
-  if (!salon_id) {
-    res.status(403).json({ message: "Salon ID missing from authenticated user." });
-    return;
-  }
+  },
+);
+export const getSalonBookings = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { salon_id } = (req as any).user;
 
-  const result = await query(
-    'SELECT * FROM public.bookings WHERE salon_id = $1 OR salon_id IS NULL ORDER BY booking_date DESC, booking_time ASC',
-    [salon_id]
-  );
+    if (!salon_id) {
+      res
+        .status(403)
+        .json({ message: "Salon ID missing from authenticated user." });
+      return;
+    }
 
-  res.json({
-    success: true,
-    data: result.rows
-  });
-});
+    const result = await query(
+      "SELECT * FROM public.bookings WHERE salon_id = $1 OR salon_id IS NULL ORDER BY booking_date DESC, booking_time ASC",
+      [salon_id],
+    );
 
-export const allocateBarber = asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { stylist } = req.body;
-  const { salon_id } = (req as any).user;
+    res.json({
+      success: true,
+      data: result.rows,
+    });
+  },
+);
 
-  if (!stylist) {
-    res.status(400).json({ message: "Stylist name is required" });
-    return;
-  }
+export const allocateBarber = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { stylist } = req.body;
+    const { salon_id } = (req as any).user;
 
-  // Ensure this booking belongs to the admin's salon
-  const checkResult = await query('SELECT salon_id FROM public.bookings WHERE id = $1', [id]);
-  if (checkResult.rows.length === 0) {
-    res.status(404).json({ message: "Booking not found" });
-    return;
-  }
-  if (checkResult.rows[0].salon_id !== salon_id && checkResult.rows[0].salon_id !== null) {
-    res.status(403).json({ message: "Forbidden: Booking belongs to another salon" });
-    return;
-  }
+    if (!stylist) {
+      res.status(400).json({ message: "Stylist name is required" });
+      return;
+    }
 
-  const result = await query(
-    'UPDATE public.bookings SET stylist = $1, salon_id = $2 WHERE id = $3 RETURNING *',
-    [stylist, salon_id, id]
-  );
+    // Ensure this booking belongs to the admin's salon
+    const checkResult = await query(
+      "SELECT salon_id FROM public.bookings WHERE id = $1",
+      [id],
+    );
+    if (checkResult.rows.length === 0) {
+      res.status(404).json({ message: "Booking not found" });
+      return;
+    }
+    if (
+      checkResult.rows[0].salon_id !== salon_id &&
+      checkResult.rows[0].salon_id !== null
+    ) {
+      res
+        .status(403)
+        .json({ message: "Forbidden: Booking belongs to another salon" });
+      return;
+    }
 
-  res.json({
-    success: true,
-    message: "Barber allocated successfully",
-    data: result.rows[0]
-  });
-});
+    const result = await query(
+      "UPDATE public.bookings SET stylist = $1, salon_id = $2 WHERE id = $3 RETURNING *",
+      [stylist, salon_id, id],
+    );
+
+    res.json({
+      success: true,
+      message: "Barber allocated successfully",
+      data: result.rows[0],
+    });
+  },
+);
 
 // GET /api/admin/bookings (Fetch all bookings with query, pagination, filters, searching)
-export const getAdminBookings = asyncHandler(async (req: Request, res: Response) => {
-  const { salon_id } = (req as any).user;
-  
-  if (!salon_id) {
-    res.status(403).json({ message: "Salon ID missing from authenticated user." });
-    return;
-  }
+export const getAdminBookings = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { salon_id } = (req as any).user;
 
-  const { status, search, page = 1, limit = 50 } = req.query;
-  const parsedLimit = parseInt(String(limit), 10);
-  const parsedPage = parseInt(String(page), 10);
-  const offset = (parsedPage - 1) * parsedLimit;
+    if (!salon_id) {
+      res
+        .status(403)
+        .json({ message: "Salon ID missing from authenticated user." });
+      return;
+    }
 
-  let queryParams: any[] = [salon_id];
-  let paramIndex = 2;
-  let whereClauses: string[] = ["(salon_id = $1 OR salon_id IS NULL)"];
+    const { status, search, page = 1, limit = 50 } = req.query;
+    const parsedLimit = parseInt(String(limit), 10);
+    const parsedPage = parseInt(String(page), 10);
+    const offset = (parsedPage - 1) * parsedLimit;
 
-  if (status && status !== "all") {
-    whereClauses.push(`booking_status = $${paramIndex}`);
-    queryParams.push(status);
-    paramIndex++;
-  }
+    let queryParams: any[] = [salon_id];
+    let paramIndex = 2;
+    let whereClauses: string[] = ["(salon_id = $1 OR salon_id IS NULL)"];
 
-  if (search) {
-    whereClauses.push(`(customer_name ILIKE $${paramIndex} OR customer_email ILIKE $${paramIndex} OR service_name ILIKE $${paramIndex} OR hairstyle ILIKE $${paramIndex})`);
-    queryParams.push(`%${search}%`);
-    paramIndex++;
-  }
+    if (status && status !== "all") {
+      whereClauses.push(`booking_status = $${paramIndex}`);
+      queryParams.push(status);
+      paramIndex++;
+    }
 
-  const whereStr = whereClauses.join(" AND ");
+    if (search) {
+      whereClauses.push(
+        `(customer_name ILIKE $${paramIndex} OR customer_email ILIKE $${paramIndex} OR service_name ILIKE $${paramIndex} OR hairstyle ILIKE $${paramIndex})`,
+      );
+      queryParams.push(`%${search}%`);
+      paramIndex++;
+    }
 
-  // Count query
-  const countRes = await query(`SELECT COUNT(*) FROM public.bookings WHERE ${whereStr}`, queryParams);
-  const total = parseInt(countRes.rows[0].count, 10);
+    const whereStr = whereClauses.join(" AND ");
 
-  // Paginated query (latest first)
-  const dataQuery = `
+    // Count query
+    const countRes = await query(
+      `SELECT COUNT(*) FROM public.bookings WHERE ${whereStr}`,
+      queryParams,
+    );
+    const total = parseInt(countRes.rows[0].count, 10);
+
+    // Paginated query (latest first)
+    const dataQuery = `
     SELECT * FROM public.bookings 
     WHERE ${whereStr} 
     ORDER BY appointment_date DESC, created_at DESC 
     LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
   `;
-  
-  const finalParams = [...queryParams, parsedLimit, offset];
-  const dataRes = await query(dataQuery, finalParams);
 
-  res.json({
-    success: true,
-    total,
-    page: parsedPage,
-    limit: parsedLimit,
-    data: dataRes.rows
-  });
-});
+    const finalParams = [...queryParams, parsedLimit, offset];
+    const dataRes = await query(dataQuery, finalParams);
+
+    res.json({
+      success: true,
+      total,
+      page: parsedPage,
+      limit: parsedLimit,
+      data: dataRes.rows,
+    });
+  },
+);
 
 // GET /api/admin/bookings/:id (Fetch single booking)
-export const getAdminBookingById = asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { salon_id } = (req as any).user;
+export const getAdminBookingById = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { salon_id } = (req as any).user;
 
-  const result = await query("SELECT * FROM public.bookings WHERE id = $1", [id]);
-  if (result.rows.length === 0) {
-    res.status(404).json({ success: false, message: "Booking not found" });
-    return;
-  }
+    const result = await query("SELECT * FROM public.bookings WHERE id = $1", [
+      id,
+    ]);
+    if (result.rows.length === 0) {
+      res.status(404).json({ success: false, message: "Booking not found" });
+      return;
+    }
 
-  const booking = result.rows[0];
-  if (booking.salon_id !== salon_id && booking.salon_id !== null) {
-    res.status(403).json({ success: false, message: "Forbidden: booking belongs to another salon" });
-    return;
-  }
+    const booking = result.rows[0];
+    if (booking.salon_id !== salon_id && booking.salon_id !== null) {
+      res
+        .status(403)
+        .json({
+          success: false,
+          message: "Forbidden: booking belongs to another salon",
+        });
+      return;
+    }
 
-  res.json({ success: true, data: booking });
-});
+    res.json({ success: true, data: booking });
+  },
+);
 
 // PUT /api/admin/bookings/:id (Update booking status or details)
-export const updateAdminBooking = asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { salon_id } = (req as any).user;
-  const { booking_status, payment_status, stylist, customer_name, customer_email, total_price, appointment_date, appointment_time } = req.body;
+export const updateAdminBooking = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { salon_id } = (req as any).user;
+    const {
+      booking_status,
+      payment_status,
+      stylist,
+      customer_name,
+      customer_email,
+      total_price,
+      appointment_date,
+      appointment_time,
+    } = req.body;
 
-  const checkResult = await query('SELECT * FROM public.bookings WHERE id = $1', [id]);
-  if (checkResult.rows.length === 0) {
-    res.status(404).json({ message: "Booking not found" });
-    return;
-  }
-  
-  const booking = checkResult.rows[0];
-  if (booking.salon_id !== salon_id && booking.salon_id !== null) {
-    res.status(403).json({ message: "Forbidden: booking belongs to another salon" });
-    return;
-  }
+    const checkResult = await query(
+      "SELECT * FROM public.bookings WHERE id = $1",
+      [id],
+    );
+    if (checkResult.rows.length === 0) {
+      res.status(404).json({ message: "Booking not found" });
+      return;
+    }
 
-  const updates: string[] = [];
-  const values: any[] = [];
-  let paramIndex = 1;
+    const booking = checkResult.rows[0];
+    if (booking.salon_id !== salon_id && booking.salon_id !== null) {
+      res
+        .status(403)
+        .json({ message: "Forbidden: booking belongs to another salon" });
+      return;
+    }
 
-  if (booking_status !== undefined) {
-    updates.push(`booking_status = $${paramIndex}`);
-    values.push(booking_status);
-    paramIndex++;
-  }
-  
-  if (payment_status !== undefined) {
-    updates.push(`payment_status = $${paramIndex}`);
-    values.push(payment_status);
-    paramIndex++;
-  }
-  
-  if (stylist !== undefined) {
-    updates.push(`stylist = $${paramIndex}`);
-    values.push(stylist);
-    paramIndex++;
-  }
+    const updates: string[] = [];
+    const values: any[] = [];
+    let paramIndex = 1;
 
-  if (customer_name !== undefined) {
-    updates.push(`customer_name = $${paramIndex}`);
-    values.push(customer_name);
-    paramIndex++;
-  }
+    if (booking_status !== undefined) {
+      updates.push(`booking_status = $${paramIndex}`);
+      values.push(booking_status);
+      paramIndex++;
+    }
 
-  if (customer_email !== undefined) {
-    updates.push(`customer_email = $${paramIndex}`);
-    values.push(customer_email);
-    paramIndex++;
-  }
+    if (payment_status !== undefined) {
+      updates.push(`payment_status = $${paramIndex}`);
+      values.push(payment_status);
+      paramIndex++;
+    }
 
-  if (total_price !== undefined) {
-    updates.push(`total_price = $${paramIndex}`);
-    values.push(total_price);
-    paramIndex++;
-  }
+    if (stylist !== undefined) {
+      updates.push(`stylist = $${paramIndex}`);
+      values.push(stylist);
+      paramIndex++;
+    }
 
-  if (appointment_date !== undefined) {
-    updates.push(`appointment_date = $${paramIndex}`);
-    updates.push(`booking_date = $${paramIndex}`);
-    values.push(appointment_date);
-    paramIndex++;
-  }
+    if (customer_name !== undefined) {
+      updates.push(`customer_name = $${paramIndex}`);
+      values.push(customer_name);
+      paramIndex++;
+    }
 
-  if (appointment_time !== undefined) {
-    updates.push(`appointment_time = $${paramIndex}`);
-    updates.push(`booking_time = $${paramIndex}`);
-    values.push(appointment_time);
-    paramIndex++;
-  }
+    if (customer_email !== undefined) {
+      updates.push(`customer_email = $${paramIndex}`);
+      values.push(customer_email);
+      paramIndex++;
+    }
 
-  updates.push(`updated_at = NOW()`);
+    if (total_price !== undefined) {
+      updates.push(`total_price = $${paramIndex}`);
+      values.push(total_price);
+      paramIndex++;
+    }
 
-  values.push(id);
-  const q = `UPDATE public.bookings SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`;
-  const result = await query(q, values);
+    if (appointment_date !== undefined) {
+      updates.push(`appointment_date = $${paramIndex}`);
+      updates.push(`booking_date = $${paramIndex}`);
+      values.push(appointment_date);
+      paramIndex++;
+    }
 
-  res.json({
-    success: true,
-    message: "Booking updated successfully",
-    data: result.rows[0]
-  });
-});
+    if (appointment_time !== undefined) {
+      updates.push(`appointment_time = $${paramIndex}`);
+      updates.push(`booking_time = $${paramIndex}`);
+      values.push(appointment_time);
+      paramIndex++;
+    }
+
+    updates.push(`updated_at = NOW()`);
+
+    values.push(id);
+    const q = `UPDATE public.bookings SET ${updates.join(", ")} WHERE id = $${paramIndex} RETURNING *`;
+    const result = await query(q, values);
+
+    res.json({
+      success: true,
+      message: "Booking updated successfully",
+      data: result.rows[0],
+    });
+  },
+);
 
 // DELETE /api/admin/bookings/:id (Delete booking)
-export const deleteAdminBooking = asyncHandler(async (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { salon_id } = (req as any).user;
+export const deleteAdminBooking = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { salon_id } = (req as any).user;
 
-  const checkResult = await query('SELECT salon_id FROM public.bookings WHERE id = $1', [id]);
-  if (checkResult.rows.length === 0) {
-    res.status(404).json({ message: "Booking not found" });
-    return;
-  }
+    const checkResult = await query(
+      "SELECT salon_id FROM public.bookings WHERE id = $1",
+      [id],
+    );
+    if (checkResult.rows.length === 0) {
+      res.status(404).json({ message: "Booking not found" });
+      return;
+    }
 
-  if (checkResult.rows[0].salon_id !== salon_id && checkResult.rows[0].salon_id !== null) {
-    res.status(403).json({ message: "Forbidden: booking belongs to another salon" });
-    return;
-  }
+    if (
+      checkResult.rows[0].salon_id !== salon_id &&
+      checkResult.rows[0].salon_id !== null
+    ) {
+      res
+        .status(403)
+        .json({ message: "Forbidden: booking belongs to another salon" });
+      return;
+    }
 
-  await query('DELETE FROM public.bookings WHERE id = $1', [id]);
+    await query("DELETE FROM public.bookings WHERE id = $1", [id]);
 
-  res.json({
-    success: true,
-    message: "Booking deleted successfully"
-  });
-});
+    res.json({
+      success: true,
+      message: "Booking deleted successfully",
+    });
+  },
+);

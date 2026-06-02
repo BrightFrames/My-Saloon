@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-<<<<<<< HEAD
+
 import {
   Calendar,
   Scissors,
@@ -13,10 +13,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { PopupDialog } from "../components/PopupDialog";
-=======
-import { Calendar, Scissors, User, CreditCard, ChevronRight, XCircle, ArrowLeft, Loader2, RefreshCw } from "lucide-react";
 import { formatINR } from "../utils/currency";
->>>>>>> 300454248344c82598174d6c64d3d76e1e2f9d38
 
 export function MyBookingsPage() {
   const navigate = useNavigate();
@@ -41,6 +38,12 @@ export function MyBookingsPage() {
 
   const isVerified = sessionStorage.getItem("isVerified") === "true";
   const userEmail = sessionStorage.getItem("userEmail") || "";
+
+  const getServiceLabel = (booking: any) =>
+    booking?.service_name ||
+    booking?.serviceName ||
+    booking?.hairstyle ||
+    "Service";
 
   const fetchBookings = async () => {
     if (!userEmail) {
@@ -207,7 +210,7 @@ export function MyBookingsPage() {
                             SERVICE & STYLIST
                           </p>
                           <h3 className="font-serif text-lg font-medium text-stone-800">
-                            {booking.hairstyle}
+                            {getServiceLabel(booking)}
                           </h3>
                           <p className="text-sm text-stone-500 mt-0.5 flex items-center gap-1.5">
                             <User size={12} /> with {booking.stylist}
@@ -249,19 +252,20 @@ export function MyBookingsPage() {
                         >
                           {booking.booking_status}
                         </span>
-<<<<<<< HEAD
+
                         <span className="font-bold text-lg text-stone-800">
                           ${Number(booking.total_price).toFixed(2)}
                         </span>
-=======
-                        <span className="font-bold text-lg text-stone-800">{formatINR(booking.total_price)}</span>
->>>>>>> 300454248344c82598174d6c64d3d76e1e2f9d38
+
+                        <span className="font-bold text-lg text-stone-800">
+                          {formatINR(Number(booking.total_price) || 0)}
+                        </span>
                       </div>
 
                       <div className="text-sm text-stone-500 flex items-center gap-1.5 md:justify-end">
                         <CreditCard size={14} />
                         <span className="capitalize">
-                          {booking.payment_method.replace("_", " ")}
+                          {booking.payment_method?.replace("_", " ") || "cash"}
                         </span>
                       </div>
 

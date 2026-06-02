@@ -1,8 +1,14 @@
-import { useState, useEffect } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useState, useEffect, useRef } from "react";
+import {
+  BrowserRouter,
+  Routes,
+  Route,
+  Navigate,
+  useLocation,
+} from "react-router-dom";
 import "./App.css";
 import { LandingPageWrapper } from "./pages/LandingPage";
-import TreatmentsPage from "./pages/TreatmentsPage";
+import AboutPage from "./pages/AboutPage";
 import MembershipsPage from "./pages/MembershipsPage";
 import ConciergePage from "./pages/ConciergePage";
 import Navbar from "./components/Navbar";
@@ -11,75 +17,73 @@ import { CheckoutPage } from "./pages/CheckoutPage";
 import SignInPage from "./pages/SignInPage";
 import { BookingConfirmationPage } from "./pages/BookingConfirmationPage";
 import { MyBookingsPage } from "./pages/MyBookingsPage";
+import { PopupDialog } from "./components/PopupDialog";
 
 function AppRoutes() {
+  const currentLocation = useLocation();
   const [location, setLocation] = useState("");
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
-  
-  // Track watch ID to prevent multiple watchers
-  const [watchId, setWatchId] = useState<number | null>(null);
+  const [popup, setPopup] = useState({
+    open: false,
+    title: "",
+    message: "",
+    tone: "info" as "success" | "error" | "info" | "warning",
+  });
 
-  // Cleanup watcher on unmount
-  useEffect(() => {
-    return () => {
-      if (watchId !== null) navigator.geolocation.clearWatch(watchId);
-    };
-  }, [watchId]);
+  const hasAutoDetectedLocation = useRef(false);
 
-  const handleUseMyLocation = () => {
+  const handleUseMyLocation = (autoDetect = false) => {
     if (!navigator.geolocation) {
-      alert("Geolocation is not supported by your browser");
-      return;
-    }
-
-    if (watchId !== null) {
-      // Already tracking
+      setPopup({
+        open: true,
+        title: "Location unavailable",
+        message: "Geolocation is not supported by your browser.",
+        tone: "error",
+      });
       return;
     }
 
     setIsLoadingLocation(true);
-    let hasGeocoded = false;
-
-    const id = navigator.geolocation.watchPosition(
+    navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
-            const { latitude, longitude } = position.coords;
-            setLatitude(latitude);
-            setLongitude(longitude);
-            
-            // Only reverse-geocode the first time to save API rate limits
-            if (!hasGeocoded) {
-              const response = await fetch(
-                `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&email=admin@glowup.com`,
-              );
-              const data = await response.json();
+          const { latitude, longitude } = position.coords;
+          setLatitude(latitude);
+          setLongitude(longitude);
 
-              if (data && data.address) {
-                const city =
-                  data.address.city ||
-                  data.address.town ||
-                  data.address.village ||
-                  data.address.county ||
-                  "";
-                const state = data.address.state || data.address.country || "";
-                const displayLoc = [city, state].filter(Boolean).join(", ");
-                setLocation(
-                  displayLoc || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
-                );
-              } else {
-                setLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
-              }
-              hasGeocoded = true;
-            }
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&email=admin@glowup.com`,
+          );
+          const data = await response.json();
+
+          if (data && data.address) {
+            const city =
+              data.address.city ||
+              data.address.town ||
+              data.address.village ||
+              data.address.county ||
+              "";
+            const state = data.address.state || data.address.country || "";
+            const displayLoc = [city, state].filter(Boolean).join(", ");
+            setLocation(
+              displayLoc || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`,
+            );
+          } else {
+            setLocation(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+          }
+
+          if (autoDetect) {
+            sessionStorage.setItem("glowup-location-auto-detected", "true");
+          }
         } catch (error) {
           console.error("Error fetching location details:", error);
-          if (!hasGeocoded) {
-            setLocation(
-              `${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`,
-            );
-            hasGeocoded = true;
+          setLocation(
+            `${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`,
+          );
+          if (autoDetect) {
+            sessionStorage.setItem("glowup-location-auto-detected", "true");
           }
         } finally {
           setIsLoadingLocation(false);
@@ -87,17 +91,51 @@ function AppRoutes() {
       },
       (error) => {
         console.error("Error getting location:", error);
-        alert("Unable to retrieve your location");
+        if (!autoDetect) {
+          setPopup({
+            open: true,
+            title: "Could not detect location",
+            message:
+              "We could not access your current location. You can still enter it manually.",
+            tone: "error",
+          });
+        }
         setIsLoadingLocation(false);
       },
-      { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
+      { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 },
     );
-    setWatchId(id);
   };
 
+  useEffect(() => {
+    const alreadyAutoDetected =
+      sessionStorage.getItem("glowup-location-auto-detected") === "true";
+
+    if (
+      currentLocation.pathname === "/" &&
+      !alreadyAutoDetected &&
+      !hasAutoDetectedLocation.current
+    ) {
+      hasAutoDetectedLocation.current = true;
+      handleUseMyLocation(true);
+    }
+  }, [currentLocation.pathname]);
+
+  const handleSearchSalons = () => {
+    const resultsSection = document.querySelector("#results-section");
+    resultsSection?.scrollIntoView({ behavior: "smooth" });
+  };
 
   return (
-    <Routes>
+    <>
+      <PopupDialog
+        open={popup.open}
+        title={popup.title}
+        message={popup.message}
+        tone={popup.tone}
+        confirmLabel="Got it"
+        onConfirm={() => setPopup((prev) => ({ ...prev, open: false }))}
+      />
+      <Routes>
         <Route
           path="/"
           element={
@@ -106,20 +144,26 @@ function AppRoutes() {
               setLocation={setLocation}
               isLoadingLocation={isLoadingLocation}
               onUseMyLocation={handleUseMyLocation}
+              onSearch={handleSearchSalons}
               latitude={latitude}
               longitude={longitude}
             />
           }
         />
-      <Route path="/signin" element={<SignInPage />} />
-      <Route path="/memberships" element={<MembershipsPage />} />
-      <Route path="/concierge" element={<ConciergePage />} />
-        <Route path="/treatments" element={<TreatmentsPage latitude={latitude} longitude={longitude} />} />
-      <Route path="/salon/:id" element={<SalonDetailsPage />} />
-      <Route path="/checkout" element={<CheckoutPage />} />
-      <Route path="/booking-confirmation/:id" element={<BookingConfirmationPage />} />
-      <Route path="/my-bookings" element={<MyBookingsPage />} />
-    </Routes>
+        <Route path="/signin" element={<SignInPage />} />
+        <Route path="/memberships" element={<MembershipsPage />} />
+        <Route path="/concierge" element={<ConciergePage />} />
+        <Route path="/about" element={<AboutPage />} />
+        <Route path="/treatments" element={<Navigate to="/about" replace />} />
+        <Route path="/salon/:id" element={<SalonDetailsPage />} />
+        <Route path="/checkout" element={<CheckoutPage />} />
+        <Route
+          path="/booking-confirmation/:id"
+          element={<BookingConfirmationPage />}
+        />
+        <Route path="/my-bookings" element={<MyBookingsPage />} />
+      </Routes>
+    </>
   );
 }
 

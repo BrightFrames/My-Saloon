@@ -1,5 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import signImage from "../assets/sign.jpg";
+import { PopupDialog } from "../components/PopupDialog";
 
 const SignInPage: React.FC = () => {
   const [form, setForm] = useState({
@@ -13,6 +15,18 @@ const SignInPage: React.FC = () => {
   const [otpSent, setOtpSent] = useState(false);
   const [otpError, setOtpError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [popup, setPopup] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+    tone: "success" | "error" | "info" | "warning";
+    onConfirm?: () => void;
+  }>({
+    open: false,
+    title: "",
+    message: "",
+    tone: "info",
+  });
 
   const navigate = useNavigate();
 
@@ -50,7 +64,12 @@ const SignInPage: React.FC = () => {
 
       if (res.ok) {
         setOtpSent(true);
-        alert("OTP sent successfully");
+        setPopup({
+          open: true,
+          title: "OTP sent successfully",
+          message: `We sent a verification code to ${form.email}.`,
+          tone: "success",
+        });
       } else {
         setOtpError(data.message || "Failed to send OTP");
       }
@@ -87,8 +106,13 @@ const SignInPage: React.FC = () => {
         sessionStorage.setItem("isVerified", "true");
         sessionStorage.setItem("userName", form.name);
         sessionStorage.setItem("userEmail", form.email);
-        alert(`Welcome ${form.name}, Email verified successfully`);
-        navigate("/"); // Redirect after success
+        setPopup({
+          open: true,
+          title: "Welcome aboard",
+          message: `${form.name}, your email was verified successfully.`,
+          tone: "success",
+          onConfirm: () => navigate("/"),
+        });
       } else {
         setOtpError(data.message || "Invalid OTP");
       }
@@ -101,10 +125,22 @@ const SignInPage: React.FC = () => {
 
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center font-sans text-stone-800 overflow-hidden">
+      <PopupDialog
+        open={popup.open}
+        title={popup.title}
+        message={popup.message}
+        tone={popup.tone}
+        confirmLabel="Continue"
+        onConfirm={() => {
+          const action = popup.onConfirm;
+          setPopup((prev) => ({ ...prev, open: false }));
+          action?.();
+        }}
+      />
       {/* Background */}
       <div className="absolute inset-0 -z-10 bg-[#f5e9e2]">
         <img
-          src={"/src/assets/sign.jpg"}
+          src={signImage}
           alt="Salon background"
           className="w-full h-full object-cover object-center opacity-70"
         />

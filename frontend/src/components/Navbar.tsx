@@ -1,7 +1,6 @@
-
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
-import { Search, Menu, X, LogOut } from "lucide-react";
+import { Menu, X, LogOut } from "lucide-react";
 
 const Navbar: React.FC = () => {
   const navigate = useNavigate();
@@ -33,11 +32,20 @@ const Navbar: React.FC = () => {
     window.location.reload();
   };
 
+  const handleGlowupReload = () => {
+    if (isHome) {
+      window.location.reload();
+      return;
+    }
+
+    navigate("/");
+  };
+
   const isHome = location.pathname === "/";
 
   const navLinks = [
     { label: "DISCOVER", path: "/" },
-    { label: "TREATMENTS", path: "/treatments" },
+    { label: "ABOUT", path: "/about" },
     { label: "MEMBERSHIPS", path: "/memberships" },
     { label: "CONCIERGE", path: "/concierge" },
   ];
@@ -53,8 +61,9 @@ const Navbar: React.FC = () => {
       <div className="flex items-center justify-between px-8 py-4 mx-auto max-w-7xl">
         {/* Logo */}
         <button
-          onClick={() => navigate("/")}
+          onClick={handleGlowupReload}
           className="text-2xl font-semibold font-serif text-[#C49B89] hover:text-[#b08774] transition-colors cursor-pointer"
+          title="Reload Glowup"
         >
           Glowup
         </button>
@@ -81,13 +90,6 @@ const Navbar: React.FC = () => {
 
         {/* Right Side */}
         <div className="flex items-center space-x-4">
-          {/* Search icon - only on home page */}
-          {isHome && (
-            <button className="hidden md:flex text-stone-500 hover:text-stone-900 transition-colors p-2 rounded-lg hover:bg-stone-100">
-              <Search size={20} />
-            </button>
-          )}
-
           {/* Conditional rendering: logged in vs logged out */}
           {!isVerified ? (
             // NOT LOGGED IN: Show "Sign In" on home, "Home" on other pages
@@ -210,4 +212,3 @@ const Navbar: React.FC = () => {
 };
 
 export default Navbar;
-

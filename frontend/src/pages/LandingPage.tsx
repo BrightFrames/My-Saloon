@@ -10,7 +10,7 @@ import {
   ExternalLink,
   Search,
   Filter,
-  DollarSign
+  DollarSign,
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
@@ -22,6 +22,7 @@ interface LandingPageProps {
   setLocation: (loc: string) => void;
   isLoadingLocation: boolean;
   onUseMyLocation: () => void;
+  onSearch?: () => void;
   onSelectSalon?: (salon: string) => void;
   latitude?: number | null;
   longitude?: number | null;
@@ -40,7 +41,13 @@ export function LandingPageWrapper(
 }
 
 // Custom MapController to programmatically move Leaflet view
-function MapController({ center, zoom }: { center: [number, number]; zoom: number }) {
+function MapController({
+  center,
+  zoom,
+}: {
+  center: [number, number];
+  zoom: number;
+}) {
   const map = useMap();
   useEffect(() => {
     map.setView(center, zoom, { animate: true, duration: 1.2 });
@@ -49,24 +56,26 @@ function MapController({ center, zoom }: { center: [number, number]; zoom: numbe
 }
 
 // Gorgeous Custom Luxury DivIcon Generator
-const createCustomMarker = (isActive: boolean) => L.divIcon({
-  html: `<div class="relative flex items-center justify-center">
+const createCustomMarker = (isActive: boolean) =>
+  L.divIcon({
+    html: `<div class="relative flex items-center justify-center">
     <div class="absolute w-10 h-10 rounded-full bg-[#6B554D] ${isActive ? "scale-125 bg-[#C49B89] ring-4 ring-[#C49B89]/20" : "scale-100"} transition-all duration-300 animate-ping opacity-15"></div>
     <div class="w-8 h-8 rounded-full bg-gradient-to-br ${isActive ? "from-[#C49B89] to-[#6B554D] scale-110 shadow-xl ring-2 ring-white" : "from-[#6B554D] to-[#5C4841]"} flex items-center justify-center text-white font-bold transition-all duration-300">
       <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg>
     </div>
   </div>`,
-  className: "custom-marker-wrapper",
-  iconSize: [40, 40],
-  iconAnchor: [20, 20],
-  popupAnchor: [0, -20],
-});
+    className: "custom-marker-wrapper",
+    iconSize: [40, 40],
+    iconAnchor: [20, 20],
+    popupAnchor: [0, -20],
+  });
 
 export function LandingPage({
   location,
   setLocation,
   isLoadingLocation,
   onUseMyLocation,
+  onSearch,
   onSelectSalon,
   latitude,
   longitude,
@@ -74,7 +83,8 @@ export function LandingPage({
   const isVerified = sessionStorage.getItem("isVerified") === "true";
   const userName = sessionStorage.getItem("userName");
   const [salons, setSalons] = useState<any[]>([]);
-  const hasAreaSearch = typeof latitude === "number" && typeof longitude === "number";
+  const hasAreaSearch =
+    typeof latitude === "number" && typeof longitude === "number";
 
   // Search & Filter States
   const [searchName, setSearchName] = useState("");
@@ -85,7 +95,9 @@ export function LandingPage({
 
   // Map States
   const [selectedSalonId, setSelectedSalonId] = useState<string | null>(null);
-  const [mapCenter, setMapCenter] = useState<[number, number]>([40.7128, -74.0060]); // Default to NY
+  const [mapCenter, setMapCenter] = useState<[number, number]>([
+    40.7128, -74.006,
+  ]); // Default to NY
   const [mapZoom, setMapZoom] = useState(12);
 
   // Sync center when user location is detected
@@ -100,7 +112,8 @@ export function LandingPage({
   useEffect(() => {
     const fetchSalons = async () => {
       try {
-        const base = import.meta.env.VITE_BACKEND_URL || "http://localhost:3000/api/v1";
+        const base =
+          import.meta.env.VITE_BACKEND_URL || "http://localhost:3000/api/v1";
         const params = new URLSearchParams();
 
         if (typeof latitude === "number" && typeof longitude === "number") {
@@ -110,7 +123,8 @@ export function LandingPage({
         }
 
         if (searchCity || location) {
-          const cityQuery = searchCity || (location ? location.split(",")[0] : "");
+          const cityQuery =
+            searchCity || (location ? location.split(",")[0] : "");
           if (cityQuery) params.append("city", cityQuery);
         }
 
@@ -124,10 +138,13 @@ export function LandingPage({
         if (body && body.success) {
           const fetchedSalons = body.data || [];
           setSalons(fetchedSalons);
-          
+
           if (fetchedSalons.length > 0 && !latitude && !longitude) {
             // Update map center to the first salon's location if user location is not strictly tracking
-            setMapCenter([Number(fetchedSalons[0].latitude), Number(fetchedSalons[0].longitude)]);
+            setMapCenter([
+              Number(fetchedSalons[0].latitude),
+              Number(fetchedSalons[0].longitude),
+            ]);
           }
         }
       } catch (err) {
@@ -136,20 +153,37 @@ export function LandingPage({
     };
 
     fetchSalons();
-  }, [location, latitude, longitude, searchName, searchCity, filterRating, filterService, filterMaxPrice]);
+  }, [
+    location,
+    latitude,
+    longitude,
+    searchName,
+    searchCity,
+    filterRating,
+    filterService,
+    filterMaxPrice,
+  ]);
 
   const handleSalonSelect = (id: string, lat: number, lon: number) => {
     setSelectedSalonId(id);
     setMapCenter([lat, lon]);
     setMapZoom(14);
-    
+
     // Smooth scroll salon card into view
     const cardEl = document.getElementById(`salon-card-${id}`);
     cardEl?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   };
 
   const getGoogleMapsDirections = (lat: number, lon: number) => {
-    window.open(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`, "_blank");
+    window.open(
+      `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`,
+      "_blank",
+    );
+  };
+
+  const handleSearchSubmit = (event: React.FormEvent) => {
+    event.preventDefault();
+    onSearch?.();
   };
 
   return (
@@ -219,32 +253,42 @@ export function LandingPage({
               )}
               {isLoadingLocation ? "Locating..." : "Use My Location"}
             </button>
-            <div className="relative w-full max-w-[320px]">
+            <form
+              onSubmit={handleSearchSubmit}
+              className="w-full max-w-[420px]"
+            >
               {location && !isLoadingLocation && (
                 <div className="mb-2 flex items-center gap-2 text-sm text-stone-500">
                   <MapPin size={14} className="text-stone-400" />
                   <span className="truncate">Detected: {location}</span>
-                  <button
-                    onClick={() => setLocation("")}
-                    className="ml-2 text-xs text-stone-400 hover:text-stone-600"
-                    aria-label="Edit detected location"
-                  >
-                    Edit
-                  </button>
+                  <span className="ml-1 text-xs text-stone-400">
+                    Auto-detected on first visit, editable anytime.
+                  </span>
                 </div>
               )}
-              <input
-                type="text"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                placeholder="Or enter city manually..."
-                className="w-full pl-5 pr-12 py-3.5 rounded-lg border border-stone-200 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#C49B89] focus:border-transparent text-stone-600"
-              />
-              <MapPin
-                size={18}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400"
-              />
-            </div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <div className="relative flex-1">
+                  <input
+                    type="text"
+                    value={location}
+                    onChange={(e) => setLocation(e.target.value)}
+                    placeholder="Enter city manually..."
+                    className="w-full pl-5 pr-12 py-3.5 rounded-lg border border-stone-200 bg-white shadow-sm focus:outline-none focus:ring-2 focus:ring-[#C49B89] focus:border-transparent text-stone-600"
+                  />
+                  <MapPin
+                    size={18}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="flex items-center justify-center gap-2 bg-[#C49B89] hover:bg-[#b78675] text-white px-6 py-3.5 rounded-lg font-medium transition-colors w-full sm:w-auto shrink-0 shadow-sm cursor-pointer"
+                >
+                  <Search size={18} />
+                  Search Salons
+                </button>
+              </div>
+            </form>
           </div>
 
           {/* Stats/Badges */}
@@ -276,11 +320,14 @@ export function LandingPage({
             <Filter size={18} className="text-[#C49B89]" />
             Find Your Perfect Experience
           </h2>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             {/* Salon Name search */}
             <div className="relative">
-              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" size={16} />
+              <Search
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400"
+                size={16}
+              />
               <input
                 type="text"
                 placeholder="Search salon name..."
@@ -292,7 +339,10 @@ export function LandingPage({
 
             {/* City search */}
             <div className="relative">
-              <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" size={16} />
+              <MapPin
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400"
+                size={16}
+              />
               <input
                 type="text"
                 placeholder="Search by city..."
@@ -316,7 +366,9 @@ export function LandingPage({
             {/* Rating Filter */}
             <select
               value={filterRating}
-              onChange={(e) => setFilterRating(e.target.value ? Number(e.target.value) : "")}
+              onChange={(e) =>
+                setFilterRating(e.target.value ? Number(e.target.value) : "")
+              }
               className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#C49B89] bg-stone-50/50"
             >
               <option value="">Any Rating</option>
@@ -332,7 +384,11 @@ export function LandingPage({
                 type="number"
                 placeholder="Max Price ($)"
                 value={filterMaxPrice}
-                onChange={(e) => setFilterMaxPrice(e.target.value ? Number(e.target.value) : "")}
+                onChange={(e) =>
+                  setFilterMaxPrice(
+                    e.target.value ? Number(e.target.value) : "",
+                  )
+                }
                 className="w-full px-4 py-3 rounded-xl border border-stone-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#C49B89] bg-stone-50/50"
               />
             </div>
@@ -341,14 +397,18 @@ export function LandingPage({
 
         {/* Live Map Split View */}
         <div className="grid grid-cols-1 lg:grid-cols-[1fr_1.2fr] gap-8 items-start">
-          
           {/* Left Column: Salon List */}
           <div className="flex flex-col gap-5 max-h-[700px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-stone-200 scrollbar-track-transparent">
             {salons.length === 0 ? (
               <div className="bg-white rounded-2xl p-12 border border-stone-100 text-center text-stone-500 shadow-sm">
-                <Loader2 size={32} className="mx-auto text-[#C49B89] animate-spin mb-3" />
+                <Loader2
+                  size={32}
+                  className="mx-auto text-[#C49B89] animate-spin mb-3"
+                />
                 <h3 className="font-serif text-lg font-medium text-stone-700 mb-1">
-                  {hasAreaSearch ? "No salons in your area affiliated with us" : "No matching salons found"}
+                  {hasAreaSearch
+                    ? "No salons in your area affiliated with us"
+                    : "No matching salons found"}
                 </h3>
                 <p className="text-stone-400 text-sm">
                   {hasAreaSearch
@@ -363,7 +423,13 @@ export function LandingPage({
                   <div
                     key={s.id}
                     id={`salon-card-${s.id}`}
-                    onClick={() => handleSalonSelect(s.id, Number(s.latitude), Number(s.longitude))}
+                    onClick={() =>
+                      handleSalonSelect(
+                        s.id,
+                        Number(s.latitude),
+                        Number(s.longitude),
+                      )
+                    }
                     className={`bg-white rounded-2xl p-4 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.03)] border transition-all duration-300 flex gap-5 hover:shadow-md cursor-pointer group ${
                       isActive
                         ? "border-[#C49B89] bg-[#FDFBF9] shadow-lg ring-2 ring-[#C49B89]/10 scale-[1.01]"
@@ -373,7 +439,10 @@ export function LandingPage({
                     {/* Salon Image */}
                     <div className="w-[110px] h-[110px] shrink-0 rounded-xl overflow-hidden bg-stone-100 relative">
                       <img
-                        src={s.image || "https://images.unsplash.com/photo-1595476108010-b4d1f10d5e43?q=80&w=800&auto=format&fit=crop"}
+                        src={
+                          s.image ||
+                          "https://images.unsplash.com/photo-1595476108010-b4d1f10d5e43?q=80&w=800&auto=format&fit=crop"
+                        }
                         alt={s.name}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                       />
@@ -394,6 +463,7 @@ export function LandingPage({
                             </h3>
                             <p className="text-xs text-stone-400 mb-1 flex items-center gap-1">
                               <MapPin size={12} className="text-stone-300" />
+                              <span aria-hidden="true">📍</span>
                               {s.city || "New York"}
                             </p>
                           </div>
@@ -404,7 +474,11 @@ export function LandingPage({
 
                         <div className="flex items-center gap-3 text-xs mt-1">
                           <span className="flex items-center gap-1 font-semibold text-stone-600 bg-stone-100 px-2 py-0.5 rounded">
-                            <Star size={12} fill="#C49B89" className="text-[#C49B89]" />
+                            <Star
+                              size={12}
+                              fill="#C49B89"
+                              className="text-[#C49B89]"
+                            />
                             {s.rating || "5.0"}
                           </span>
                           {s.distance_km && (
@@ -418,14 +492,21 @@ export function LandingPage({
                       {/* Pricing & Booking CTA */}
                       <div className="flex justify-between items-end mt-2 pt-2 border-t border-stone-50">
                         <div>
-                          <p className="text-[9px] text-stone-400 uppercase tracking-wider mb-0.5">Starts From</p>
-                          <p className="font-bold text-stone-800 text-base">${s.starting_price || "—"}</p>
+                          <p className="text-[9px] text-stone-400 uppercase tracking-wider mb-0.5">
+                            Starts From
+                          </p>
+                          <p className="font-bold text-stone-800 text-base">
+                            ${s.starting_price || "—"}
+                          </p>
                         </div>
                         <div className="flex gap-2">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              getGoogleMapsDirections(Number(s.latitude), Number(s.longitude));
+                              getGoogleMapsDirections(
+                                Number(s.latitude),
+                                Number(s.longitude),
+                              );
                             }}
                             className="bg-stone-100 hover:bg-stone-200 text-stone-600 p-2.5 rounded-xl transition-colors cursor-pointer"
                             title="Get Directions"
@@ -467,23 +548,26 @@ export function LandingPage({
               <MapController center={mapCenter} zoom={mapZoom} />
 
               {/* User location pin if latitude/longitude are set */}
-              {typeof latitude === "number" && typeof longitude === "number" && (
-                <Marker
-                  position={[latitude, longitude]}
-                  icon={L.divIcon({
-                    html: `<div class="relative w-8 h-8 flex items-center justify-center">
+              {typeof latitude === "number" &&
+                typeof longitude === "number" && (
+                  <Marker
+                    position={[latitude, longitude]}
+                    icon={L.divIcon({
+                      html: `<div class="relative w-8 h-8 flex items-center justify-center">
                       <div class="absolute w-full h-full rounded-full bg-blue-500 animate-ping opacity-30"></div>
                       <div class="w-4 h-4 rounded-full bg-blue-500 border-2 border-white shadow-md"></div>
                     </div>`,
-                    className: "user-location-marker",
-                    iconSize: [24, 24],
-                  })}
-                >
-                  <Popup>
-                    <div className="p-1 font-medium text-xs">Your Current Location</div>
-                  </Popup>
-                </Marker>
-              )}
+                      className: "user-location-marker",
+                      iconSize: [24, 24],
+                    })}
+                  >
+                    <Popup>
+                      <div className="p-1 font-medium text-xs">
+                        Your Current Location
+                      </div>
+                    </Popup>
+                  </Marker>
+                )}
 
               {/* Salon Markers */}
               {salons.map((s) => {
@@ -503,32 +587,50 @@ export function LandingPage({
                         setSelectedSalonId(s.id);
                         setMapCenter([lat, lon]);
                         setMapZoom(14);
-                        
+
                         // Scroll salon card into view
-                        const cardEl = document.getElementById(`salon-card-${s.id}`);
-                        cardEl?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+                        const cardEl = document.getElementById(
+                          `salon-card-${s.id}`,
+                        );
+                        cardEl?.scrollIntoView({
+                          behavior: "smooth",
+                          block: "nearest",
+                        });
                       },
                     }}
                   >
                     <Popup maxWidth={280}>
                       <div className="p-1.5 flex flex-col gap-2 font-sans text-stone-800">
                         <img
-                          src={s.image || "https://images.unsplash.com/photo-1595476108010-b4d1f10d5e43?q=80&w=800&auto=format&fit=crop"}
+                          src={
+                            s.image ||
+                            "https://images.unsplash.com/photo-1595476108010-b4d1f10d5e43?q=80&w=800&auto=format&fit=crop"
+                          }
                           alt={s.name}
                           className="w-full h-24 object-cover rounded-lg"
                         />
                         <div>
-                          <h4 className="font-serif text-sm font-semibold mb-0.5 text-stone-900">{s.name}</h4>
-                          <p className="text-[10px] text-stone-500 mb-1">{s.city || "New York"}</p>
-                          
+                          <h4 className="font-serif text-sm font-semibold mb-0.5 text-stone-900">
+                            {s.name}
+                          </h4>
+                          <p className="text-[10px] text-stone-500 mb-1 flex items-center gap-1">
+                            <span aria-hidden="true">📍</span>
+                            {s.city || "New York"}
+                          </p>
+
                           <div className="flex items-center gap-2 text-xs font-semibold mb-2">
                             <span className="flex items-center gap-0.5 text-[#C49B89]">
-                              <Star size={10} fill="#C49B89" /> {s.rating || "5.0"}
+                              <Star size={10} fill="#C49B89" />{" "}
+                              {s.rating || "5.0"}
                             </span>
-                            <span className="text-stone-400 font-normal">•</span>
-                            <span className="text-stone-700">Starts from ${s.starting_price}</span>
+                            <span className="text-stone-400 font-normal">
+                              •
+                            </span>
+                            <span className="text-stone-700">
+                              Starts from ${s.starting_price}
+                            </span>
                           </div>
-                          
+
                           <div className="flex gap-2 mt-2">
                             <button
                               onClick={() => getGoogleMapsDirections(lat, lon)}
@@ -553,7 +655,6 @@ export function LandingPage({
               })}
             </MapContainer>
           </div>
-
         </div>
       </section>
     </div>

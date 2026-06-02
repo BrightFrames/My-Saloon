@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import { PopupDialog } from "../components/PopupDialog";
 
 export function SalonDetailsPage() {
   const navigate = useNavigate();
@@ -21,6 +22,17 @@ export function SalonDetailsPage() {
 
   const [showPhoneModal, setShowPhoneModal] = useState(false);
   const [phoneNumber, setPhoneNumber] = useState("");
+  const [popup, setPopup] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+    tone: "success" | "error" | "info" | "warning";
+  }>({
+    open: false,
+    title: "",
+    message: "",
+    tone: "info",
+  });
 
   // Fetch real salon details and services from backend
   useEffect(() => {
@@ -78,7 +90,13 @@ export function SalonDetailsPage() {
 
   const handleContinueToBook = () => {
     if (selectedServices.length === 0) {
-      alert("Please select at least one service to book.");
+      setPopup({
+        open: true,
+        title: "Select a service",
+        message:
+          "Please select at least one service before continuing to book.",
+        tone: "warning",
+      });
       return;
     }
     // Save selections in sessionStorage for dynamic Checkout consumption
@@ -126,6 +144,14 @@ export function SalonDetailsPage() {
 
   return (
     <div className="min-h-screen bg-[#FDFBF9] font-sans text-stone-800">
+      <PopupDialog
+        open={popup.open}
+        title={popup.title}
+        message={popup.message}
+        tone={popup.tone}
+        confirmLabel="OK"
+        onConfirm={() => setPopup((prev) => ({ ...prev, open: false }))}
+      />
       {/* Phone Number Modal */}
       {showPhoneModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-900/40 backdrop-blur-sm p-4 animate-in fade-in duration-300">
@@ -196,10 +222,10 @@ export function SalonDetailsPage() {
             Discover
           </button>
           <button
-            onClick={() => navigate("/treatments")}
+            onClick={() => navigate("/about")}
             className="hover:text-stone-900 transition-colors cursor-pointer"
           >
-            Treatments
+            About Glowup
           </button>
           <button
             onClick={() => navigate("/memberships")}

@@ -1,11 +1,31 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
+import { PopupDialog } from "../components/PopupDialog";
 
 const MembershipsPage: React.FC = () => {
   const navigate = useNavigate();
+  const [popup, setPopup] = React.useState<{
+    open: boolean;
+    title: string;
+    message: string;
+    tone: "success" | "error" | "info" | "warning";
+  }>({
+    open: false,
+    title: "",
+    message: "",
+    tone: "info",
+  });
 
   return (
     <div className="min-h-screen bg-[#FDFBF9] px-8 py-20">
+      <PopupDialog
+        open={popup.open}
+        title={popup.title}
+        message={popup.message}
+        tone={popup.tone}
+        confirmLabel="OK"
+        onConfirm={() => setPopup((prev) => ({ ...prev, open: false }))}
+      />
       <div className="max-w-4xl mx-auto text-center">
         <h1 className="text-4xl font-serif mb-4">Memberships</h1>
         <p className="text-stone-600 mb-8 text-lg">
@@ -21,7 +41,14 @@ const MembershipsPage: React.FC = () => {
             Go Back
           </button>
           <button
-            onClick={() => alert("We'll notify you when memberships launch!")}
+            onClick={() =>
+              setPopup({
+                open: true,
+                title: "Notification saved",
+                message: "We'll notify you when memberships launch!",
+                tone: "success",
+              })
+            }
             className="px-5 py-2 rounded-md bg-[#C49B89] text-white"
           >
             Notify Me

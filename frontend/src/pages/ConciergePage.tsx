@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { PopupDialog } from "../components/PopupDialog";
 
 const ConciergePage: React.FC = () => {
   const navigate = useNavigate();
@@ -8,24 +9,50 @@ const ConciergePage: React.FC = () => {
   const [city, setCity] = useState("");
   const [serviceType, setServiceType] = useState("");
   const [notes, setNotes] = useState("");
+  const [popup, setPopup] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+    tone: "success" | "error" | "info" | "warning";
+    onConfirm?: () => void;
+  }>({
+    open: false,
+    title: "",
+    message: "",
+    tone: "info",
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // For now show a simple confirmation; backend integration can be added later.
-    alert(
-      `Thanks ${name || "there"}! Your concierge request has been received. We'll contact you at ${contact || "your contact"}.`,
-    );
-    navigate(-1);
+    setPopup({
+      open: true,
+      title: "Request received",
+      message: `Thanks ${name || "there"}! Your concierge request has been received. We'll contact you at ${contact || "your contact"}.`,
+      tone: "success",
+      onConfirm: () => navigate(-1),
+    });
   };
 
   return (
     <div className="min-h-screen bg-[#FDFBF9] px-8 py-20">
+      <PopupDialog
+        open={popup.open}
+        title={popup.title}
+        message={popup.message}
+        tone={popup.tone}
+        confirmLabel="Done"
+        onConfirm={() => {
+          const action = popup.onConfirm;
+          setPopup((prev) => ({ ...prev, open: false }));
+          action?.();
+        }}
+      />
       <div className="max-w-3xl mx-auto">
         <h1 className="text-4xl font-serif mb-3">Concierge</h1>
         <p className="text-stone-600 mb-8">
-          Need personalized help booking services, curated packages, or
-          priority scheduling? Submit a concierge request and our team will
-          respond within 24 hours.
+          Need personalized help booking services, curated packages, or priority
+          scheduling? Submit a concierge request and our team will respond
+          within 24 hours.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -72,7 +99,9 @@ const ConciergePage: React.FC = () => {
           />
 
           <div className="flex items-center gap-4">
-            <button className="px-5 py-3 bg-[#6B554D] text-white rounded-md">Send Request</button>
+            <button className="px-5 py-3 bg-[#6B554D] text-white rounded-md">
+              Send Request
+            </button>
             <button
               type="button"
               onClick={() => navigate(-1)}

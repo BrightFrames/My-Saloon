@@ -12,6 +12,7 @@ import {
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { CountryCodeSelector } from "../components/CountryCodeSelector";
+import { PopupDialog } from "../components/PopupDialog";
 
 export function CheckoutPage() {
   const navigate = useNavigate();
@@ -40,6 +41,17 @@ export function CheckoutPage() {
   });
 
   const [salonServices, setSalonServices] = useState<any[]>([]);
+  const [popup, setPopup] = useState<{
+    open: boolean;
+    title: string;
+    message: string;
+    tone: "success" | "error" | "info" | "warning";
+  }>({
+    open: false,
+    title: "",
+    message: "",
+    tone: "info",
+  });
 
   const filteredTeamMembers = useMemo(() => {
     if (!bookingData.hairstyle) return teamMembers;
@@ -241,7 +253,13 @@ export function CheckoutPage() {
         !bookingData.booking_date ||
         !bookingData.booking_time
       ) {
-        alert("Please complete all selections.");
+        setPopup({
+          open: true,
+          title: "Complete your selection",
+          message:
+            "Please choose a service, stylist, date, and time before continuing.",
+          tone: "warning",
+        });
         return;
       }
     }
@@ -251,7 +269,13 @@ export function CheckoutPage() {
         !bookingData.customer_email ||
         !bookingData.mobile
       ) {
-        alert("Please fill in all contact details.");
+        setPopup({
+          open: true,
+          title: "Missing contact details",
+          message:
+            "Please fill in your name, email, and mobile number to continue.",
+          tone: "warning",
+        });
         return;
       }
     }
@@ -292,11 +316,23 @@ export function CheckoutPage() {
       if (data.success) {
         navigate(`/booking-confirmation/${data.data.id}`);
       } else {
-        alert("Booking failed: " + data.message);
+        setPopup({
+          open: true,
+          title: "Booking failed",
+          message:
+            data.message || "Something went wrong while creating your booking.",
+          tone: "error",
+        });
       }
     } catch (error) {
       console.error("Booking error", error);
-      alert("Network error occurred.");
+      setPopup({
+        open: true,
+        title: "Network error",
+        message:
+          "We could not reach the booking server right now. Please try again.",
+        tone: "error",
+      });
     } finally {
       setIsLoading(false);
     }
@@ -307,6 +343,14 @@ export function CheckoutPage() {
 
   return (
     <div className="min-h-screen bg-[#FDFBF9] font-sans text-stone-800 pb-20">
+      <PopupDialog
+        open={popup.open}
+        title={popup.title}
+        message={popup.message}
+        tone={popup.tone}
+        confirmLabel="Understood"
+        onConfirm={() => setPopup((prev) => ({ ...prev, open: false }))}
+      />
       {/* Detail View Navbar */}
       <nav className="flex items-center justify-between px-8 py-5 mx-auto max-w-6xl">
         <div className="flex items-center gap-4">

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import signImage from "../assets/sign.jpg";
+import signImage from "../assets/admin.png";
 import { PopupDialog } from "../components/PopupDialog";
 
 const SignInPage: React.FC = () => {
@@ -161,8 +161,9 @@ const SignInPage: React.FC = () => {
         <img
           src={signImage}
           alt="Salon background"
-          className="w-full h-full object-cover object-center opacity-70"
+          className="w-full h-full object-cover object-center scale-105 opacity-75 blur-[2px]"
         />
+        <div className="absolute inset-0 bg-gradient-to-br from-white/20 via-white/10 to-[#f5e9e2]/35" />
       </div>
 
       {/* Card */}

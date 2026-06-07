@@ -23,7 +23,10 @@ app.use(
       if (!origin) return callback(null, true);
       // Check if origin is localhost or 127.0.0.1 on any port
       const isLocal = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
-      if (isLocal) {
+      const isVercelPreview = /^https:\/\/.+\.vercel\.app$/.test(origin);
+      const allowedFrontend = process.env.FRONTEND_URL;
+
+      if (isLocal || isVercelPreview || origin === allowedFrontend) {
         callback(null, true);
       } else {
         callback(new Error("Not allowed by CORS"));
@@ -70,6 +73,15 @@ app.use(
 app.use(morgan("dev"));
 
 // Routes
+app.get("/", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "GlowUp backend is running",
+    api: "/api/v1",
+    health: "/health",
+  });
+});
+
 app.use("/api/v1", routes);
 app.use("/api", routes);
 

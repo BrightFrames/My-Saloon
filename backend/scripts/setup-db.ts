@@ -14,10 +14,28 @@ async function setupDatabase() {
         image TEXT NOT NULL,
         rating NUMERIC,
         city TEXT,
+        address TEXT,
+        state TEXT,
+        country TEXT,
         starting_price NUMERIC,
         latitude NUMERIC,
-        longitude NUMERIC
+        longitude NUMERIC,
+        google_maps_link TEXT,
+        phone TEXT,
+        email TEXT,
+        description TEXT
       );
+    `);
+
+    await client.query(`
+      ALTER TABLE public.salons
+      ADD COLUMN IF NOT EXISTS address TEXT,
+      ADD COLUMN IF NOT EXISTS state TEXT,
+      ADD COLUMN IF NOT EXISTS country TEXT,
+      ADD COLUMN IF NOT EXISTS google_maps_link TEXT,
+      ADD COLUMN IF NOT EXISTS phone TEXT,
+      ADD COLUMN IF NOT EXISTS email TEXT,
+      ADD COLUMN IF NOT EXISTS description TEXT;
     `);
 
     // 2. Create users table (also maps salon admins and team members)

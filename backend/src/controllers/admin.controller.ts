@@ -448,6 +448,7 @@ export const createSuperAdminSalon = asyncHandler(
       city,
       state,
       country,
+      image,
       starting_price,
       rating,
       latitude,
@@ -465,13 +466,15 @@ export const createSuperAdminSalon = asyncHandler(
     }
 
     const result = await query(
-      "INSERT INTO public.salons (name, address, city, state, country, starting_price, rating, latitude, longitude, phone, email, google_maps_link) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *",
+      "INSERT INTO public.salons (name, address, city, state, country, image, starting_price, rating, latitude, longitude, phone, email, google_maps_link) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *",
       [
         name,
         address || null,
         city,
         state || null,
         country || null,
+        image ||
+          "https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=1200&auto=format&fit=crop",
         starting_price,
         rating ?? null,
         latitude ?? null,
@@ -495,6 +498,7 @@ export const updateSuperAdminSalon = asyncHandler(
       city,
       state,
       country,
+      image,
       starting_price,
       rating,
       latitude,
@@ -505,13 +509,15 @@ export const updateSuperAdminSalon = asyncHandler(
     } = req.body;
 
     const result = await query(
-      "UPDATE public.salons SET name = $1, address = $2, city = $3, state = $4, country = $5, starting_price = $6, rating = $7, latitude = $8, longitude = $9, phone = $10, email = $11, google_maps_link = $12 WHERE id = $13 RETURNING *",
+      "UPDATE public.salons SET name = $1, address = $2, city = $3, state = $4, country = $5, image = $6, starting_price = $7, rating = $8, latitude = $9, longitude = $10, phone = $11, email = $12, google_maps_link = $13 WHERE id = $14 RETURNING *",
       [
         name,
         address || null,
         city,
         state || null,
         country || null,
+        image ||
+          "https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=1200&auto=format&fit=crop",
         starting_price,
         rating ?? null,
         latitude ?? null,

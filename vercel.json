@@ -1,0 +1,61 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "frontend/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    },
+    {
+      "src": "admin-saloon/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    },
+    {
+      "src": "main-admin/package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    },
+    {
+      "src": "backend/src/app.ts",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/backend/src/app.ts"
+    },
+    {
+      "src": "/admin-saloon/(.*)",
+      "dest": "/admin-saloon/$1"
+    },
+    {
+      "src": "/main-admin/(.*)",
+      "dest": "/main-admin/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/frontend/$1"
+    },
+    { "handle": "filesystem" },
+    {
+      "src": "/admin-saloon/.*",
+      "dest": "/admin-saloon/index.html"
+    },
+    {
+      "src": "/main-admin/.*",
+      "dest": "/main-admin/index.html"
+    },
+    {
+      "src": "/.*",
+      "dest": "/frontend/index.html"
+    }
+  ]
+}

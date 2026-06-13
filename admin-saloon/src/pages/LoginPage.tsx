@@ -4,13 +4,18 @@ import { useNavigate } from "react-router-dom";
 import { auth } from "../services/auth";
 import adminBackground from "../assets/admin.png";
 
-export default function LoginPage() {
+type Props = {
+  onLogin?: () => void;
+};
+
+export default function LoginPage({ onLogin }: Props) {
   const navigate = useNavigate();
 
   function handleLogin(email: string) {
     if (typeof auth === "object" && "setCurrent" in auth) {
       (auth as any).setCurrent(email);
     }
+    if (onLogin) onLogin();
     navigate("/");
   }
 

@@ -1,10 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+import { useState } from "react";
 import {
   BrowserRouter,
   Routes,
   Route,
   Navigate,
-  useLocation,
 } from "react-router-dom";
 import "./App.css";
 import { LandingPageWrapper } from "./pages/LandingPage";
@@ -20,11 +19,13 @@ import { MyBookingsPage } from "./pages/MyBookingsPage";
 import { PopupDialog } from "./components/PopupDialog";
 
 function AppRoutes() {
-  const currentLocation = useLocation();
   const [location, setLocation] = useState("");
   const [isLoadingLocation, setIsLoadingLocation] = useState(false);
   const [latitude, setLatitude] = useState<number | null>(null);
   const [longitude, setLongitude] = useState<number | null>(null);
+  const [locationPermission, setLocationPermission] = useState<
+    "unknown" | "granted" | "denied"
+  >("unknown");
   const [popup, setPopup] = useState({
     open: false,
     title: "",
@@ -32,10 +33,9 @@ function AppRoutes() {
     tone: "info" as "success" | "error" | "info" | "warning",
   });
 
-  const hasAutoDetectedLocation = useRef(false);
-
   const handleUseMyLocation = (autoDetect = false) => {
     if (!navigator.geolocation) {
+      setLocationPermission("denied");
       setPopup({
         open: true,
         title: "Location unavailable",
@@ -50,6 +50,7 @@ function AppRoutes() {
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
+          setLocationPermission("granted");
           setLatitude(latitude);
           setLongitude(longitude);
 
@@ -91,6 +92,9 @@ function AppRoutes() {
       },
       (error) => {
         console.error("Error getting location:", error);
+        if (error.code === error.PERMISSION_DENIED) {
+          setLocationPermission("denied");
+        }
         if (!autoDetect) {
           setPopup({
             open: true,
@@ -105,20 +109,6 @@ function AppRoutes() {
       { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 },
     );
   };
-
-  useEffect(() => {
-    const alreadyAutoDetected =
-      sessionStorage.getItem("glowup-location-auto-detected") === "true";
-
-    if (
-      currentLocation.pathname === "/" &&
-      !alreadyAutoDetected &&
-      !hasAutoDetectedLocation.current
-    ) {
-      hasAutoDetectedLocation.current = true;
-      handleUseMyLocation(true);
-    }
-  }, [currentLocation.pathname]);
 
   const handleSearchSalons = () => {
     const resultsSection = document.querySelector("#results-section");
@@ -151,6 +141,7 @@ function AppRoutes() {
               onSearch={handleSearchSalons}
               latitude={latitude}
               longitude={longitude}
+              locationPermission={locationPermission}
             />
           }
         />

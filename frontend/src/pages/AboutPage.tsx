@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { Heart, Sparkles, MapPin, Users, CalendarDays } from "lucide-react";
+import heroImage from "../assets/sign.jpg";
 
 const highlights = [
   {
@@ -67,11 +68,14 @@ export default function AboutPage() {
 
           <div className="relative overflow-hidden rounded-[32px] border border-stone-100 bg-white shadow-[0_10px_40px_rgba(0,0,0,0.08)]">
             <img
-              src="https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?q=80&w=2069&auto=format&fit=crop"
+              src={heroImage}
               alt="Salon interior"
-              className="h-full w-full object-cover"
+              className="h-full w-full object-cover scale-105 blur-[1.5px]"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/20 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-br from-[#FDFBF9]/10 via-transparent to-[#C49B89]/20 mix-blend-screen" />
+            <div className="absolute -left-10 top-8 h-40 w-40 rounded-full bg-white/25 blur-3xl" />
+            <div className="absolute right-8 bottom-10 h-44 w-44 rounded-full bg-[#C49B89]/25 blur-3xl" />
             <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
               <p className="mb-2 text-xs uppercase tracking-[0.35em] text-white/70">
                 Glowup experience

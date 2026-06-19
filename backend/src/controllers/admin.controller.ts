@@ -395,6 +395,7 @@ export const updateSalonProfile = asyncHandler(
       city,
       state,
       country,
+      image,
       starting_price,
       rating,
       latitude,
@@ -412,7 +413,7 @@ export const updateSalonProfile = asyncHandler(
     }
 
     const result = await query(
-      "UPDATE public.salons SET name = $1, address = $2, city = $3, state = $4, country = $5, starting_price = $6, rating = $7, latitude = $8, longitude = $9, phone = $10, email = $11, google_maps_link = $12 WHERE id = $13 RETURNING *",
+      "UPDATE public.salons SET name = $1, address = $2, city = $3, state = $4, country = $5, starting_price = $6, rating = $7, latitude = $8, longitude = $9, phone = $10, email = $11, google_maps_link = $12, image = $13 WHERE id = $14 RETURNING *",
       [
         name,
         address || null,
@@ -426,6 +427,7 @@ export const updateSalonProfile = asyncHandler(
         phone || null,
         email || null,
         google_maps_link || null,
+        image || null,
         salon_id,
       ],
     );

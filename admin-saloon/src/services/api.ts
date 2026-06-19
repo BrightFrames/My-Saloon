@@ -136,6 +136,7 @@ export const api = {
     rating?: number;
     latitude?: number;
     longitude?: number;
+    image?: string;
   }) => request("PUT", "/admin/salon-profile", data),
 
   createSalonProfile: (data: {

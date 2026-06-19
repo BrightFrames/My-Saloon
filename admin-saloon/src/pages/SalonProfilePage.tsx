@@ -12,25 +12,17 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
-  const [showAddSalonModal, setShowAddSalonModal] = useState(false);
   const submitLockRef = useRef(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const [isCreatingSalon, setIsCreatingSalon] = useState(false);
   const [form, setForm] = useState({
     name: "",
     city: "",
     starting_price: "",
     latitude: "",
     longitude: "",
+    image: "",
   });
-  const [addSalonForm, setAddSalonForm] = useState({
-    name: "",
-    city: "",
-    starting_price: "",
-    rating: "",
-    latitude: "",
-    longitude: "",
-  });
+
 
   const fetchProfile = async () => {
     try {
@@ -44,6 +36,7 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
           starting_price: String(res.data.starting_price || 0),
           latitude: String(res.data.latitude || ""),
           longitude: String(res.data.longitude || ""),
+          image: res.data.image || "",
         });
       }
     } catch (err) {
@@ -76,6 +69,7 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
           : undefined,
         latitude: form.latitude ? parseFloat(form.latitude) : undefined,
         longitude: form.longitude ? parseFloat(form.longitude) : undefined,
+        image: form.image || undefined,
       });
       setIsEditing(false);
       fetchProfile();
@@ -88,54 +82,7 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
     }
   };
 
-  const handleAddSalon = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (
-      !addSalonForm.name ||
-      !addSalonForm.city ||
-      !addSalonForm.starting_price
-    ) {
-      alert("Salon Name, City, and Starting Price are required.");
-      return;
-    }
-    if (submitLockRef.current) return;
 
-    submitLockRef.current = true;
-    setIsCreatingSalon(true);
-
-    try {
-      await api.createSalonProfile({
-        name: addSalonForm.name,
-        city: addSalonForm.city,
-        starting_price: parseFloat(addSalonForm.starting_price),
-        rating: addSalonForm.rating
-          ? parseFloat(addSalonForm.rating)
-          : undefined,
-        latitude: addSalonForm.latitude
-          ? parseFloat(addSalonForm.latitude)
-          : undefined,
-        longitude: addSalonForm.longitude
-          ? parseFloat(addSalonForm.longitude)
-          : undefined,
-      });
-
-      setShowAddSalonModal(false);
-      setAddSalonForm({
-        name: "",
-        city: "",
-        starting_price: "",
-        rating: "",
-        latitude: "",
-        longitude: "",
-      });
-      alert("Salon created successfully!");
-    } catch (err: any) {
-      alert(err.message || "Failed to create salon.");
-    } finally {
-      submitLockRef.current = false;
-      setIsCreatingSalon(false);
-    }
-  };
 
   return (
     <Layout user={user?.email || "Admin"} onLogout={onLogout}>
@@ -149,12 +96,6 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
           </div>
           {!isEditing && (
             <div style={{ display: "flex", gap: "10px" }}>
-              <button
-                className="btn-sm"
-                onClick={() => setShowAddSalonModal(true)}
-              >
-                + Add Salon
-              </button>
               <button className="btn-add" onClick={() => setIsEditing(true)}>
                 Edit Profile
               </button>
@@ -198,6 +139,17 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
                     onChange={(e) =>
                       setForm({ ...form, starting_price: e.target.value })
                     }
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Image URL (Optional)</label>
+                  <input
+                    type="text"
+                    value={form.image}
+                    onChange={(e) =>
+                      setForm({ ...form, image: e.target.value })
+                    }
+                    placeholder="https://..."
                   />
                 </div>
                 <div className="form-group">
@@ -261,116 +213,26 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
                       : "Not set"}
                   </div>
                 </div>
+                <div className="profile-field">
+                  <div className="field-label">Salon Image</div>
+                  <div className="field-value">
+                    {profile.image ? (
+                      <img
+                        src={profile.image}
+                        alt="Salon"
+                        style={{ maxWidth: "100%", height: "auto", borderRadius: "8px", marginTop: "8px" }}
+                      />
+                    ) : (
+                      "Not set"
+                    )}
+                  </div>
+                </div>
               </div>
             )}
           </div>
         )}
 
-        {showAddSalonModal && (
-          <div
-            className="modal-backdrop"
-            onClick={() => setShowAddSalonModal(false)}
-          >
-            <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-              <h2>Add Salon</h2>
-              <form onSubmit={handleAddSalon}>
-                <div className="form-group">
-                  <label>Salon Name</label>
-                  <input
-                    value={addSalonForm.name}
-                    onChange={(e) =>
-                      setAddSalonForm({ ...addSalonForm, name: e.target.value })
-                    }
-                    placeholder="The Aura Collective"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>City</label>
-                  <input
-                    value={addSalonForm.city}
-                    onChange={(e) =>
-                      setAddSalonForm({ ...addSalonForm, city: e.target.value })
-                    }
-                    placeholder="New York"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Starting Price (₹)</label>
-                  <input
-                    type="number"
-                    value={addSalonForm.starting_price}
-                    onChange={(e) =>
-                      setAddSalonForm({
-                        ...addSalonForm,
-                        starting_price: e.target.value,
-                      })
-                    }
-                    placeholder="85"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Rating (Optional)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max="5"
-                    value={addSalonForm.rating}
-                    onChange={(e) =>
-                      setAddSalonForm({
-                        ...addSalonForm,
-                        rating: e.target.value,
-                      })
-                    }
-                    placeholder="4.9"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Location Latitude</label>
-                  <input
-                    type="number"
-                    step="any"
-                    value={addSalonForm.latitude}
-                    onChange={(e) =>
-                      setAddSalonForm({
-                        ...addSalonForm,
-                        latitude: e.target.value,
-                      })
-                    }
-                    placeholder="40.7128"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Location Longitude</label>
-                  <input
-                    type="number"
-                    step="any"
-                    value={addSalonForm.longitude}
-                    onChange={(e) =>
-                      setAddSalonForm({
-                        ...addSalonForm,
-                        longitude: e.target.value,
-                      })
-                    }
-                    placeholder="-74.0060"
-                  />
-                </div>
-                <div className="modal-actions">
-                  <button
-                    type="button"
-                    className="btn-cancel"
-                    onClick={() => setShowAddSalonModal(false)}
-                  >
-                    Cancel
-                  </button>
-                  <button type="submit" className="btn-add" disabled={isCreatingSalon}>
-                    {isCreatingSalon ? "Creating..." : "Save Salon"}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
+
       </div>
     </Layout>
   );

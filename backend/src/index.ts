@@ -5,6 +5,7 @@ import { ensureSalonsSchema } from './config/salonSchema';
 async function startServer() {
     try {
         await ensureSalonsSchema();
+        console.log('[db]: PostgreSQL connected successfully!');
     } catch (err: any) {
         console.error('[db]: Failed to ensure salons schema:', err?.message || err);
         process.exit(1);

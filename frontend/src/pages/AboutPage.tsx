@@ -57,12 +57,6 @@ export default function AboutPage() {
               >
                 Back to Home
               </button>
-              <button
-                onClick={() => navigate("/signin")}
-                className="rounded-xl border border-stone-200 bg-white px-6 py-3 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-50"
-              >
-                Sign In
-              </button>
             </div>
           </div>
 
@@ -70,7 +64,7 @@ export default function AboutPage() {
             <img
               src={heroImage}
               alt="Salon interior"
-              className="h-full w-full object-cover scale-105 blur-[1.5px]"
+              className="h-full w-full object-cover scale-105"
             />
 
             <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/20 to-transparent" />

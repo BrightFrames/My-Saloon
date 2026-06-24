@@ -100,11 +100,11 @@ export const api = {
 
   // Services
   getServices: () => request("GET", "/admin/services"),
-  createService: (data: { name: string; price: number; duration: string }) =>
+  createService: (data: { name: string; price?: number; originalPrice?: number; discountedPrice?: number; duration: string; homeServiceAvailable?: boolean; homeServicePrice?: number }) =>
     request("POST", "/admin/services", data),
   updateService: (
     id: string,
-    data: { name: string; price: number; duration: string },
+    data: { name: string; price?: number; originalPrice?: number; discountedPrice?: number; duration: string; homeServiceAvailable?: boolean; homeServicePrice?: number },
   ) => request("PUT", `/admin/services/${id}`, data),
   deleteService: (id: string) => request("DELETE", `/admin/services/${id}`),
 
@@ -140,6 +140,9 @@ export const api = {
     longitude?: number;
     image?: string;
     video?: string;
+    home_service_charge?: number;
+    about?: string;
+    gallery?: string[];
   }) => request("PUT", "/admin/salon-profile", data),
 
   createSalonProfile: (data: {

@@ -13,6 +13,7 @@ const writeLimiter = createRateLimit({
 
 router.get('/', salonsController.getSalons);
 router.get('/:id', salonsController.getSalonById);
+router.post('/:id/reviews', writeLimiter, salonsController.createReview);
 router.post('/', writeLimiter, salonsController.createSalon);
 
 export default router;

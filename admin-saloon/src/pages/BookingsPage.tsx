@@ -229,6 +229,7 @@ export default function BookingsPage({ user, onLogout }: Props) {
               <tr>
                 <th>Customer</th>
                 <th>Service</th>
+                <th>Type</th>
                 <th>Date</th>
                 <th>Time</th>
                 <th>Stylist</th>
@@ -245,7 +246,21 @@ export default function BookingsPage({ user, onLogout }: Props) {
                     <div style={{ fontWeight: 600 }}>{b.customer_name}</div>
                     <div style={{ fontSize: '12px', color: '#7f6f69' }}>{b.customer_email}</div>
                   </td>
-                  <td>{b.service_name || b.hairstyle}</td>
+                  <td>
+                    {b.service_name || b.hairstyle}
+                    {b.booking_type === 'home' && b.address && (
+                      <div style={{ fontSize: '11px', color: '#7f6f69', marginTop: 4, maxWidth: '200px' }}>
+                        📍 {b.address}, {b.landmark ? b.landmark + ", " : ""}{b.city} - {b.pincode}
+                      </div>
+                    )}
+                  </td>
+                  <td>
+                    {b.booking_type === 'home' ? (
+                      <span className="badge pending" style={{ background: '#e0f2fe', color: '#0369a1' }}>🏠 Home</span>
+                    ) : (
+                      <span className="badge confirmed" style={{ background: '#f3ece7', color: '#5c4841' }}>🏪 Salon</span>
+                    )}
+                  </td>
                   <td>{new Date(b.appointment_date || b.booking_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
                   <td>{b.appointment_time || b.booking_time}</td>
                   <td>

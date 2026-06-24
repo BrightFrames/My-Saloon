@@ -41,7 +41,15 @@ export function CheckoutPage() {
     notes: "",
     payment_method: "credit_card",
     total_price: 0,
+    booking_type: "salon",
+    address: "",
+    landmark: "",
+    city: "",
+    pincode: "",
+    service_charge: 0,
   });
+
+  const [salonData, setSalonData] = useState<any>(null);
 
   const [salonServices, setSalonServices] = useState<any[]>([]);
   const [selectedServicesArr, setSelectedServicesArr] = useState<any[]>([]);
@@ -82,6 +90,7 @@ export function CheckoutPage() {
         const raw = sessionStorage.getItem("selectedSalon");
         if (!raw) return null;
         const parsed = JSON.parse(raw);
+        setSalonData(parsed);
         return parsed?.id || parsed?.salon_id || parsed?.salonId || null;
       } catch (e) {
         console.error("Failed to parse selectedSalon", e);
@@ -107,7 +116,10 @@ export function CheckoutPage() {
           const formatted = list.map((item: any) => ({
             id: item.id,
             name: item.name,
-            price: Number(item.price),
+            price: Number(item.discounted_price || item.price),
+            originalPrice: Number(item.original_price || item.price),
+            homeServiceAvailable: item.home_service_available || item.homeServiceAvailable || false,
+            homeServicePrice: Number(item.home_service_price || item.discounted_price || item.price),
             duration:
               typeof item.duration === "number"
                 ? `${item.duration} mins`
@@ -145,7 +157,10 @@ export function CheckoutPage() {
           const formatted = serviceRows.map((item: any) => ({
             id: item.id,
             name: item.name,
-            price: Number(item.price),
+            price: Number(item.discounted_price || item.price),
+            originalPrice: Number(item.original_price || item.price),
+            homeServiceAvailable: item.home_service_available || item.homeServiceAvailable || false,
+            homeServicePrice: Number(item.home_service_price || item.discounted_price || item.price),
             duration:
               typeof item.duration === "number"
                 ? `${item.duration} mins`
@@ -249,13 +264,26 @@ export function CheckoutPage() {
   }, [bookingData.booking_date, bookingData.stylist]);
 
   const handleUpdate = (field: string, value: any) => {
-    setBookingData((prev) => ({ ...prev, [field]: value }));
+    setBookingData((prev) => {
+      const updated = { ...prev, [field]: value };
+      if (field === "booking_type") {
+        const total = selectedServicesArr.reduce((sum: number, s: any) => {
+          return sum + (value === "home" ? Number(s.homeServicePrice || s.price) : Number(s.price));
+        }, 0);
+        updated.total_price = total;
+      }
+      return updated;
+    });
   };
 
   const handleSelectHairstyle = (hs: any) => {
     handleUpdate("hairstyle", hs.id);
     handleUpdate("serviceName", hs.name);
-    handleUpdate("total_price", hs.price);
+    
+    // In case single selection is used instead of array
+    setSelectedServicesArr([hs]);
+    const priceToUse = bookingData.booking_type === "home" ? Number(hs.homeServicePrice || hs.price) : Number(hs.price);
+    handleUpdate("total_price", priceToUse);
   };
 
   const handleNextStep = () => {
@@ -290,6 +318,18 @@ export function CheckoutPage() {
           tone: "warning",
         });
         return;
+      }
+      
+      if (bookingData.booking_type === "home") {
+        if (!bookingData.address || !bookingData.city || !bookingData.pincode) {
+          setPopup({
+            open: true,
+            title: "Missing address details",
+            message: "Please fill in your address, city, and pincode for home service.",
+            tone: "warning",
+          });
+          return;
+        }
       }
     }
     setStep(step + 1);
@@ -352,8 +392,9 @@ export function CheckoutPage() {
     }
   };
 
-  const tax = bookingData.total_price * 0.08;
-  const finalAmount = bookingData.total_price + tax;
+  const basePriceWithCharge = bookingData.total_price;
+  const tax = basePriceWithCharge * 0.08;
+  const finalAmount = basePriceWithCharge + tax;
 
   return (
     <div className="min-h-screen bg-[#FDFBF9] font-sans text-stone-800 pb-20">
@@ -418,10 +459,44 @@ export function CheckoutPage() {
                 </h2>
 
                 <div className="bg-white rounded-3xl p-8 shadow-[0_2px_20px_-4px_rgba(0,0,0,0.04)] border border-stone-100 flex flex-col gap-8">
+                  {/* Booking Type Selection */}
+                  <div>
+                    <h3 className="text-sm font-bold text-stone-400 uppercase tracking-wider mb-4">
+                      1. Choose Booking Type
+                    </h3>
+                    <div className="flex gap-4">
+                      <button
+                        onClick={() => {
+                          handleUpdate("booking_type", "salon");
+                          handleUpdate("service_charge", 0);
+                        }}
+                        className={`flex-1 py-4 rounded-xl font-medium border-2 transition-all ${bookingData.booking_type === "salon" ? "border-[#CA9A86] bg-[#F9F4F2] text-[#CA9A86]" : "border-stone-100 bg-white text-stone-600 hover:border-stone-300"}`}
+                      >
+                        🏪 Salon Visit
+                      </button>
+                      <button
+                        onClick={() => {
+                          handleUpdate("booking_type", "home");
+                          if (salonData?.home_service_charge) {
+                            handleUpdate("service_charge", Number(salonData.home_service_charge));
+                          }
+                        }}
+                        className={`flex-1 py-4 rounded-xl font-medium border-2 transition-all ${bookingData.booking_type === "home" ? "border-[#CA9A86] bg-[#F9F4F2] text-[#CA9A86]" : "border-stone-100 bg-white text-stone-600 hover:border-stone-300"}`}
+                      >
+                        🏠 Home Service
+                      </button>
+                    </div>
+                    {bookingData.booking_type === "home" && salonData?.home_service_charge > 0 && (
+                      <p className="text-xs text-stone-500 mt-2 ml-1">
+                        Note: An additional Home Service charge of ₹{salonData.home_service_charge} applies.
+                      </p>
+                    )}
+                  </div>
+
                   {/* Service Selection */}
                   <div>
                     <h3 className="text-sm font-bold text-stone-400 uppercase tracking-wider mb-4">
-                      1. {selectedServicesArr.length > 0 ? "Selected Services" : "Choose Service"}
+                      2. {selectedServicesArr.length > 0 ? "Selected Services" : "Choose Service"}
                     </h3>
                     
                     {selectedServicesArr.length > 0 ? (
@@ -445,7 +520,9 @@ export function CheckoutPage() {
                       </div>
                     ) : (
                       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        {salonServices.map((hs) => (
+                        {salonServices
+                          .filter(hs => bookingData.booking_type === "salon" || hs.homeServiceAvailable)
+                          .map((hs) => (
                           <div
                             key={hs.id}
                             onClick={() => handleSelectHairstyle(hs)}
@@ -464,9 +541,16 @@ export function CheckoutPage() {
                               </h4>
                               <div className="flex justify-between items-center text-xs text-stone-500">
                                 <span>{hs.duration}</span>
-                                <span className="font-semibold text-[#CA9A86]">
-                                  {formatINR(hs.price)}
-                                </span>
+                                <div className="flex items-center gap-1.5">
+                                  {hs.originalPrice && hs.originalPrice > hs.price && (
+                                    <span className="text-[10px] text-stone-400 line-through">
+                                      {formatINR(hs.originalPrice)}
+                                    </span>
+                                  )}
+                                  <span className="font-semibold text-[#CA9A86]">
+                                    {formatINR(hs.price)}
+                                  </span>
+                                </div>
                               </div>
                             </div>
                             {bookingData.hairstyle === hs.id && (
@@ -476,6 +560,11 @@ export function CheckoutPage() {
                             )}
                           </div>
                         ))}
+                        {salonServices.filter(hs => bookingData.booking_type === "home" && !hs.homeServiceAvailable).length === salonServices.length && (
+                          <div className="col-span-3 text-center py-4 text-stone-500 text-sm border border-stone-200 rounded-xl bg-stone-50">
+                            No services available for Home Visit at this salon.
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -483,7 +572,7 @@ export function CheckoutPage() {
                   {/* Stylist Selection */}
                   <div>
                     <h3 className="text-sm font-bold text-stone-400 uppercase tracking-wider mb-4">
-                      2. Select Stylist
+                      3. Select Stylist
                     </h3>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                       {filteredTeamMembers.length > 0 ? (
@@ -530,7 +619,7 @@ export function CheckoutPage() {
                   {/* Date Selection */}
                   <div>
                     <h3 className="text-sm font-bold text-stone-400 uppercase tracking-wider mb-4">
-                      3. Select Date
+                      4. Select Date
                     </h3>
                     <input
                       type="date"
@@ -547,7 +636,7 @@ export function CheckoutPage() {
                   {bookingData.booking_date && bookingData.stylist && (
                     <div className="animate-in fade-in">
                       <h3 className="text-sm font-bold text-stone-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                        4. Available Slots
+                        5. Available Slots
                         {loadingSlots && (
                           <Loader2
                             size={14}
@@ -644,6 +733,65 @@ export function CheckoutPage() {
                       />
                     </div>
                   </div>
+
+                  {bookingData.booking_type === "home" && (
+                    <div className="animate-in fade-in flex flex-col gap-6 pt-4 border-t border-stone-100 mt-2">
+                      <h3 className="font-serif text-lg text-stone-800 flex items-center gap-2">
+                        🏠 Service Address
+                      </h3>
+                      <div className="flex flex-col gap-2">
+                        <label className="text-sm font-medium text-stone-600">
+                          Full Address
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="House No, Building, Street"
+                          value={bookingData.address}
+                          onChange={(e) => handleUpdate("address", e.target.value)}
+                          className="bg-[#F6F5F2] border-transparent focus:border-[#C49B89] focus:ring-1 focus:ring-[#C49B89] focus:bg-white rounded-xl px-5 py-3.5 outline-none transition-all text-stone-700"
+                        />
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="flex flex-col gap-2">
+                          <label className="text-sm font-medium text-stone-600">
+                            Landmark (Optional)
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="Near..."
+                            value={bookingData.landmark}
+                            onChange={(e) => handleUpdate("landmark", e.target.value)}
+                            className="bg-[#F6F5F2] border-transparent focus:border-[#C49B89] focus:ring-1 focus:ring-[#C49B89] focus:bg-white rounded-xl px-5 py-3.5 outline-none transition-all text-stone-700"
+                          />
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          <label className="text-sm font-medium text-stone-600">
+                            City
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="City"
+                            value={bookingData.city}
+                            onChange={(e) => handleUpdate("city", e.target.value)}
+                            className="bg-[#F6F5F2] border-transparent focus:border-[#C49B89] focus:ring-1 focus:ring-[#C49B89] focus:bg-white rounded-xl px-5 py-3.5 outline-none transition-all text-stone-700"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex flex-col gap-2">
+                        <label className="text-sm font-medium text-stone-600">
+                          Pincode
+                        </label>
+                        <input
+                          type="text"
+                          placeholder="e.g. 110001"
+                          value={bookingData.pincode}
+                          onChange={(e) => handleUpdate("pincode", e.target.value)}
+                          className="bg-[#F6F5F2] border-transparent focus:border-[#C49B89] focus:ring-1 focus:ring-[#C49B89] focus:bg-white rounded-xl px-5 py-3.5 outline-none transition-all text-stone-700 w-full md:w-1/2"
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex flex-col gap-2">
                     <label className="text-sm font-medium text-stone-600">
                       Special Notes (Optional)
@@ -920,6 +1068,7 @@ export function CheckoutPage() {
                   <span>Base Price</span>
                   <span>{formatINR(bookingData.total_price)}</span>
                 </div>
+
                 <div className="flex justify-between items-center text-[13px] text-stone-500">
                   <span>Taxes (8%)</span>
                   <span>{formatINR(tax)}</span>

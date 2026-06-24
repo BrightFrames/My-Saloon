@@ -53,6 +53,16 @@ async function sendBookingConfirmationEmail(booking: any) {
 
             <div style="font-family: 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.6; color: #555555;">
               <div style="margin-bottom: 16px; display: flex; justify-content: space-between;">
+                <span style="color: #8C8682;">Booking Type:</span>
+                <strong style="color: #313131;">${booking.booking_type === "home" ? "Home Service" : "Salon Visit"}</strong>
+              </div>
+              ${booking.booking_type === "home" && booking.address ? `
+              <div style="margin-bottom: 16px; display: flex; justify-content: space-between;">
+                <span style="color: #8C8682;">Service Address:</span>
+                <strong style="color: #313131; text-align: right; max-width: 60%;">${booking.address}, ${booking.landmark ? booking.landmark + ", " : ""}${booking.city} - ${booking.pincode}</strong>
+              </div>
+              ` : ""}
+              <div style="margin-bottom: 16px; display: flex; justify-content: space-between;">
                 <span style="color: #8C8682;">Hairstyle / Treatment:</span>
                 <strong style="color: #313131;">${serviceLabel}</strong>
               </div>
@@ -67,6 +77,16 @@ async function sendBookingConfirmationEmail(booking: any) {
               <div style="margin-bottom: 16px; display: flex; justify-content: space-between;">
                 <span style="color: #8C8682;">Time Slot:</span>
                 <strong style="color: #313131;">${booking.booking_time}</strong>
+              </div>
+              ${booking.service_charge ? `
+              <div style="margin-bottom: 16px; display: flex; justify-content: space-between;">
+                <span style="color: #8C8682;">Home Service Charge:</span>
+                <strong style="color: #313131;">₹${booking.service_charge}</strong>
+              </div>
+              ` : ""}
+              <div style="margin-bottom: 16px; display: flex; justify-content: space-between; border-top: 1px solid #eee; padding-top: 10px;">
+                <span style="color: #8C8682;">Total Amount:</span>
+                <strong style="color: #313131; font-size: 16px;">₹${booking.total_price}</strong>
               </div>
             </div>
           </div>
@@ -103,6 +123,12 @@ const bookingSchema = z.object({
   total_price: z.number().min(0, "Total price must be valid"),
   salon_id: z.string().uuid("Valid salon ID required").optional().nullable(),
   user_id: z.number().optional().nullable(),
+  booking_type: z.enum(["salon", "home"]).optional().default("salon"),
+  address: z.string().optional(),
+  landmark: z.string().optional(),
+  city: z.string().optional(),
+  pincode: z.string().optional(),
+  service_charge: z.number().optional().default(0),
 });
 
 export const createBooking = asyncHandler(
@@ -169,9 +195,9 @@ export const createBooking = asyncHandler(
           customer_name, customer_email, phone, mobile, country_code,
           service_name, hairstyle, stylist, appointment_date, booking_date,
           appointment_time, booking_time, payment_method, notes, total_price,
-          booking_status, payment_status, salon_id, user_id
+          booking_status, payment_status, salon_id, user_id, booking_type, address, landmark, city, pincode, service_charge
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'confirmed', 'pending', $16, $17
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'confirmed', 'pending', $16, $17, $18, $19, $20, $21, $22, $23
         ) RETURNING *;
       `;
       const values = [
@@ -192,6 +218,12 @@ export const createBooking = asyncHandler(
         validatedData.total_price,
         validatedData.salon_id || null,
         validatedData.user_id || null,
+        validatedData.booking_type || "salon",
+        validatedData.address || null,
+        validatedData.landmark || null,
+        validatedData.city || null,
+        validatedData.pincode || null,
+        validatedData.service_charge || 0,
       ];
 
       const result = await query(q, values);

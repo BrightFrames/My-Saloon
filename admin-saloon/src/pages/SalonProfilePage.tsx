@@ -23,6 +23,9 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
     longitude: "",
     image: "",
     video: "",
+    home_service_charge: "",
+    about: "",
+    gallery: [] as string[],
   });
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
@@ -42,6 +45,9 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
           longitude: String(res.data.longitude || ""),
           image: res.data.image || "",
           video: res.data.video || "",
+          home_service_charge: String(res.data.home_service_charge || 0),
+          about: res.data.about || "",
+          gallery: res.data.gallery || [],
         });
       }
     } catch (err) {
@@ -85,6 +91,27 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
     }
   };
 
+  const handleGalleryUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    try {
+      setIsUploadingImage(true);
+      const res = await api.uploadFile(e.target.files[0]);
+      if (res.success && res.data.url) {
+        setForm({ ...form, gallery: [...form.gallery, res.data.url] });
+      }
+    } catch (err: any) {
+      alert("Failed to upload gallery image: " + err.message);
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const removeGalleryImage = (index: number) => {
+    const newGallery = [...form.gallery];
+    newGallery.splice(index, 1);
+    setForm({ ...form, gallery: newGallery });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.city || !form.starting_price)
@@ -106,6 +133,9 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
         longitude: form.longitude ? parseFloat(form.longitude) : undefined,
         image: form.image || undefined,
         video: form.video || undefined,
+        home_service_charge: parseFloat(form.home_service_charge) || 0,
+        about: form.about || undefined,
+        gallery: form.gallery,
       });
       setIsEditing(false);
       fetchProfile();
@@ -179,6 +209,16 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
                   />
                 </div>
                 <div className="form-group">
+                  <label>Home Service Charge (₹)</label>
+                  <input
+                    type="number"
+                    value={form.home_service_charge}
+                    onChange={(e) =>
+                      setForm({ ...form, home_service_charge: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="form-group">
                   <label>Background Image</label>
                   <input
                     type="file"
@@ -204,6 +244,31 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
                     <video src={form.video} controls style={{ maxWidth: '200px', marginTop: '10px', borderRadius: '8px' }} />
                   )}
                 </div>
+                <div className="form-group" style={{ gridColumn: "1 / -1" }}>
+                  <label>Gallery Images</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleGalleryUpload}
+                    disabled={isUploadingImage}
+                  />
+                  {form.gallery && form.gallery.length > 0 && (
+                    <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "10px" }}>
+                      {form.gallery.map((url, idx) => (
+                        <div key={idx} style={{ position: "relative" }}>
+                          <img src={url} alt={`Gallery ${idx}`} style={{ width: "100px", height: "100px", objectFit: "cover", borderRadius: "8px" }} />
+                          <button
+                            type="button"
+                            onClick={() => removeGalleryImage(idx)}
+                            style={{ position: "absolute", top: -5, right: -5, background: "red", color: "white", border: "none", borderRadius: "50%", width: 20, height: 20, cursor: "pointer" }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 <div className="form-group">
                   <label>Latitude (Optional)</label>
                   <input
@@ -226,7 +291,17 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
                     }
                   />
                 </div>
-                <div className="modal-actions" style={{ marginTop: "32px" }}>
+                <div className="form-group" style={{ gridColumn: "1 / -1" }}>
+                  <label>About Salon</label>
+                  <textarea
+                    value={form.about}
+                    onChange={(e) => setForm({ ...form, about: e.target.value })}
+                    placeholder="Tell customers about your salon..."
+                    rows={4}
+                    style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #e5e5e5" }}
+                  />
+                </div>
+                <div className="modal-actions" style={{ marginTop: "32px", gridColumn: "1 / -1" }}>
                   <button
                     type="button"
                     className="btn-cancel"
@@ -252,6 +327,28 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
                 <div className="profile-field">
                   <div className="field-label">Starting Price</div>
                   <div className="field-value">₹{profile.starting_price}</div>
+                </div>
+                <div className="profile-field">
+                  <div className="field-label">Home Service Charge</div>
+                  <div className="field-value">₹{profile.home_service_charge || 0}</div>
+                </div>
+                <div className="profile-field">
+                  <div className="field-label">About Salon</div>
+                  <div className="field-value" style={{ whiteSpace: "pre-line" }}>{profile.about || "Not set"}</div>
+                </div>
+                <div className="profile-field" style={{ gridColumn: "1 / -1" }}>
+                  <div className="field-label">Gallery</div>
+                  <div className="field-value">
+                    {profile.gallery && profile.gallery.length > 0 ? (
+                      <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "8px" }}>
+                        {profile.gallery.map((url: string, idx: number) => (
+                          <img key={idx} src={url} alt={`Gallery ${idx}`} style={{ width: "100px", height: "100px", objectFit: "cover", borderRadius: "8px" }} />
+                        ))}
+                      </div>
+                    ) : (
+                      "No gallery images uploaded"
+                    )}
+                  </div>
                 </div>
                 <div className="profile-field">
                   <div className="field-label">Rating</div>

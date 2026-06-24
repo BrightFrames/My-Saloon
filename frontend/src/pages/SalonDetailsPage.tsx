@@ -1,4 +1,4 @@
-import { Star, Clock, Plus, ArrowRight, X, Loader2 } from "lucide-react";
+import { Star, Clock, Plus, ArrowRight, Loader2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { PopupDialog } from "../components/PopupDialog";
@@ -13,9 +13,11 @@ export function SalonDetailsPage() {
   const [salon, setSalon] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedServices, setSelectedServices] = useState<any[]>([]);
+  const [activeTab, setActiveTab] = useState("Services");
+  
+  const [reviewForm, setReviewForm] = useState({ user_name: "", rating: 5, comment: "" });
+  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
-  const [showPhoneModal, setShowPhoneModal] = useState(false);
-  const [phoneNumber, setPhoneNumber] = useState("");
   const [popup, setPopup] = useState<{
     open: boolean;
     title: string;
@@ -106,9 +108,57 @@ export function SalonDetailsPage() {
     navigate("/checkout");
   };
 
+  const handleReviewSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reviewForm.user_name || !reviewForm.rating) {
+      setPopup({
+        open: true,
+        title: "Incomplete Review",
+        message: "Please provide your name and a rating.",
+        tone: "warning",
+      });
+      return;
+    }
+    try {
+      setIsSubmittingReview(true);
+      const res = await fetch(`${API_BASE_URL}/salons/${id}/reviews`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(reviewForm),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setPopup({
+          open: true,
+          title: "Review Submitted",
+          message: "Thank you for your review!",
+          tone: "success",
+        });
+        setReviewForm({ user_name: "", rating: 5, comment: "" });
+        // Refresh salon details to get the new review
+        const updatedRes = await fetch(`${API_BASE_URL}/salons/${id}`);
+        const updatedBody = await updatedRes.json();
+        if (updatedBody && updatedBody.success) {
+          setSalon((prev: any) => ({ ...prev, reviews: updatedBody.data.reviews }));
+        }
+      } else {
+        throw new Error(data.message || "Failed to submit review");
+      }
+    } catch (err: any) {
+      setPopup({
+        open: true,
+        title: "Error",
+        message: err.message,
+        tone: "error",
+      });
+    } finally {
+      setIsSubmittingReview(false);
+    }
+  };
+
   // Calculations
   const subtotal = selectedServices.reduce(
-    (sum, s) => sum + Number(s.price),
+    (sum, s) => sum + Number(s.discounted_price ?? s.price),
     0,
   );
   const tax = subtotal * 0.08;
@@ -179,23 +229,24 @@ export function SalonDetailsPage() {
           <div className="flex flex-col">
             {/* Tabs */}
             <div className="mb-8 flex gap-6 overflow-x-auto border-b border-stone-200 pb-px sm:gap-8">
-              <button className="whitespace-nowrap border-b-2 border-stone-800 pb-3 text-sm font-medium text-stone-800">
-                Services
-              </button>
-              <button className="whitespace-nowrap border-b-2 border-transparent pb-3 text-sm font-medium text-stone-400 transition-colors hover:text-stone-800">
-                Gallery
-              </button>
-              <button className="whitespace-nowrap border-b-2 border-transparent pb-3 text-sm font-medium text-stone-400 transition-colors hover:text-stone-800">
-                Reviews
-              </button>
-              <button className="whitespace-nowrap border-b-2 border-transparent pb-3 text-sm font-medium text-stone-400 transition-colors hover:text-stone-800">
-                About
-              </button>
+              {["Services", "Gallery", "Reviews", "About"].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`whitespace-nowrap border-b-2 pb-3 text-sm font-medium transition-colors ${
+                    activeTab === tab
+                      ? "border-stone-800 text-stone-800"
+                      : "border-transparent text-stone-400 hover:text-stone-800"
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
             </div>
 
-            {/* Service Category */}
-            <div className="mb-10">
-              <h3 className="font-serif text-lg font-medium text-stone-800 mb-6">
+            {activeTab === "Services" && (
+              <div className="mb-10">
+                <h3 className="font-serif text-lg font-medium text-stone-800 mb-6">
                 Available Treatments
               </h3>
               <div className="flex flex-col gap-4">
@@ -219,16 +270,42 @@ export function SalonDetailsPage() {
                         }`}
                       >
                         <div>
-                          <h4 className="text-stone-800 font-medium mb-1 font-serif text-lg group-hover:text-[#C49B89] transition-colors">
+                          <h4 className="text-stone-800 font-medium mb-1 font-serif text-lg group-hover:text-[#C49B89] transition-colors flex items-center gap-2">
                             {service.name}
+                            {service.home_service_available && (
+                              <span className="rounded bg-blue-50 px-2 py-0.5 text-xs font-medium text-blue-600 border border-blue-100 flex items-center gap-1 font-sans">
+                                🏠 Home
+                              </span>
+                            )}
                           </h4>
                           <p className="text-stone-500 text-sm mb-4">
                             {service.duration || "60 min"} • Professional
                             pampering session.
                           </p>
-                          <p className="text-[#C49B89] font-semibold text-lg">
-                            {formatINR(service.price)}
-                          </p>
+                          <div className="mt-2 flex items-center gap-2">
+                            {service.original_price && service.discounted_price && service.original_price > service.discounted_price ? (
+                              <>
+                                <span className="text-sm text-stone-400 line-through">
+                                  {formatINR(service.original_price)}
+                                </span>
+                                <span className="text-[#C49B89] font-semibold text-lg">
+                                  {formatINR(service.discounted_price)}
+                                </span>
+                                <span className="rounded bg-red-100 px-1.5 py-0.5 text-xs font-bold text-red-600">
+                                  {Math.round(((service.original_price - service.discounted_price) / service.original_price) * 100)}% OFF
+                                </span>
+                              </>
+                            ) : (
+                              <span className="text-[#C49B89] font-semibold text-lg">
+                                {formatINR(service.discounted_price ?? service.price)}
+                              </span>
+                            )}
+                          </div>
+                          {service.home_service_available && service.home_service_price && (
+                            <div className="mt-1 text-xs font-medium text-stone-500">
+                              🏠 Home Service Price: <span className="text-[#C49B89]">{formatINR(service.home_service_price)}</span>
+                            </div>
+                          )}
                         </div>
                         <button
                           className={`flex h-11 w-11 items-center justify-center rounded-full border transition-all cursor-pointer ${
@@ -245,6 +322,95 @@ export function SalonDetailsPage() {
                 )}
               </div>
             </div>
+          )}
+
+            {activeTab === "Gallery" && (
+              <div className="mb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <h3 className="font-serif text-lg font-medium text-stone-800 mb-6">Gallery</h3>
+                {salon?.video && (
+                  <div className="mb-6">
+                    <video src={salon.video} controls className="w-full rounded-2xl shadow-sm" />
+                  </div>
+                )}
+                {salon?.gallery && salon.gallery.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                    {salon.gallery.map((url: string, idx: number) => (
+                      <img key={idx} src={url} alt={`Gallery ${idx}`} className="w-full h-40 object-cover rounded-xl shadow-sm hover:opacity-90 transition-opacity" />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-stone-500 py-4 italic">No gallery images available.</div>
+                )}
+              </div>
+            )}
+
+            {activeTab === "Reviews" && (
+              <div className="mb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <h3 className="font-serif text-lg font-medium text-stone-800 mb-6">Customer Reviews</h3>
+                
+                {/* Write Review Form */}
+                <div className="bg-[#FDFBF9] rounded-2xl p-6 border border-[#E8DCC9] mb-8">
+                  <h4 className="text-stone-800 font-medium mb-4">Write a Review</h4>
+                  <form onSubmit={handleReviewSubmit} className="flex flex-col gap-4">
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-sm text-stone-600">Your Name</label>
+                      <input type="text" value={reviewForm.user_name} onChange={e => setReviewForm({...reviewForm, user_name: e.target.value})} className="border border-stone-200 rounded-lg px-3 py-2 text-sm" placeholder="John Doe" required />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-sm text-stone-600">Rating (1-5)</label>
+                      <select value={reviewForm.rating} onChange={e => setReviewForm({...reviewForm, rating: Number(e.target.value)})} className="border border-stone-200 rounded-lg px-3 py-2 text-sm bg-white">
+                        <option value={5}>5 Stars</option>
+                        <option value={4}>4 Stars</option>
+                        <option value={3}>3 Stars</option>
+                        <option value={2}>2 Stars</option>
+                        <option value={1}>1 Star</option>
+                      </select>
+                    </div>
+                    <div className="flex flex-col gap-1.5">
+                      <label className="text-sm text-stone-600">Comment (Optional)</label>
+                      <textarea value={reviewForm.comment} onChange={e => setReviewForm({...reviewForm, comment: e.target.value})} className="border border-stone-200 rounded-lg px-3 py-2 text-sm resize-none h-20" placeholder="Share your experience..."></textarea>
+                    </div>
+                    <button type="submit" disabled={isSubmittingReview} className="mt-2 bg-[#C49B89] hover:bg-[#B38775] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors w-max disabled:opacity-70">
+                      {isSubmittingReview ? "Submitting..." : "Submit Review"}
+                    </button>
+                  </form>
+                </div>
+
+                <div className="flex flex-col gap-4">
+                  {salon?.reviews && salon.reviews.length > 0 ? (
+                    salon.reviews.map((r: any) => (
+                      <div key={r.id} className="border border-stone-100 rounded-xl p-5 bg-white shadow-sm">
+                        <div className="flex items-center justify-between mb-2">
+                          <span className="font-medium text-stone-800">{r.user_name}</span>
+                          <span className="text-xs text-stone-400">{new Date(r.created_at).toLocaleDateString()}</span>
+                        </div>
+                        <div className="flex items-center gap-1 mb-3">
+                          {[...Array(5)].map((_, i) => (
+                            <Star key={i} size={14} className={i < r.rating ? "text-[#DEB5A4] fill-[#DEB5A4]" : "text-stone-200"} />
+                          ))}
+                        </div>
+                        {r.comment && <p className="text-stone-600 text-sm leading-relaxed">{r.comment}</p>}
+                      </div>
+                    ))
+                  ) : (
+                    <div className="text-stone-500 py-4 italic">No reviews yet. Be the first to leave one!</div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {activeTab === "About" && (
+              <div className="mb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <h3 className="font-serif text-lg font-medium text-stone-800 mb-6">About {salon?.name}</h3>
+                <div className="bg-white rounded-2xl p-6 border border-stone-100 shadow-sm">
+                  {salon?.about ? (
+                    <p className="text-stone-600 leading-relaxed whitespace-pre-line">{salon.about}</p>
+                  ) : (
+                    <p className="text-stone-500 italic">No description provided by the salon.</p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Right Sticky Booking Panel */}
@@ -269,7 +435,7 @@ export function SalonDetailsPage() {
                     </p>
                   </div>
                   <span className="text-stone-600 font-semibold text-sm">
-                    {formatINR(s.price)}
+                    {formatINR(s.discounted_price ?? s.price)}
                   </span>
                 </div>
               ))}

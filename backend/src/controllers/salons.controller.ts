@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import asyncHandler from "express-async-handler";
 import { SalonsService } from "../services/salons.service";
+import { query } from "../config/db";
 
 export class SalonsController {
   private salonsService: SalonsService;
@@ -89,6 +90,30 @@ export class SalonsController {
     res.status(201).json({
       success: true,
       data: salon,
+    });
+  });
+
+  /**
+   * @route   POST /api/v1/salons/:id/reviews
+   * @desc    Create a new review for a salon
+   */
+  public createReview = asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { user_name, rating, comment } = req.body;
+
+    if (!user_name || !rating) {
+      res.status(400);
+      throw new Error("Please provide user_name and rating (1-5)");
+    }
+
+    const result = await query(
+      "INSERT INTO public.reviews (salon_id, user_name, rating, comment) VALUES ($1, $2, $3, $4) RETURNING *",
+      [id, user_name, rating, comment || null]
+    );
+
+    res.status(201).json({
+      success: true,
+      data: result.rows[0],
     });
   });
 }

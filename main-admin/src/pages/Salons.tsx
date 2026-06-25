@@ -1,719 +1,466 @@
-import { useState, useEffect, useRef } from "react";
-import Layout from "../components/Layout";
-import { API_BASE_URL } from "../services/apiBase";
+import { useEffect, useState } from 'react';
+import Layout from '../components/Layout';
+import { API_BASE_URL } from '../services/apiBase';
+import { Plus, Edit2, Key, MapPin, Phone, User, Store, X } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Card, CardContent } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
 
 export default function Salons() {
-  const [showModal, setShowModal] = useState(false);
-  const [showAdminModal, setShowAdminModal] = useState(false);
   const [salons, setSalons] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Modals state
+  const [showSalonModal, setShowSalonModal] = useState(false);
+  const [showAdminModal, setShowAdminModal] = useState(false);
+  
+  // Form states
   const [editingSalonId, setEditingSalonId] = useState<string | null>(null);
-  const [isResolvingLocation, setIsResolvingLocation] = useState(false);
-  const submittingSalonRef = useRef(false);
-  const [isSubmittingSalon, setIsSubmittingSalon] = useState(false);
-
-  const submittingAdminRef = useRef(false);
-  const [isSubmittingAdmin, setIsSubmittingAdmin] = useState(false);
-
-  // Salon state
-  const [form, setForm] = useState({
-    name: "",
-    address: "",
-    city: "",
-    state: "",
-    country: "",
-    starting_price: 50,
-    latitude: "",
-    longitude: "",
-    google_maps_link: "",
-    phone: "",
-    email: "",
-    image: "",
-    description: "",
+  const [salonForm, setSalonForm] = useState({ 
+    name: '', address: '', phone: '', admin_email: '', 
+    google_maps_link: '', latitude: '', longitude: '' 
   });
+  const [isResolvingLocation, setIsResolvingLocation] = useState(false);
+  
+  // Admin form state
+  const [selectedSalonId, setSelectedSalonId] = useState<string | null>(null);
+  const [adminForm, setAdminForm] = useState({ email: '', password: '' });
 
-  // Admin state
-  const [adminEmail, setAdminEmail] = useState("");
-  const [adminPassword, setAdminPassword] = useState("");
-  const [adminSalonId, setAdminSalonId] = useState("");
-
-  const VITE_BACKEND_URL = API_BASE_URL;
-
-  const fetchSalons = async () => {
-    try {
-      const res = await fetch(`${VITE_BACKEND_URL}/salons`);
-      const json = await res.json();
-      if (json.success) {
-        setSalons(json.data || []);
-      }
-    } catch (e) {
-      console.error(e);
-    }
-  };
+  const [isSubmittingSalon, setIsSubmittingSalon] = useState(false);
+  const [isSubmittingAdmin, setIsSubmittingAdmin] = useState(false);
 
   useEffect(() => {
     fetchSalons();
   }, []);
 
-  const openCreate = () => {
-    setEditingSalonId(null);
-    setForm({
-      name: "",
-      address: "",
-      city: "",
-      state: "",
-      country: "",
-      starting_price: 50,
-      latitude: "",
-      longitude: "",
-      google_maps_link: "",
-      phone: "",
-      email: "",
-      image: "",
-      description: "",
-    });
-    setShowModal(true);
-  };
-
-  const openEdit = (s: any) => {
-    setEditingSalonId(s.id);
-    setForm({
-      name: s.name || "",
-      address: s.address || "",
-      city: s.city || "",
-      state: s.state || "",
-      country: s.country || "",
-      starting_price: s.starting_price || 50,
-      latitude: s.latitude || "",
-      longitude: s.longitude || "",
-      google_maps_link: s.google_maps_link || "",
-      phone: s.phone || "",
-      email: s.email || "",
-      image: s.image || "",
-      description: s.description || "",
-    });
-    setShowModal(true);
-  };
-
-  const handleCreateOrUpdate = async () => {
-    if (submittingSalonRef.current) return;
-    submittingSalonRef.current = true;
-    setIsSubmittingSalon(true);
+  const fetchSalons = async () => {
     try {
-      const payload = {
-        ...form,
-        starting_price: Number(form.starting_price),
-        latitude: form.latitude ? Number(form.latitude) : 0,
-        longitude: form.longitude ? Number(form.longitude) : 0,
-      };
-
-      const method = editingSalonId ? "PUT" : "POST";
-      const endpoint = editingSalonId
-        ? `${VITE_BACKEND_URL}/admin/salons/${editingSalonId}`
-        : `${VITE_BACKEND_URL}/admin/salons`;
-
-      const res = await fetch(endpoint, {
-        method,
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("superadmin_token")}`,
-        },
-        body: JSON.stringify(payload),
-      });
-      if (res.ok) {
-        setShowModal(false);
-        fetchSalons();
-      } else {
-        const json = await res.json();
-        alert("Failed to save salon: " + (json.message || "Error"));
+      const res = await fetch(`${API_BASE_URL}/salons`);
+      const data = await res.json();
+      if (data.success) {
+        setSalons(data.data || []);
       }
-    } catch (e) {
-      console.error(e);
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
     }
-    finally {
-      submittingSalonRef.current = false;
-      setIsSubmittingSalon(false);
-    }
+  };
+
+  const openAddSalon = () => {
+    setEditingSalonId(null);
+    setSalonForm({ 
+      name: '', address: '', phone: '', admin_email: '',
+      google_maps_link: '', latitude: '', longitude: ''
+    });
+    setShowSalonModal(true);
+  };
+
+  const openEditSalon = (salon: any) => {
+    setEditingSalonId(salon.id);
+    setSalonForm({
+      name: salon.name || '',
+      address: salon.address || '',
+      phone: salon.phone || '',
+      admin_email: salon.admin_email || '',
+      google_maps_link: salon.google_maps_link || '',
+      latitude: salon.latitude || '',
+      longitude: salon.longitude || ''
+    });
+    setShowSalonModal(true);
   };
 
   const handleResolveLocation = async () => {
-    const query = [form.address, form.city, form.state, form.country]
-      .map((value) => value.trim())
-      .filter(Boolean)
-      .join(", ");
-
-    if (!query) {
-      alert("Please enter at least an address or city first.");
-      return;
-    }
-
+    if (!salonForm.address) return alert("Please enter an address first.");
+    setIsResolvingLocation(true);
     try {
-      setIsResolvingLocation(true);
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(query)}`,
-        {
-          headers: {
-            Accept: "application/json",
-          },
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error("Unable to resolve location");
+      const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(salonForm.address)}`);
+      const data = await res.json();
+      if (data && data.length > 0) {
+        setSalonForm({
+          ...salonForm,
+          latitude: data[0].lat,
+          longitude: data[0].lon
+        });
+      } else {
+        alert("Could not automatically find coordinates for this address.");
       }
-
-      const results = await response.json();
-      if (!Array.isArray(results) || results.length === 0) {
-        alert("No matching location was found. Try a more specific address.");
-        return;
-      }
-
-      const resolved = results[0];
-      setForm({
-        ...form,
-        latitude: resolved.lat || "",
-        longitude: resolved.lon || "",
-      });
-    } catch (error: any) {
-      alert(error.message || "Failed to resolve location.");
+    } catch (err) {
+      console.error(err);
+      alert("Error resolving address.");
     } finally {
       setIsResolvingLocation(false);
     }
   };
 
-  const handleDelete = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this salon?")) return;
+  const handleSaveSalon = async () => {
+    if (!salonForm.name) return alert('Name is required');
+    setIsSubmittingSalon(true);
     try {
-      const res = await fetch(`${VITE_BACKEND_URL}/admin/salons/${id}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("superadmin_token")}`,
-        },
+      const url = editingSalonId 
+        ? `${API_BASE_URL}/salons/${editingSalonId}`
+        : `${API_BASE_URL}/salons`;
+      const method = editingSalonId ? 'PUT' : 'POST';
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(salonForm)
       });
-      if (res.ok) {
+      const data = await res.json();
+      if (data.success) {
+        setShowSalonModal(false);
         fetchSalons();
       } else {
-        const json = await res.json();
-        alert("Failed to delete salon: " + (json.message || "Error"));
+        alert(data.message || 'Failed to save salon');
       }
-    } catch (e) {
-      console.error(e);
+    } catch (err) {
+      console.error(err);
+      alert('Error saving salon');
+    } finally {
+      setIsSubmittingSalon(false);
     }
   };
 
+  const openCreateAdmin = (salonId: string) => {
+    setSelectedSalonId(salonId);
+    setAdminForm({ email: '', password: '' });
+    setShowAdminModal(true);
+  };
+
   const handleCreateAdmin = async () => {
-    if (submittingAdminRef.current) return;
-    submittingAdminRef.current = true;
+    if (!adminForm.email || !adminForm.password) return alert('Email and password required');
     setIsSubmittingAdmin(true);
     try {
-      const res = await fetch(`${VITE_BACKEND_URL}/auth/create-salon-admin`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("superadmin_token")}`,
-        },
+      const res = await fetch(`${API_BASE_URL}/salons/admin/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: adminEmail,
-          password: adminPassword,
-          salon_id: adminSalonId,
-        }),
+          salon_id: selectedSalonId,
+          email: adminForm.email,
+          password: adminForm.password
+        })
       });
-      const json = await res.json();
-      if (res.ok) {
-        alert("Admin created successfully!");
+      const data = await res.json();
+      if (data.success) {
         setShowAdminModal(false);
-        setAdminEmail("");
-        setAdminPassword("");
-        setAdminSalonId("");
+        alert('Admin account created/updated successfully');
       } else {
-        alert("Failed to create admin: " + (json.message || "Error"));
+        alert(data.message || 'Failed to create admin');
       }
-    } catch (e) {
-      console.error(e);
+    } catch (err) {
+      console.error(err);
+      alert('Error creating admin');
     } finally {
-      submittingAdminRef.current = false;
       setIsSubmittingAdmin(false);
     }
   };
 
+  const containerVars = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1 }
+    }
+  };
+
+  const itemVars = {
+    hidden: { opacity: 0, y: 20 },
+    show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 300, damping: 24 } }
+  };
+
   return (
     <Layout>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-        }}
-      >
-        <h1 style={{ color: "#111" }}>Manage Salons</h1>
-        <button
-          onClick={openCreate}
-          style={{
-            background: "#000",
-            color: "#fff",
-            padding: "10px 20px",
-            borderRadius: "8px",
-            border: "none",
-            cursor: "pointer",
-          }}
+      <div className="flex flex-col gap-8 pb-10">
+        
+        {/* Header */}
+        <motion.div 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
         >
-          + Add New Salon
-        </button>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight text-stone-900 mb-1">Manage Salons</h1>
+            <p className="text-stone-500">Add, edit, or configure administrators for your global network.</p>
+          </div>
+          <Button onClick={openAddSalon} className="gap-2 shrink-0 bg-indigo-600 hover:bg-indigo-700">
+            <Plus size={18} />
+            Add New Salon
+          </Button>
+        </motion.div>
+
+        {/* Salons Grid */}
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            {[1, 2, 3].map(i => (
+              <div key={i} className="h-48 bg-stone-100 rounded-3xl animate-pulse" />
+            ))}
+          </div>
+        ) : salons.length === 0 ? (
+          <div className="flex flex-col items-center justify-center p-12 bg-white rounded-3xl border border-dashed border-stone-200 shadow-sm">
+            <div className="w-16 h-16 bg-stone-50 rounded-full flex items-center justify-center text-stone-400 mb-4">
+              <Store size={32} />
+            </div>
+            <h3 className="text-lg font-bold text-stone-800">No salons found</h3>
+            <p className="text-stone-500 text-sm mt-1">Get started by adding your first salon location.</p>
+            <Button onClick={openAddSalon} variant="outline" className="mt-6">Add Salon</Button>
+          </div>
+        ) : (
+          <motion.div 
+            variants={containerVars}
+            initial="hidden"
+            animate="show"
+            className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6"
+          >
+            {salons.map(s => (
+              <motion.div key={s.id} variants={itemVars}>
+                <Card className="h-full hover:border-indigo-200 transition-all duration-300 group hover:shadow-lg flex flex-col">
+                  <CardContent className="p-6 flex-1 flex flex-col">
+                    <div className="flex justify-between items-start mb-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-colors">
+                          <Store size={24} />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-bold text-stone-900 group-hover:text-indigo-900 transition-colors line-clamp-1">{s.name}</h3>
+                          <div className="flex items-center gap-1 text-xs text-stone-500 mt-0.5">
+                            <span className="font-mono bg-stone-100 px-1.5 py-0.5 rounded text-[10px]">ID: {s.id.substring(0, 8)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3 mb-8 flex-1">
+                      <div className="flex items-start gap-3 text-sm text-stone-600">
+                        <MapPin size={16} className="text-stone-400 mt-0.5 shrink-0" />
+                        <span className="leading-snug line-clamp-2">{s.address || 'No address provided'}</span>
+                      </div>
+                      <div className="flex items-center gap-3 text-sm text-stone-600">
+                        <Phone size={16} className="text-stone-400 shrink-0" />
+                        <span>{s.phone || 'No phone provided'}</span>
+                      </div>
+                      <div className="flex items-center gap-3 text-sm text-stone-600">
+                        <User size={16} className="text-stone-400 shrink-0" />
+                        <span className={s.admin_email ? 'text-stone-800 font-medium' : 'text-stone-400 italic'}>
+                          {s.admin_email || 'No admin email assigned'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 pt-4 border-t border-stone-100 mt-auto">
+                      <Button variant="outline" size="sm" onClick={() => openEditSalon(s)} className="flex-1 gap-2 border-stone-200 hover:border-indigo-300 hover:text-indigo-700 hover:bg-indigo-50">
+                        <Edit2 size={14} /> Edit
+                      </Button>
+                      <Button variant="outline" size="sm" onClick={() => openCreateAdmin(s.id)} className="flex-1 gap-2 border-stone-200 hover:border-purple-300 hover:text-purple-700 hover:bg-purple-50">
+                        <Key size={14} /> Admin
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </motion.div>
+        )}
       </div>
 
-      <div
-        style={{
-          marginTop: "30px",
-          background: "#fff",
-          borderRadius: "12px",
-          border: "1px solid #eee",
-          overflow: "hidden",
-        }}
-      >
-        <table
-          style={{
-            width: "100%",
-            borderCollapse: "collapse",
-            textAlign: "left",
-            color: "#111",
-          }}
-        >
-          <thead
-            style={{ background: "#f5f5f5", borderBottom: "1px solid #eee" }}
-          >
-            <tr>
-              <th style={{ padding: "15px 20px" }}>Name</th>
-              <th style={{ padding: "15px 20px" }}>City/State</th>
-              <th style={{ padding: "15px 20px" }}>Contact</th>
-              <th style={{ padding: "15px 20px" }}>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {salons.length > 0 ? (
-              salons.map((s) => (
-                <tr key={s.id} style={{ borderBottom: "1px solid #eee" }}>
-                  <td style={{ padding: "15px 20px" }}>
-                    <strong>{s.name}</strong>
-                  </td>
-                  <td style={{ padding: "15px 20px" }}>
-                    {s.city}
-                    {s.state ? `, ${s.state}` : ""}
-                  </td>
-                  <td style={{ padding: "15px 20px" }}>
-                    {s.email && <div>{s.email}</div>}
-                    {s.phone && <div>{s.phone}</div>}
-                  </td>
-                  <td style={{ padding: "15px 20px" }}>
-                    <button
-                      onClick={() => {
-                        setAdminSalonId(s.id);
-                        setShowAdminModal(true);
-                      }}
-                      style={{
-                        background: "#CA9A86",
-                        border: "none",
-                        padding: "5px 10px",
-                        borderRadius: "6px",
-                        cursor: "pointer",
-                        color: "#fff",
-                        marginRight: "5px",
-                      }}
-                    >
-                      + Create Admin
-                    </button>
-                    <button
-                      onClick={() => openEdit(s)}
-                      style={{
-                        background: "transparent",
-                        border: "1px solid #ccc",
-                        padding: "5px 10px",
-                        borderRadius: "6px",
-                        cursor: "pointer",
-                        color: "#111",
-                        marginRight: "5px",
-                      }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(s.id)}
-                      style={{
-                        background: "#a00",
-                        color: "#fff",
-                        border: "none",
-                        padding: "5px 10px",
-                        borderRadius: "6px",
-                        cursor: "pointer",
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td
-                  colSpan={4}
-                  style={{ padding: "15px 20px", textAlign: "center" }}
-                >
-                  No salons found.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-
-      {showModal && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.5)",
-            display: "flex",
-            alignItems: "flex-start",
-            justifyContent: "center",
-            overflowY: "auto",
-            padding: "20px 0",
-          }}
-        >
-          <div
-            style={{
-              background: "#fff",
-              padding: "30px",
-              borderRadius: "12px",
-              width: "500px",
-              margin: "auto",
-            }}
-          >
-            <h2 style={{ marginTop: 0, color: "#111" }}>
-              {editingSalonId ? "Edit Salon" : "Add New Salon"}
-            </h2>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "15px",
-                marginTop: "20px",
-              }}
+      {/* Add/Edit Salon Modal */}
+      <AnimatePresence>
+        {showSalonModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm"
+              onClick={() => setShowSalonModal(false)}
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white rounded-[32px] w-full max-w-xl relative z-10 shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
             >
-              <input
-                placeholder="Salon Name*"
-                value={form.name}
-                onChange={(e) => setForm({ ...form, name: e.target.value })}
-                style={{
-                  background: "#fff",
-                  padding: "10px",
-                  border: "1px solid #ccc",
-                  borderRadius: "6px",
-                  width: "100%",
-                  boxSizing: "border-box",
-                  color: "#111",
-                  gridColumn: "span 2",
-                }}
-              />
-              <input
-                placeholder="Address"
-                value={form.address}
-                onChange={(e) => setForm({ ...form, address: e.target.value })}
-                style={{
-                  background: "#fff",
-                  padding: "10px",
-                  border: "1px solid #ccc",
-                  borderRadius: "6px",
-                  width: "100%",
-                  boxSizing: "border-box",
-                  color: "#111",
-                  gridColumn: "span 2",
-                }}
-              />
-              <input
-                placeholder="City*"
-                value={form.city}
-                onChange={(e) => setForm({ ...form, city: e.target.value })}
-                style={{
-                  background: "#fff",
-                  padding: "10px",
-                  border: "1px solid #ccc",
-                  borderRadius: "6px",
-                  width: "100%",
-                  boxSizing: "border-box",
-                  color: "#111",
-                }}
-              />
-              <input
-                placeholder="State"
-                value={form.state}
-                onChange={(e) => setForm({ ...form, state: e.target.value })}
-                style={{
-                  background: "#fff",
-                  padding: "10px",
-                  border: "1px solid #ccc",
-                  borderRadius: "6px",
-                  width: "100%",
-                  boxSizing: "border-box",
-                  color: "#111",
-                }}
-              />
-              <input
-                placeholder="Country"
-                value={form.country}
-                onChange={(e) => setForm({ ...form, country: e.target.value })}
-                style={{
-                  background: "#fff",
-                  padding: "10px",
-                  border: "1px solid #ccc",
-                  borderRadius: "6px",
-                  width: "100%",
-                  boxSizing: "border-box",
-                  color: "#111",
-                }}
-              />
-              <input
-                placeholder="Starting Price*"
-                type="number"
-                value={form.starting_price}
-                onChange={(e) =>
-                  setForm({ ...form, starting_price: e.target.value as any })
-                }
-                style={{
-                  background: "#fff",
-                  padding: "10px",
-                  border: "1px solid #ccc",
-                  borderRadius: "6px",
-                  width: "100%",
-                  boxSizing: "border-box",
-                  color: "#111",
-                }}
-              />
-              <input
-                placeholder="Phone"
-                value={form.phone}
-                onChange={(e) => setForm({ ...form, phone: e.target.value })}
-                style={{
-                  background: "#fff",
-                  padding: "10px",
-                  border: "1px solid #ccc",
-                  borderRadius: "6px",
-                  width: "100%",
-                  boxSizing: "border-box",
-                  color: "#111",
-                }}
-              />
-              <input
-                placeholder="Email"
-                type="email"
-                value={form.email}
-                onChange={(e) => setForm({ ...form, email: e.target.value })}
-                style={{
-                  background: "#fff",
-                  padding: "10px",
-                  border: "1px solid #ccc",
-                  borderRadius: "6px",
-                  width: "100%",
-                  boxSizing: "border-box",
-                  color: "#111",
-                }}
-              />
-              <input
-                placeholder="Latitude"
-                value={form.latitude}
-                onChange={(e) => setForm({ ...form, latitude: e.target.value })}
-                style={{
-                  background: "#fff",
-                  padding: "10px",
-                  border: "1px solid #ccc",
-                  borderRadius: "6px",
-                  width: "100%",
-                  boxSizing: "border-box",
-                  color: "#111",
-                }}
-              />
-              <input
-                placeholder="Longitude"
-                value={form.longitude}
-                onChange={(e) =>
-                  setForm({ ...form, longitude: e.target.value })
-                }
-                style={{
-                  background: "#fff",
-                  padding: "10px",
-                  border: "1px solid #ccc",
-                  borderRadius: "6px",
-                  width: "100%",
-                  boxSizing: "border-box",
-                  color: "#111",
-                }}
-              />
-              <button
-                type="button"
-                onClick={handleResolveLocation}
-                disabled={isResolvingLocation}
-                style={{
-                  gridColumn: "span 2",
-                  background: "#f5f5f5",
-                  border: "1px solid #ccc",
-                  color: "#111",
-                  padding: "10px",
-                  borderRadius: "6px",
-                  cursor: isResolvingLocation ? "not-allowed" : "pointer",
-                }}
-              >
-                {isResolvingLocation ? "Resolving Location..." : "Auto-fill Coordinates from Address"}
-              </button>
-              <input
-                placeholder="Google Maps Link"
-                value={form.google_maps_link}
-                onChange={(e) =>
-                  setForm({ ...form, google_maps_link: e.target.value })
-                }
-                style={{
-                  background: "#fff",
-                  padding: "10px",
-                  border: "1px solid #ccc",
-                  borderRadius: "6px",
-                  width: "100%",
-                  boxSizing: "border-box",
-                  color: "#111",
-                  gridColumn: "span 2",
-                }}
-              />
-
-              <div
-                style={{
-                  display: "flex",
-                  gap: "10px",
-                  marginTop: "10px",
-                  gridColumn: "span 2",
-                }}
-              >
-                <button
-                  onClick={handleCreateOrUpdate}
-                  disabled={isSubmittingSalon}
-                  style={{
-                    flex: 1,
-                    background: isSubmittingSalon ? "#666" : "#000",
-                    color: "#fff",
-                    padding: "10px",
-                    borderRadius: "6px",
-                    border: "none",
-                    cursor: isSubmittingSalon ? "not-allowed" : "pointer",
-                  }}
-                >
-                  {isSubmittingSalon ? "Saving..." : "Save Salon"}
-                </button>
-                <button
-                  onClick={() => setShowModal(false)}
-                  style={{
-                    flex: 1,
-                    background: "#fff",
-                    color: "#111",
-                    padding: "10px",
-                    borderRadius: "6px",
-                    border: "1px solid #ccc",
-                    cursor: "pointer",
-                  }}
-                >
-                  Cancel
+              <div className="px-6 py-5 border-b border-stone-100 flex items-center justify-between bg-stone-50/50 sticky top-0 z-20">
+                <h2 className="text-lg font-bold text-stone-900 flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600">
+                    <Store size={16} />
+                  </div>
+                  {editingSalonId ? 'Edit Salon' : 'Add New Salon'}
+                </h2>
+                <button onClick={() => setShowSalonModal(false)} className="p-2 text-stone-400 hover:text-stone-600 hover:bg-stone-100 rounded-full transition-colors">
+                  <X size={20} />
                 </button>
               </div>
-            </div>
-          </div>
-        </div>
-      )}
+              
+              <div className="p-6 flex flex-col gap-5 overflow-y-auto">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                  <div className="flex flex-col gap-1.5 sm:col-span-2">
+                    <label className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">Salon Name *</label>
+                    <Input 
+                      value={salonForm.name} 
+                      onChange={e => setSalonForm({...salonForm, name: e.target.value})} 
+                      placeholder="e.g. Glowup Downtown"
+                      autoFocus
+                    />
+                  </div>
+                  
+                  <div className="flex flex-col gap-1.5 sm:col-span-2">
+                    <label className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">Address</label>
+                    <Input 
+                      value={salonForm.address} 
+                      onChange={e => setSalonForm({...salonForm, address: e.target.value})} 
+                      placeholder="123 Main St, City, State"
+                    />
+                  </div>
+                  
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">Phone</label>
+                    <Input 
+                      value={salonForm.phone} 
+                      onChange={e => setSalonForm({...salonForm, phone: e.target.value})} 
+                      placeholder="(555) 123-4567"
+                    />
+                  </div>
+                  
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">Admin Email</label>
+                    <Input 
+                      type="email"
+                      value={salonForm.admin_email} 
+                      onChange={e => setSalonForm({...salonForm, admin_email: e.target.value})} 
+                      placeholder="admin@salon.com"
+                    />
+                  </div>
 
-      {showAdminModal && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.5)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <div
-            style={{
-              background: "#fff",
-              padding: "30px",
-              borderRadius: "12px",
-              width: "400px",
-            }}
-          >
-            <h2 style={{ marginTop: 0, color: "#111" }}>Create Salon Admin</h2>
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                gap: "15px",
-                marginTop: "20px",
-              }}
+                  {/* Location Info */}
+                  <div className="sm:col-span-2 pt-4 border-t border-stone-100">
+                    <h3 className="text-sm font-bold text-stone-800 mb-3">Map & Location</h3>
+                  </div>
+
+                  <div className="flex flex-col gap-1.5 sm:col-span-2">
+                    <label className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">Google Maps Link</label>
+                    <Input 
+                      value={salonForm.google_maps_link} 
+                      onChange={e => setSalonForm({...salonForm, google_maps_link: e.target.value})} 
+                      placeholder="https://maps.google.com/..."
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">Latitude</label>
+                    <Input 
+                      value={salonForm.latitude} 
+                      onChange={e => setSalonForm({...salonForm, latitude: e.target.value})} 
+                      placeholder="e.g. 40.7128"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">Longitude</label>
+                    <Input 
+                      value={salonForm.longitude} 
+                      onChange={e => setSalonForm({...salonForm, longitude: e.target.value})} 
+                      placeholder="e.g. -74.0060"
+                    />
+                  </div>
+
+                  <div className="sm:col-span-2 flex justify-end">
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleResolveLocation}
+                      disabled={isResolvingLocation}
+                      className="text-xs"
+                    >
+                      {isResolvingLocation ? "Resolving..." : "Auto-fill Coordinates"}
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 mt-4 pt-5 border-t border-stone-100">
+                  <Button variant="outline" className="flex-1" onClick={() => setShowSalonModal(false)}>
+                    Cancel
+                  </Button>
+                  <Button className="flex-1" onClick={handleSaveSalon} disabled={isSubmittingSalon}>
+                    {isSubmittingSalon ? "Saving..." : "Save Salon"}
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Admin Account Modal */}
+      <AnimatePresence>
+        {showAdminModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-stone-900/60 backdrop-blur-sm"
+              onClick={() => setShowAdminModal(false)}
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="bg-white rounded-[32px] w-full max-w-sm relative z-10 shadow-2xl overflow-hidden"
             >
-              <input
-                placeholder="Admin Email"
-                value={adminEmail}
-                onChange={(e) => setAdminEmail(e.target.value)}
-                style={{
-                  background: "#fff",
-                  padding: "10px",
-                  border: "1px solid #ccc",
-                  borderRadius: "6px",
-                  width: "100%",
-                  boxSizing: "border-box",
-                  color: "#111",
-                }}
-              />
-              <input
-                placeholder="Password"
-                type="password"
-                value={adminPassword}
-                onChange={(e) => setAdminPassword(e.target.value)}
-                style={{
-                  background: "#fff",
-                  padding: "10px",
-                  border: "1px solid #ccc",
-                  borderRadius: "6px",
-                  width: "100%",
-                  boxSizing: "border-box",
-                  color: "#111",
-                }}
-              />
-              <div style={{ display: "flex", gap: "10px", marginTop: "10px" }}>
-                <button
-                  onClick={handleCreateAdmin}
-                  disabled={isSubmittingAdmin}
-                  style={{
-                    flex: 1,
-                    background: "#000",
-                    color: "#fff",
-                    padding: "10px",
-                    borderRadius: "6px",
-                    border: "none",
-                    cursor: isSubmittingAdmin ? "not-allowed" : "pointer",
-                  }}
-                >
-                  {isSubmittingAdmin ? "Creating..." : "Create Account"}
-                </button>
-                <button
-                  onClick={() => setShowAdminModal(false)}
-                  style={{
-                    flex: 1,
-                    background: "#fff",
-                    color: "#111",
-                    padding: "10px",
-                    borderRadius: "6px",
-                    border: "1px solid #ccc",
-                    cursor: "pointer",
-                  }}
-                >
-                  Cancel
+              <div className="px-6 py-5 border-b border-stone-100 flex items-center justify-between bg-stone-50/50">
+                <h2 className="text-lg font-bold text-stone-900 flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600">
+                    <Key size={16} />
+                  </div>
+                  Set Admin Account
+                </h2>
+                <button onClick={() => setShowAdminModal(false)} className="p-2 text-stone-400 hover:text-stone-600 hover:bg-stone-100 rounded-full transition-colors">
+                  <X size={20} />
                 </button>
               </div>
-            </div>
+              
+              <div className="p-6 flex flex-col gap-5">
+                <div className="bg-purple-50 text-purple-700 text-xs font-medium p-4 rounded-2xl border border-purple-100">
+                  <strong className="block mb-1 text-sm">Action Required</strong>
+                  This will override any existing admin credentials for this salon.
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">Email Address *</label>
+                  <Input 
+                    type="email"
+                    value={adminForm.email} 
+                    onChange={e => setAdminForm({...adminForm, email: e.target.value})} 
+                    placeholder="admin@example.com"
+                  />
+                </div>
+                
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">Password *</label>
+                  <Input 
+                    type="password"
+                    value={adminForm.password} 
+                    onChange={e => setAdminForm({...adminForm, password: e.target.value})} 
+                    placeholder="••••••••"
+                  />
+                </div>
+
+                <div className="flex gap-3 mt-4 pt-5 border-t border-stone-100">
+                  <Button variant="outline" className="flex-1" onClick={() => setShowAdminModal(false)}>
+                    Cancel
+                  </Button>
+                  <Button className="flex-1 bg-purple-600 hover:bg-purple-700 text-white" onClick={handleCreateAdmin} disabled={isSubmittingAdmin}>
+                    {isSubmittingAdmin ? "Creating..." : "Set Account"}
+                  </Button>
+                </div>
+              </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </Layout>
   );
 }

@@ -116,10 +116,10 @@ export function CheckoutPage() {
           const formatted = list.map((item: any) => ({
             id: item.id,
             name: item.name,
-            price: Number(item.discounted_price || item.price),
-            originalPrice: Number(item.original_price || item.price),
-            homeServiceAvailable: item.home_service_available || item.homeServiceAvailable || false,
-            homeServicePrice: Number(item.home_service_price || item.discounted_price || item.price),
+            price: Number(item.discounted_price ?? item.price),
+            originalPrice: Number(item.original_price ?? item.price),
+            homeServiceAvailable: item.home_service_available ?? item.homeServiceAvailable ?? false,
+            homeServicePrice: Number(item.home_service_price ?? item.discounted_price ?? item.price),
             duration:
               typeof item.duration === "number"
                 ? `${item.duration} mins`
@@ -157,10 +157,10 @@ export function CheckoutPage() {
           const formatted = serviceRows.map((item: any) => ({
             id: item.id,
             name: item.name,
-            price: Number(item.discounted_price || item.price),
-            originalPrice: Number(item.original_price || item.price),
-            homeServiceAvailable: item.home_service_available || item.homeServiceAvailable || false,
-            homeServicePrice: Number(item.home_service_price || item.discounted_price || item.price),
+            price: Number(item.discounted_price ?? item.price),
+            originalPrice: Number(item.original_price ?? item.price),
+            homeServiceAvailable: item.home_service_available ?? item.homeServiceAvailable ?? false,
+            homeServicePrice: Number(item.home_service_price ?? item.discounted_price ?? item.price),
             duration:
               typeof item.duration === "number"
                 ? `${item.duration} mins`
@@ -188,10 +188,21 @@ export function CheckoutPage() {
       try {
         const list = JSON.parse(savedSelected);
         if (list && list.length > 0) {
-          setSelectedServicesArr(list);
-          const total = list.reduce((sum: number, s: any) => sum + Number(s.price), 0);
-          const serviceNames = list.map((s: any) => s.name).join(", ");
-          const serviceIds = list.map((s: any) => s.id).join(",");
+          const formattedList = list.map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            price: Number(item.discounted_price ?? item.price),
+            originalPrice: Number(item.original_price ?? item.price),
+            homeServiceAvailable: item.home_service_available ?? item.homeServiceAvailable ?? false,
+            homeServicePrice: Number(item.home_service_price ?? item.discounted_price ?? item.price),
+            duration: typeof item.duration === "number" ? `${item.duration} mins` : item.duration || "60 mins",
+            image: item.image_url || item.image || "https://images.unsplash.com/photo-1595476108010-b4d1f10d5e43?q=80&w=200&auto=format&fit=crop",
+          }));
+
+          setSelectedServicesArr(formattedList);
+          const total = formattedList.reduce((sum: number, s: any) => sum + Number(s.price), 0);
+          const serviceNames = formattedList.map((s: any) => s.name).join(", ");
+          const serviceIds = formattedList.map((s: any) => s.id).join(",");
           
           setBookingData((prev) => ({
             ...prev,
@@ -268,7 +279,7 @@ export function CheckoutPage() {
       const updated = { ...prev, [field]: value };
       if (field === "booking_type") {
         const total = selectedServicesArr.reduce((sum: number, s: any) => {
-          return sum + (value === "home" ? Number(s.homeServicePrice || s.price) : Number(s.price));
+          return sum + (value === "home" ? Number(s.homeServicePrice ?? s.price) : Number(s.price));
         }, 0);
         updated.total_price = total;
       }
@@ -282,7 +293,7 @@ export function CheckoutPage() {
     
     // In case single selection is used instead of array
     setSelectedServicesArr([hs]);
-    const priceToUse = bookingData.booking_type === "home" ? Number(hs.homeServicePrice || hs.price) : Number(hs.price);
+    const priceToUse = bookingData.booking_type === "home" ? Number(hs.homeServicePrice ?? hs.price) : Number(hs.price);
     handleUpdate("total_price", priceToUse);
   };
 
@@ -514,7 +525,7 @@ export function CheckoutPage() {
                                 <p className="text-xs text-stone-500">{s.duration || "60 mins"}</p>
                               </div>
                             </div>
-                            <span className="font-semibold text-[#CA9A86]">{formatINR(s.price)}</span>
+                            <span className="font-semibold text-[#CA9A86]">{formatINR(bookingData.booking_type === "home" ? (s.homeServicePrice ?? s.price) : s.price)}</span>
                           </div>
                         ))}
                       </div>
@@ -548,7 +559,7 @@ export function CheckoutPage() {
                                     </span>
                                   )}
                                   <span className="font-semibold text-[#CA9A86]">
-                                    {formatINR(hs.price)}
+                                    {formatINR(bookingData.booking_type === "home" ? (hs.homeServicePrice ?? hs.price) : hs.price)}
                                   </span>
                                 </div>
                               </div>

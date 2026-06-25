@@ -1,4 +1,6 @@
-const API_URL = (import.meta.env.VITE_API_URL as string) || "http://localhost:3000/api/v1";
+import { API_BASE_URL } from "./apiBase";
+
+const API_URL = API_BASE_URL;
 
 function getToken(): string | null {
   return localStorage.getItem("admin_token");
@@ -98,11 +100,11 @@ export const api = {
 
   // Services
   getServices: () => request("GET", "/admin/services"),
-  createService: (data: { name: string; price: number; duration: string }) =>
+  createService: (data: { name: string; price?: number; originalPrice?: number; discountedPrice?: number; duration: string; homeServiceAvailable?: boolean; homeServicePrice?: number }) =>
     request("POST", "/admin/services", data),
   updateService: (
     id: string,
-    data: { name: string; price: number; duration: string },
+    data: { name: string; price?: number; originalPrice?: number; discountedPrice?: number; duration: string; homeServiceAvailable?: boolean; homeServicePrice?: number },
   ) => request("PUT", `/admin/services/${id}`, data),
   deleteService: (id: string) => request("DELETE", `/admin/services/${id}`),
 
@@ -136,6 +138,11 @@ export const api = {
     rating?: number;
     latitude?: number;
     longitude?: number;
+    image?: string;
+    video?: string;
+    home_service_charge?: number;
+    about?: string;
+    gallery?: string[];
   }) => request("PUT", "/admin/salon-profile", data),
 
   createSalonProfile: (data: {
@@ -146,4 +153,25 @@ export const api = {
     latitude?: number;
     longitude?: number;
   }) => request("POST", "/admin/salon-profile", data),
+
+  uploadFile: async (file: File) => {
+    const token = getToken();
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const headers: Record<string, string> = {};
+    if (token) {
+      headers["Authorization"] = `Bearer ${token}`;
+    }
+
+    const res = await fetch(`${API_URL}/upload`, {
+      method: "POST",
+      headers,
+      body: formData,
+    });
+
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.message || "Failed to upload file");
+    return data;
+  },
 };

@@ -1,11 +1,13 @@
 import { useEffect, useState, useRef } from 'react'
 import Layout from '../components/Layout'
 import { api } from '../services/api'
+import { API_BASE_URL } from '../services/apiBase'
 import './pages.css'
 import dayjs from 'dayjs'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs'
 import { DatePicker } from '@mui/x-date-pickers/DatePicker'
+import CircularProgress from '@mui/material/CircularProgress';
 
 type Props = {
   user: any
@@ -141,7 +143,7 @@ export default function BookingsPage({ user, onLogout }: Props) {
         salon_id: user?.salon_id || null
       };
       
-      const res = await fetch('http://localhost:3000/api/v1/bookings', {
+      const res = await fetch(`${API_BASE_URL}/bookings`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -211,8 +213,9 @@ export default function BookingsPage({ user, onLogout }: Props) {
         </div>
 
         {loading ? (
-          <div className="empty-state">
-            <p>Loading bookings...</p>
+          <div className="empty-state" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+            <CircularProgress sx={{ color: '#CA9A86' }} size={40} />
+            <p style={{ color: '#7f6f69', fontWeight: 500 }}>Loading bookings...</p>
           </div>
         ) : bookings.length === 0 ? (
           <div className="empty-state">
@@ -226,6 +229,7 @@ export default function BookingsPage({ user, onLogout }: Props) {
               <tr>
                 <th>Customer</th>
                 <th>Service</th>
+                <th>Type</th>
                 <th>Date</th>
                 <th>Time</th>
                 <th>Stylist</th>
@@ -242,7 +246,21 @@ export default function BookingsPage({ user, onLogout }: Props) {
                     <div style={{ fontWeight: 600 }}>{b.customer_name}</div>
                     <div style={{ fontSize: '12px', color: '#7f6f69' }}>{b.customer_email}</div>
                   </td>
-                  <td>{b.service_name || b.hairstyle}</td>
+                  <td>
+                    {b.service_name || b.hairstyle}
+                    {b.booking_type === 'home' && b.address && (
+                      <div style={{ fontSize: '11px', color: '#7f6f69', marginTop: 4, maxWidth: '200px' }}>
+                        📍 {b.address}, {b.landmark ? b.landmark + ", " : ""}{b.city} - {b.pincode}
+                      </div>
+                    )}
+                  </td>
+                  <td>
+                    {b.booking_type === 'home' ? (
+                      <span className="badge pending" style={{ background: '#e0f2fe', color: '#0369a1' }}>🏠 Home</span>
+                    ) : (
+                      <span className="badge confirmed" style={{ background: '#f3ece7', color: '#5c4841' }}>🏪 Salon</span>
+                    )}
+                  </td>
                   <td>{new Date(b.appointment_date || b.booking_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</td>
                   <td>{b.appointment_time || b.booking_time}</td>
                   <td>

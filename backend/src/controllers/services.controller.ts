@@ -16,6 +16,11 @@ export const getPublicServices = asyncHandler(
     sql += " ORDER BY name ASC";
 
     const result = await query(sql, params);
-    res.json({ success: true, data: result.rows });
+    const mappedData = result.rows.map((row: any) => ({
+      ...row,
+      originalPrice: row.original_price ?? row.price,
+      discountedPrice: row.discounted_price ?? row.price,
+    }));
+    res.json({ success: true, data: mappedData });
   },
 );

@@ -1,4 +1,6 @@
-const API_URL = (import.meta.env.VITE_API_URL as string) || 'http://localhost:3000/api/v1'; // Use Vite env var or fallback
+import { API_BASE_URL } from "./apiBase";
+
+const API_URL = API_BASE_URL;
 
 export const auth = {
   login: async (email: string, password: string) => {

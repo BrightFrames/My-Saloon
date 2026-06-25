@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import Layout from "../components/Layout";
 import { api } from "../services/api";
 import "./pages.css";
+import CircularProgress from '@mui/material/CircularProgress';
 
 type Props = {
   user: any;
@@ -12,25 +13,23 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
-  const [showAddSalonModal, setShowAddSalonModal] = useState(false);
   const submitLockRef = useRef(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const [isCreatingSalon, setIsCreatingSalon] = useState(false);
   const [form, setForm] = useState({
     name: "",
     city: "",
     starting_price: "",
     latitude: "",
     longitude: "",
+    image: "",
+    video: "",
+    home_service_charge: "",
+    about: "",
+    gallery: [] as string[],
   });
-  const [addSalonForm, setAddSalonForm] = useState({
-    name: "",
-    city: "",
-    starting_price: "",
-    rating: "",
-    latitude: "",
-    longitude: "",
-  });
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+
 
   const fetchProfile = async () => {
     try {
@@ -44,6 +43,11 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
           starting_price: String(res.data.starting_price || 0),
           latitude: String(res.data.latitude || ""),
           longitude: String(res.data.longitude || ""),
+          image: res.data.image || "",
+          video: res.data.video || "",
+          home_service_charge: String(res.data.home_service_charge || 0),
+          about: res.data.about || "",
+          gallery: res.data.gallery || [],
         });
       }
     } catch (err) {
@@ -56,6 +60,57 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
   useEffect(() => {
     fetchProfile();
   }, []);
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    try {
+      setIsUploadingImage(true);
+      const res = await api.uploadFile(e.target.files[0]);
+      if (res.success && res.data.url) {
+        setForm({ ...form, image: res.data.url });
+      }
+    } catch (err: any) {
+      alert("Failed to upload image: " + err.message);
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    try {
+      setIsUploadingVideo(true);
+      const res = await api.uploadFile(e.target.files[0]);
+      if (res.success && res.data.url) {
+        setForm({ ...form, video: res.data.url });
+      }
+    } catch (err: any) {
+      alert("Failed to upload video: " + err.message);
+    } finally {
+      setIsUploadingVideo(false);
+    }
+  };
+
+  const handleGalleryUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    try {
+      setIsUploadingImage(true);
+      const res = await api.uploadFile(e.target.files[0]);
+      if (res.success && res.data.url) {
+        setForm({ ...form, gallery: [...form.gallery, res.data.url] });
+      }
+    } catch (err: any) {
+      alert("Failed to upload gallery image: " + err.message);
+    } finally {
+      setIsUploadingImage(false);
+    }
+  };
+
+  const removeGalleryImage = (index: number) => {
+    const newGallery = [...form.gallery];
+    newGallery.splice(index, 1);
+    setForm({ ...form, gallery: newGallery });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -76,6 +131,11 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
           : undefined,
         latitude: form.latitude ? parseFloat(form.latitude) : undefined,
         longitude: form.longitude ? parseFloat(form.longitude) : undefined,
+        image: form.image || undefined,
+        video: form.video || undefined,
+        home_service_charge: parseFloat(form.home_service_charge) || 0,
+        about: form.about || undefined,
+        gallery: form.gallery,
       });
       setIsEditing(false);
       fetchProfile();
@@ -88,54 +148,7 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
     }
   };
 
-  const handleAddSalon = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (
-      !addSalonForm.name ||
-      !addSalonForm.city ||
-      !addSalonForm.starting_price
-    ) {
-      alert("Salon Name, City, and Starting Price are required.");
-      return;
-    }
-    if (submitLockRef.current) return;
 
-    submitLockRef.current = true;
-    setIsCreatingSalon(true);
-
-    try {
-      await api.createSalonProfile({
-        name: addSalonForm.name,
-        city: addSalonForm.city,
-        starting_price: parseFloat(addSalonForm.starting_price),
-        rating: addSalonForm.rating
-          ? parseFloat(addSalonForm.rating)
-          : undefined,
-        latitude: addSalonForm.latitude
-          ? parseFloat(addSalonForm.latitude)
-          : undefined,
-        longitude: addSalonForm.longitude
-          ? parseFloat(addSalonForm.longitude)
-          : undefined,
-      });
-
-      setShowAddSalonModal(false);
-      setAddSalonForm({
-        name: "",
-        city: "",
-        starting_price: "",
-        rating: "",
-        latitude: "",
-        longitude: "",
-      });
-      alert("Salon created successfully!");
-    } catch (err: any) {
-      alert(err.message || "Failed to create salon.");
-    } finally {
-      submitLockRef.current = false;
-      setIsCreatingSalon(false);
-    }
-  };
 
   return (
     <Layout user={user?.email || "Admin"} onLogout={onLogout}>
@@ -149,12 +162,6 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
           </div>
           {!isEditing && (
             <div style={{ display: "flex", gap: "10px" }}>
-              <button
-                className="btn-sm"
-                onClick={() => setShowAddSalonModal(true)}
-              >
-                + Add Salon
-              </button>
               <button className="btn-add" onClick={() => setIsEditing(true)}>
                 Edit Profile
               </button>
@@ -163,8 +170,9 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
         </div>
 
         {loading ? (
-          <div className="empty-state">
-            <p>Loading profile...</p>
+          <div className="empty-state" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
+            <CircularProgress sx={{ color: '#CA9A86' }} size={40} />
+            <p style={{ color: '#7f6f69', fontWeight: 500 }}>Loading profile...</p>
           </div>
         ) : !profile ? (
           <div className="empty-state">
@@ -201,6 +209,67 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
                   />
                 </div>
                 <div className="form-group">
+                  <label>Home Service Charge (₹)</label>
+                  <input
+                    type="number"
+                    value={form.home_service_charge}
+                    onChange={(e) =>
+                      setForm({ ...form, home_service_charge: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Background Image</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    disabled={isUploadingImage}
+                  />
+                  {isUploadingImage && <p style={{fontSize: 12, color: '#CA9A86', marginTop: 4}}>Uploading...</p>}
+                  {form.image && (
+                    <img src={form.image} alt="Preview" style={{ maxWidth: '200px', marginTop: '10px', borderRadius: '8px' }} />
+                  )}
+                </div>
+                <div className="form-group">
+                  <label>Salon Video</label>
+                  <input
+                    type="file"
+                    accept="video/*"
+                    onChange={handleVideoUpload}
+                    disabled={isUploadingVideo}
+                  />
+                  {isUploadingVideo && <p style={{fontSize: 12, color: '#CA9A86', marginTop: 4}}>Uploading...</p>}
+                  {form.video && (
+                    <video src={form.video} controls style={{ maxWidth: '200px', marginTop: '10px', borderRadius: '8px' }} />
+                  )}
+                </div>
+                <div className="form-group" style={{ gridColumn: "1 / -1" }}>
+                  <label>Gallery Images</label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handleGalleryUpload}
+                    disabled={isUploadingImage}
+                  />
+                  {form.gallery && form.gallery.length > 0 && (
+                    <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "10px" }}>
+                      {form.gallery.map((url, idx) => (
+                        <div key={idx} style={{ position: "relative" }}>
+                          <img src={url} alt={`Gallery ${idx}`} style={{ width: "100px", height: "100px", objectFit: "cover", borderRadius: "8px" }} />
+                          <button
+                            type="button"
+                            onClick={() => removeGalleryImage(idx)}
+                            style={{ position: "absolute", top: -5, right: -5, background: "red", color: "white", border: "none", borderRadius: "50%", width: 20, height: 20, cursor: "pointer" }}
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="form-group">
                   <label>Latitude (Optional)</label>
                   <input
                     type="number"
@@ -222,7 +291,17 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
                     }
                   />
                 </div>
-                <div className="modal-actions" style={{ marginTop: "32px" }}>
+                <div className="form-group" style={{ gridColumn: "1 / -1" }}>
+                  <label>About Salon</label>
+                  <textarea
+                    value={form.about}
+                    onChange={(e) => setForm({ ...form, about: e.target.value })}
+                    placeholder="Tell customers about your salon..."
+                    rows={4}
+                    style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #e5e5e5" }}
+                  />
+                </div>
+                <div className="modal-actions" style={{ marginTop: "32px", gridColumn: "1 / -1" }}>
                   <button
                     type="button"
                     className="btn-cancel"
@@ -250,6 +329,28 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
                   <div className="field-value">₹{profile.starting_price}</div>
                 </div>
                 <div className="profile-field">
+                  <div className="field-label">Home Service Charge</div>
+                  <div className="field-value">₹{profile.home_service_charge || 0}</div>
+                </div>
+                <div className="profile-field">
+                  <div className="field-label">About Salon</div>
+                  <div className="field-value" style={{ whiteSpace: "pre-line" }}>{profile.about || "Not set"}</div>
+                </div>
+                <div className="profile-field" style={{ gridColumn: "1 / -1" }}>
+                  <div className="field-label">Gallery</div>
+                  <div className="field-value">
+                    {profile.gallery && profile.gallery.length > 0 ? (
+                      <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "8px" }}>
+                        {profile.gallery.map((url: string, idx: number) => (
+                          <img key={idx} src={url} alt={`Gallery ${idx}`} style={{ width: "100px", height: "100px", objectFit: "cover", borderRadius: "8px" }} />
+                        ))}
+                      </div>
+                    ) : (
+                      "No gallery images uploaded"
+                    )}
+                  </div>
+                </div>
+                <div className="profile-field">
                   <div className="field-label">Rating</div>
                   <div className="field-value">{profile.rating} ⭐</div>
                 </div>
@@ -261,116 +362,40 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
                       : "Not set"}
                   </div>
                 </div>
+                <div className="profile-field">
+                  <div className="field-label">Salon Image</div>
+                  <div className="field-value">
+                    {profile.image ? (
+                      <img
+                        src={profile.image}
+                        alt="Salon"
+                        style={{ maxWidth: "100%", height: "auto", borderRadius: "8px", marginTop: "8px" }}
+                      />
+                    ) : (
+                      "Not set"
+                    )}
+                  </div>
+                </div>
+                <div className="profile-field">
+                  <div className="field-label">Salon Video</div>
+                  <div className="field-value">
+                    {profile.video ? (
+                      <video
+                        src={profile.video}
+                        controls
+                        style={{ maxWidth: "100%", height: "auto", borderRadius: "8px", marginTop: "8px" }}
+                      />
+                    ) : (
+                      "Not set"
+                    )}
+                  </div>
+                </div>
               </div>
             )}
           </div>
         )}
 
-        {showAddSalonModal && (
-          <div
-            className="modal-backdrop"
-            onClick={() => setShowAddSalonModal(false)}
-          >
-            <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-              <h2>Add Salon</h2>
-              <form onSubmit={handleAddSalon}>
-                <div className="form-group">
-                  <label>Salon Name</label>
-                  <input
-                    value={addSalonForm.name}
-                    onChange={(e) =>
-                      setAddSalonForm({ ...addSalonForm, name: e.target.value })
-                    }
-                    placeholder="The Aura Collective"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>City</label>
-                  <input
-                    value={addSalonForm.city}
-                    onChange={(e) =>
-                      setAddSalonForm({ ...addSalonForm, city: e.target.value })
-                    }
-                    placeholder="New York"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Starting Price (₹)</label>
-                  <input
-                    type="number"
-                    value={addSalonForm.starting_price}
-                    onChange={(e) =>
-                      setAddSalonForm({
-                        ...addSalonForm,
-                        starting_price: e.target.value,
-                      })
-                    }
-                    placeholder="85"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Rating (Optional)</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max="5"
-                    value={addSalonForm.rating}
-                    onChange={(e) =>
-                      setAddSalonForm({
-                        ...addSalonForm,
-                        rating: e.target.value,
-                      })
-                    }
-                    placeholder="4.9"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Location Latitude</label>
-                  <input
-                    type="number"
-                    step="any"
-                    value={addSalonForm.latitude}
-                    onChange={(e) =>
-                      setAddSalonForm({
-                        ...addSalonForm,
-                        latitude: e.target.value,
-                      })
-                    }
-                    placeholder="40.7128"
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Location Longitude</label>
-                  <input
-                    type="number"
-                    step="any"
-                    value={addSalonForm.longitude}
-                    onChange={(e) =>
-                      setAddSalonForm({
-                        ...addSalonForm,
-                        longitude: e.target.value,
-                      })
-                    }
-                    placeholder="-74.0060"
-                  />
-                </div>
-                <div className="modal-actions">
-                  <button
-                    type="button"
-                    className="btn-cancel"
-                    onClick={() => setShowAddSalonModal(false)}
-                  >
-                    Cancel
-                  </button>
-                  <button type="submit" className="btn-add" disabled={isCreatingSalon}>
-                    {isCreatingSalon ? "Creating..." : "Save Salon"}
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
+
       </div>
     </Layout>
   );

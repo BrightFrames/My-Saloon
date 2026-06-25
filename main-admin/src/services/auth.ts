@@ -1,6 +1,6 @@
-const API_URL = import.meta.env.DEV
-  ? "http://localhost:3000/api/v1"
-  : (import.meta.env.VITE_API_URL as string) || "http://localhost:3000/api/v1";
+import { API_BASE_URL } from "./apiBase";
+
+const API_URL = API_BASE_URL;
 
 export const auth = {
   login: async (email: string, password: string) => {
@@ -31,20 +31,7 @@ export const auth = {
     return localStorage.getItem("superadmin_user");
   },
   getToken: (): string | null => {
-    const token = localStorage.getItem("superadmin_token");
-
-    if (!token) {
-      return null;
-    }
-
-    const normalized = token.trim();
-
-    if (!normalized || normalized === "null" || normalized === "undefined") {
-      localStorage.removeItem("superadmin_token");
-      return null;
-    }
-
-    return normalized;
+    return localStorage.getItem("superadmin_token");
   },
   logout: () => {
     localStorage.removeItem("superadmin_user");

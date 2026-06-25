@@ -24,6 +24,7 @@ async function seed() {
         latitude NUMERIC,
         longitude NUMERIC,
         google_maps_link TEXT,
+        video TEXT,
         phone TEXT,
         email TEXT,
         working_hours JSONB,

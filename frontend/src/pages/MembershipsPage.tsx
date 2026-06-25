@@ -1,7 +1,6 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
 import { PopupDialog } from "../components/PopupDialog";
-import heroImage from "../assets/sign.jpg";
 
 const MembershipsPage: React.FC = () => {
   const navigate = useNavigate();

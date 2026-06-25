@@ -4,6 +4,7 @@ import helmet from "helmet";
 import morgan from "morgan";
 import dotenv from "dotenv";
 import session from "express-session";
+import path from "path";
 
 import routes from "./routes";
 
@@ -14,7 +15,7 @@ dotenv.config();
 const app: Express = express();
 
 // Security
-app.use(helmet());
+app.use(helmet({ crossOriginResourcePolicy: false }));
 
 // CORS - accept any localhost port in development
 app.use(
@@ -71,6 +72,9 @@ app.use(
 
 // Logger
 app.use(morgan("dev"));
+
+// Serve static files from uploads folder
+app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
 
 // Routes
 app.get("/", (req, res) => {

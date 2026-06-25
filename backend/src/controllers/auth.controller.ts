@@ -123,6 +123,8 @@ function getTransporter(): nodemailer.Transporter {
   return transporter;
 }
 
+const otpStore = new Map<string, { otp: string; expires: number }>();
+
 export const sendOtp = async (req: Request, res: Response) => {
   const { email } = req.body;
 
@@ -133,9 +135,8 @@ export const sendOtp = async (req: Request, res: Response) => {
   // Generate OTP
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-  // Store in session
-  (req.session as any).otp = otp;
-  (req.session as any).email = email;
+  // Store in memory instead of session to avoid CORS cookie issues
+  otpStore.set(email, { otp, expires: Date.now() + 10 * 60 * 1000 });
 
   try {
     const transport = getTransporter();
@@ -180,13 +181,11 @@ export const sendOtp = async (req: Request, res: Response) => {
 export const verifyOtp = (req: Request, res: Response) => {
   const { email, otp } = req.body;
 
-  if (
-    ((req.session as any).otp === otp &&
-      (req.session as any).email === email) ||
-    otp === "123456"
-  ) {
-    (req.session as any).isVerified = true;
+  const stored = otpStore.get(email);
+  const isValid = stored && stored.otp === otp && stored.expires > Date.now();
 
+  if (isValid || otp === "123456") {
+    otpStore.delete(email);
     return res.json({
       verified: true,
     });

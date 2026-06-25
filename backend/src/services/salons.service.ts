@@ -1,4 +1,4 @@
-﻿import { query } from "../config/db";
+import { query } from "../config/db";
 import { ApiError } from "../exceptions/ApiError";
 
 export class SalonsService {
@@ -38,17 +38,21 @@ export class SalonsService {
 
         selectFields += `, ${haversine} AS distance_km`;
 
-        // Filter by distance/radius
-        whereClauses.push(`${haversine} <= $${paramIndex}`);
-        queryParams.push(radiusKm);
-        paramIndex += 1;
+        // Filter by distance/radius ONLY if no specific city or name is searched
+        if (!city && !name) {
+          whereClauses.push(`${haversine} <= $${paramIndex}`);
+          queryParams.push(radiusKm);
+          paramIndex += 1;
+        }
 
         orderBy = "distance_km ASC, s.rating DESC NULLS LAST, s.starting_price ASC";
       }
 
-      // 2. Filter by city
+      // 2. Filter by city, state, or address
       if (city) {
-        whereClauses.push(`s.city ILIKE $${paramIndex}`);
+        whereClauses.push(
+          `(s.city ILIKE $${paramIndex} OR s.state ILIKE $${paramIndex} OR s.address ILIKE $${paramIndex})`
+        );
         queryParams.push(`%${city}%`);
         paramIndex += 1;
       }

@@ -8,6 +8,10 @@ type Service = {
   id: string;
   name: string;
   price: number;
+  original_price?: number;
+  discounted_price?: number;
+  home_service_available?: boolean;
+  home_service_price?: number;
   duration: string;
 };
 
@@ -93,17 +97,52 @@ const TreatmentsPage: React.FC<{
                         className="flex flex-col gap-3 rounded-lg border border-stone-100 p-3 sm:flex-row sm:items-center sm:justify-between"
                       >
                         <div>
-                          <div className="font-medium">{s.name}</div>
+                          <div className="font-medium flex items-center gap-2">
+                            {s.name}
+                            {s.home_service_available && (
+                              <span className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-600 border border-blue-100 flex items-center gap-1">
+                                🏠 Home
+                              </span>
+                            )}
+                          </div>
                           <div className="text-xs text-stone-400">
                             {s.duration}
                           </div>
                         </div>
                         <div className="flex items-center gap-3 sm:justify-end">
-                          <div className="font-semibold">
-                            {formatINR(s.price)}
+                          <div className="flex flex-col items-end">
+                            {s.original_price && s.discounted_price && s.original_price > s.discounted_price ? (
+                              <>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs text-stone-400 line-through">
+                                    {formatINR(s.original_price)}
+                                  </span>
+                                  <span className="rounded bg-red-100 px-1.5 py-0.5 text-[10px] font-bold text-red-600">
+                                    {Math.round(((s.original_price - s.discounted_price) / s.original_price) * 100)}% OFF
+                                  </span>
+                                </div>
+                                <div className="font-semibold text-green-700">
+                                  {formatINR(s.discounted_price)}
+                                </div>
+                              </>
+                            ) : (
+                              <div className="font-semibold">
+                                {formatINR(s.discounted_price ?? s.price)}
+                              </div>
+                            )}
+                            {s.home_service_available && s.home_service_price && (
+                              <div className="text-[10px] text-stone-500 mt-0.5">
+                                Home: {formatINR(s.home_service_price)}
+                              </div>
+                            )}
                           </div>
                           <button
-                            onClick={() => navigate(`/salon/${salon.id}`)}
+                            onClick={() => {
+                              sessionStorage.setItem("selectedSalon", JSON.stringify(salon));
+                              sessionStorage.setItem("selectedServices", JSON.stringify([s]));
+                              sessionStorage.setItem("selectedSalonServices", JSON.stringify(salon.services || []));
+                              navigate(`/checkout`);
+                            }}
                             className="min-h-11 rounded-md bg-[#6B554D] px-3 py-2 text-sm text-white transition-colors hover:bg-[#5C4841]"
                           >
                             Book
@@ -122,7 +161,12 @@ const TreatmentsPage: React.FC<{
                     View Salon
                   </button>
                   <button
-                    onClick={() => navigate(`/checkout`)}
+                    onClick={() => {
+                      sessionStorage.setItem("selectedSalon", JSON.stringify(salon));
+                      sessionStorage.setItem("selectedServices", JSON.stringify([]));
+                      sessionStorage.setItem("selectedSalonServices", JSON.stringify(salon.services || []));
+                      navigate(`/checkout`);
+                    }}
                     className="min-h-11 rounded-md bg-[#C49B89] px-4 py-2 text-sm text-white transition-colors hover:bg-[#b89b8a]"
                   >
                     Continue to Checkout

@@ -68,13 +68,21 @@ export const getServices = asyncHandler(async (req: Request, res: Response) => {
     [salon_id],
   );
 
-  res.json({ success: true, data: result.rows });
+  const mappedData = result.rows.map((row: any) => ({
+    ...row,
+    originalPrice: row.original_price ?? row.price,
+    discountedPrice: row.discounted_price ?? row.price,
+    homeServiceAvailable: row.home_service_available ?? false,
+    homeServicePrice: row.home_service_price ?? null,
+  }));
+
+  res.json({ success: true, data: mappedData });
 });
 
-export const createService = asyncHandler(
+  export const createService = asyncHandler(
   async (req: Request, res: Response) => {
     const { salon_id } = (req as any).user;
-    const { name, price, duration } = req.body;
+    const { name, price, originalPrice, discountedPrice, duration, homeServiceAvailable, homeServicePrice } = req.body;
 
     if (!salon_id) {
       res
@@ -83,7 +91,11 @@ export const createService = asyncHandler(
       return;
     }
 
-    if (!name || price === undefined || !duration) {
+    const finalOriginalPrice = originalPrice !== undefined ? originalPrice : price;
+    const finalDiscountedPrice = discountedPrice !== undefined ? discountedPrice : price;
+    const finalPrice = finalDiscountedPrice !== undefined ? finalDiscountedPrice : price;
+
+    if (!name || finalPrice === undefined || !duration) {
       res
         .status(400)
         .json({ message: "Name, price, and duration are required." });
@@ -91,19 +103,28 @@ export const createService = asyncHandler(
     }
 
     const result = await query(
-      "INSERT INTO public.services (salon_id, name, price, duration) VALUES ($1, $2, $3, $4) RETURNING *",
-      [salon_id, name, price, duration],
+      "INSERT INTO public.services (salon_id, name, price, original_price, discounted_price, duration, home_service_available, home_service_price) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *",
+      [salon_id, name, finalPrice, finalOriginalPrice, finalDiscountedPrice, duration, homeServiceAvailable || false, homeServicePrice || null],
     );
 
-    res.status(201).json({ success: true, data: result.rows[0] });
+    const row = result.rows[0];
+    const mappedRow = {
+      ...row,
+      originalPrice: row.original_price ?? row.price,
+      discountedPrice: row.discounted_price ?? row.price,
+      homeServiceAvailable: row.home_service_available ?? false,
+      homeServicePrice: row.home_service_price ?? null,
+    };
+
+    res.status(201).json({ success: true, data: mappedRow });
   },
 );
 
-export const updateService = asyncHandler(
+  export const updateService = asyncHandler(
   async (req: Request, res: Response) => {
     const { salon_id } = (req as any).user;
     const { id } = req.params;
-    const { name, price, duration } = req.body;
+    const { name, price, originalPrice, discountedPrice, duration, homeServiceAvailable, homeServicePrice } = req.body;
 
     if (!salon_id) {
       res
@@ -128,12 +149,25 @@ export const updateService = asyncHandler(
       return;
     }
 
+    const finalOriginalPrice = originalPrice !== undefined ? originalPrice : price;
+    const finalDiscountedPrice = discountedPrice !== undefined ? discountedPrice : price;
+    const finalPrice = finalDiscountedPrice !== undefined ? finalDiscountedPrice : price;
+
     const result = await query(
-      "UPDATE public.services SET name = $1, price = $2, duration = $3 WHERE id = $4 RETURNING *",
-      [name, price, duration, id],
+      "UPDATE public.services SET name = $1, price = $2, original_price = $3, discounted_price = $4, duration = $5, home_service_available = $6, home_service_price = $7 WHERE id = $8 RETURNING *",
+      [name, finalPrice, finalOriginalPrice, finalDiscountedPrice, duration, homeServiceAvailable !== undefined ? homeServiceAvailable : false, homeServicePrice || null, id],
     );
 
-    res.json({ success: true, data: result.rows[0] });
+    const row = result.rows[0];
+    const mappedRow = {
+      ...row,
+      originalPrice: row.original_price ?? row.price,
+      discountedPrice: row.discounted_price ?? row.price,
+      homeServiceAvailable: row.home_service_available ?? false,
+      homeServicePrice: row.home_service_price ?? null,
+    };
+
+    res.json({ success: true, data: mappedRow });
   },
 );
 
@@ -395,6 +429,7 @@ export const updateSalonProfile = asyncHandler(
       city,
       state,
       country,
+      image,
       starting_price,
       rating,
       latitude,
@@ -402,6 +437,10 @@ export const updateSalonProfile = asyncHandler(
       phone,
       email,
       google_maps_link,
+      video,
+      home_service_charge,
+      about,
+      gallery,
     } = req.body;
 
     if (!salon_id) {
@@ -412,7 +451,7 @@ export const updateSalonProfile = asyncHandler(
     }
 
     const result = await query(
-      "UPDATE public.salons SET name = $1, address = $2, city = $3, state = $4, country = $5, starting_price = $6, rating = $7, latitude = $8, longitude = $9, phone = $10, email = $11, google_maps_link = $12 WHERE id = $13 RETURNING *",
+      "UPDATE public.salons SET name = $1, address = $2, city = $3, state = $4, country = $5, starting_price = $6, rating = $7, latitude = $8, longitude = $9, phone = $10, email = $11, google_maps_link = $12, image = $13, video = $14, home_service_charge = $15, about = $16, gallery = $17 WHERE id = $18 RETURNING *",
       [
         name,
         address || null,
@@ -426,6 +465,11 @@ export const updateSalonProfile = asyncHandler(
         phone || null,
         email || null,
         google_maps_link || null,
+        image || null,
+        video || null,
+        home_service_charge !== undefined ? home_service_charge : 0,
+        about || null,
+        gallery || null,
         salon_id,
       ],
     );

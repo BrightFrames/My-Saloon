@@ -515,13 +515,6 @@ export function LandingPage({
                             Starts From
                           </p>
                           <p className="font-bold text-stone-800 text-base">
-                            ${s.starting_price || "—"}
-                          </p>
-
-                          <p className="text-[9px] text-stone-400 uppercase tracking-wider mb-0.5">
-                            Starts From
-                          </p>
-                          <p className="font-bold text-stone-800 text-base">
                             {s.starting_price
                               ? formatINR(s.starting_price)
                               : "—"}

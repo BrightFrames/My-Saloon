@@ -102,102 +102,35 @@ async function setupDatabase() {
       );
     `);
 
-    // 5. Check if salons exist, if not seed some mock salons
-    const salonCountRes = await client.query('SELECT COUNT(*) FROM public.salons');
-    let salonId: string | null = null;
-    if (parseInt(salonCountRes.rows[0].count) === 0) {
-      console.log('[setup-db]: Database has no salons. Seeding initial salon...');
-      const seedSalons = [
-        ['Glowup Chandigarh 1', 'Chandigarh', 30.7333, 76.7794, 180],
-        ['Glowup Chandigarh 2', 'Chandigarh', 30.7415, 76.7821, 220],
-        ['Glowup Chandigarh 3', 'Chandigarh', 30.7218, 76.7684, 160],
-        ['Glowup Chandigarh 4', 'Chandigarh', 30.7540, 76.7845, 240],
-        ['Glowup Chandigarh 5', 'Chandigarh', 30.7055, 76.8012, 200],
-        ['Glowup Noida 1', 'Noida', 28.5355, 77.3910, 175],
-        ['Glowup Noida 2', 'Noida', 28.5222, 77.3821, 210],
-        ['Glowup Noida 3', 'Noida', 28.5708, 77.3260, 190],
-        ['Glowup Noida 4', 'Noida', 28.6129, 77.3710, 230],
-        ['Glowup Noida 5', 'Noida', 28.4960, 77.4101, 205],
-      ] as const;
-
-      for (const [name, city, latitude, longitude, startingPrice] of seedSalons) {
-        const insertSalonRes = await client.query(
-          `
-            INSERT INTO public.salons (name, image, rating, city, starting_price, latitude, longitude)
-            VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id;
-          `,
-          [
-            name,
-            'https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=800&auto=format&fit=crop',
-            4.8,
-            city,
-            startingPrice,
-            latitude,
-            longitude,
-          ],
-        );
-
-        if (!salonId) {
-          salonId = insertSalonRes.rows[0].id;
-        }
-      }
-
-      // Seed initial services
-      console.log('[setup-db]: Seeding services for initial salon...');
-      await client.query(`
-        INSERT INTO public.services (salon_id, name, price, duration) VALUES
-        ($1, 'Signature Haircut', 85, '60 mins'),
-        ($1, 'Premium Balayage', 240, '180 mins'),
-        ($1, 'Signature Silk Facial', 145, '60 mins'),
-        ($1, 'Keratin Treatment', 300, '90 mins')
-      `, [salonId]);
-    } else {
-      const existingSalonRes = await client.query('SELECT id FROM public.salons LIMIT 1');
-      salonId = existingSalonRes.rows[0].id;
+    // 5. Setup main admin user
+    console.log('[setup-db]: Setting up main admin user...');
+    
+    const mainAdminEmail = process.env.MAIN_ADMIN_EMAIL;
+    const mainAdminPassword = process.env.MAIN_ADMIN_PASSWORD;
+    
+    if (!mainAdminEmail || !mainAdminPassword) {
+      throw new Error('MAIN_ADMIN_EMAIL and MAIN_ADMIN_PASSWORD must be set in .env file');
     }
-
-    // 6. Seed mock admins and team members
-    console.log('[setup-db]: Seeding users...');
-    const adminHashed = await bcrypt.hash('admin123', 10);
-    const superAdminHashed = await bcrypt.hash('superadmin123', 10);
-
-    // Clean existing mock accounts to prevent conflict
-    await client.query(`DELETE FROM public.users WHERE email IN ('admin@glowup.test', 'superadmin@glowup.test');`);
-
-    // Insert admin and superadmin mapped to our seeded/existing salon
+    
+    // Remove old test accounts
     await client.query(`
-      INSERT INTO public.users (email, password, role, salon_id) VALUES
-      ('admin@glowup.test', $1, 'admin', $3),
-      ('superadmin@glowup.test', $2, 'superadmin', $3)
-    `, [adminHashed, superAdminHashed, salonId]);
-
-    // Seed stylists/team members in the users table for this salon
-    const stylist1Hashed = await bcrypt.hash('stylist123', 10);
-    await client.query(`DELETE FROM public.users WHERE email IN ('elena@glowup.test', 'marcus@glowup.test', 'sophie@glowup.test');`);
-    await client.query(`
-      INSERT INTO public.users (email, password, role, salon_id) VALUES
-      ('elena@glowup.test', $1, 'stylist', $2),
-      ('marcus@glowup.test', $1, 'stylist', $2),
-      ('sophie@glowup.test', $1, 'stylist', $2)
-    `, [stylist1Hashed, salonId]);
-
-    // 7. Seed some initial mock bookings to make the dashboard dynamic out of the box
-    console.log('[setup-db]: Seeding initial mock bookings...');
-    const todayStr = new Date().toISOString().split('T')[0];
-    const tomorrowStr = new Date(Date.now() + 86400000).toISOString().split('T')[0];
-    const yesterdayStr = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-
-    await client.query(`
-      INSERT INTO public.bookings (
-        customer_name, customer_email, phone, mobile, service_name, hairstyle, 
-        stylist, appointment_date, booking_date, appointment_time, booking_time, 
-        booking_status, payment_status, payment_method, total_price, salon_id, created_at
-      ) VALUES
-      ('Jane Doe', 'jane@example.com', '9876543210', '9876543210', 'Signature Haircut', 'Signature Haircut', 'Elena V.', $1, $1, '10:00 AM', '10:00 AM', 'confirmed', 'paid', 'credit_card', 85.00, $4, NOW()),
-      ('Alice Smith', 'alice@example.com', '9876543211', '9876543211', 'Premium Balayage', 'Premium Balayage', 'Marcus T.', $1, $1, '01:00 PM', '01:00 PM', 'confirmed', 'pending', 'cash', 240.00, $4, NOW()),
-      ('Bob Johnson', 'bob@example.com', '9876543212', '9876543212', 'Signature Silk Facial', 'Signature Silk Facial', 'Sophie L.', $2, $2, '11:00 AM', '11:00 AM', 'confirmed', 'pending', 'upi', 145.00, $4, NOW()),
-      ('Charlie Brown', 'charlie@example.com', '9876543213', '9876543213', 'Signature Haircut', 'Signature Haircut', 'Elena V.', $3, $3, '02:00 PM', '02:00 PM', 'completed', 'paid', 'credit_card', 85.00, $4, NOW() - INTERVAL '1 DAY')
-    `, [todayStr, tomorrowStr, yesterdayStr, salonId]);
+      DELETE FROM public.users 
+      WHERE email IN ('admin@glowup.test', 'superadmin@glowup.test', 'elena@glowup.test', 'marcus@glowup.test', 'sophie@glowup.test');
+    `);
+    
+    // Check if main admin already exists
+    const adminExists = await client.query('SELECT id FROM public.users WHERE email = $1', [mainAdminEmail]);
+    
+    if (adminExists.rows.length === 0) {
+      const mainAdminHashed = await bcrypt.hash(mainAdminPassword, 10);
+      await client.query(`
+        INSERT INTO public.users (email, password, role, salon_id) 
+        VALUES ($1, $2, $3, NULL)
+      `, [mainAdminEmail, mainAdminHashed, 'superadmin']);
+      console.log(`[setup-db]: Main admin user created: ${mainAdminEmail}`);
+    } else {
+      console.log(`[setup-db]: Main admin user already exists: ${mainAdminEmail}`);
+    }
 
     console.log('[setup-db]: Database setup, migrations, and seeding completed successfully!');
   } catch (err: any) {

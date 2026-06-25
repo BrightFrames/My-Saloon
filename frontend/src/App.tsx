@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   BrowserRouter,
   Routes,
   Route,
   Navigate,
+  useLocation,
 } from "react-router-dom";
 import "./App.css";
 import { LandingPageWrapper } from "./pages/LandingPage";
@@ -32,6 +33,7 @@ function AppRoutes() {
     message: "",
     tone: "info" as "success" | "error" | "info" | "warning",
   });
+  const routeLocation = useLocation();
 
   const handleUseMyLocation = (autoDetect = false) => {
     if (!navigator.geolocation) {
@@ -114,6 +116,15 @@ function AppRoutes() {
     const resultsSection = document.querySelector("#results-section");
     resultsSection?.scrollIntoView({ behavior: "smooth" });
   };
+
+  useEffect(() => {
+    if (routeLocation.pathname !== "/") return;
+    if (locationPermission !== "unknown") return;
+    if (sessionStorage.getItem("glowup-location-prompted") === "true") return;
+
+    sessionStorage.setItem("glowup-location-prompted", "true");
+    handleUseMyLocation(true);
+  }, [handleUseMyLocation, locationPermission, routeLocation.pathname]);
 
   return (
     <>

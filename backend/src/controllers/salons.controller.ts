@@ -125,6 +125,28 @@ export class SalonsController {
   });
 
   /**
+   * @route   DELETE /api/v1/salons/:id
+   * @desc    Delete a salon
+   */
+  public deleteSalon = asyncHandler(async (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    const result = await query(
+      "DELETE FROM salons WHERE id = $1 RETURNING *",
+      [id]
+    );
+
+    if (result.rowCount === 0) {
+      throw ApiError.notFound("Salon not found");
+    }
+
+    res.status(200).json({
+      success: true,
+      message: "Salon deleted successfully",
+    });
+  });
+
+  /**
    * @route   POST /api/v1/salons/:id/reviews
    * @desc    Create a new review for a salon
    */

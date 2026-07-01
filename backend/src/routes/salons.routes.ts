@@ -17,6 +17,7 @@ router.get('/:id', salonsController.getSalonById);
 router.post('/:id/reviews', writeLimiter, salonsController.createReview);
 router.post('/', writeLimiter, salonsController.createSalon);
 router.put('/:id', writeLimiter, salonsController.updateSalon);
+router.delete('/:id', writeLimiter, salonsController.deleteSalon);
 // Admin creation for a salon (called from main-admin panel)
 router.post('/admin/create', createSalonAdmin);
 

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import { API_BASE_URL } from '../services/apiBase';
-import { Plus, Edit2, Key, MapPin, Phone, User, Store, X } from 'lucide-react';
+import { Plus, Edit2, Key, MapPin, Phone, User, Store, X, Trash2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -29,6 +29,7 @@ export default function Salons() {
 
   const [isSubmittingSalon, setIsSubmittingSalon] = useState(false);
   const [isSubmittingAdmin, setIsSubmittingAdmin] = useState(false);
+  const [deletingSalonId, setDeletingSalonId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchSalons();
@@ -159,6 +160,31 @@ export default function Salons() {
     }
   };
 
+  const handleDeleteSalon = async (salonId: string, salonName: string) => {
+    const confirmed = window.confirm(
+      `Are you sure you want to remove "${salonName}"? This action cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    setDeletingSalonId(salonId);
+    try {
+      const res = await fetch(`${API_BASE_URL}/salons/${salonId}`, {
+        method: 'DELETE',
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchSalons();
+      } else {
+        alert(data.message || 'Failed to delete salon');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error deleting salon');
+    } finally {
+      setDeletingSalonId(null);
+    }
+  };
+
   const containerVars = {
     hidden: { opacity: 0 },
     show: {
@@ -256,6 +282,16 @@ export default function Salons() {
                       </Button>
                       <Button variant="outline" size="sm" onClick={() => openCreateAdmin(s.id)} className="flex-1 gap-2 border-stone-200 hover:border-purple-300 hover:text-purple-700 hover:bg-purple-50">
                         <Key size={14} /> Admin
+                      </Button>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleDeleteSalon(s.id, s.name)} 
+                        disabled={deletingSalonId === s.id}
+                        className="gap-2 border-stone-200 hover:border-red-300 hover:text-red-700 hover:bg-red-50"
+                      >
+                        <Trash2 size={14} />
+                        {deletingSalonId === s.id ? '...' : 'Remove'}
                       </Button>
                     </div>
                   </CardContent>

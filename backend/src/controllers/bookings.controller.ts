@@ -16,7 +16,9 @@ async function sendBookingConfirmationEmail(booking: any) {
       },
     });
 
-    const paymentLabel = booking.payment_method.replace("_", " ").toUpperCase();
+    const paymentLabel = (booking.payment_method || "cash")
+      .replace("_", " ")
+      .toUpperCase();
     const serviceLabel =
       booking.service_name ||
       booking.serviceName ||
@@ -632,11 +634,16 @@ export const updateAdminBooking = asyncHandler(
     values.push(id);
     const q = `UPDATE public.bookings SET ${updates.join(", ")} WHERE id = $${paramIndex} RETURNING *`;
     const result = await query(q, values);
+    const updatedBooking = result.rows[0];
+
+    if (booking_status === "confirmed" && booking.booking_status !== "confirmed") {
+      await sendBookingConfirmationEmail(updatedBooking);
+    }
 
     res.json({
       success: true,
       message: "Booking updated successfully",
-      data: result.rows[0],
+      data: updatedBooking,
     });
   },
 );

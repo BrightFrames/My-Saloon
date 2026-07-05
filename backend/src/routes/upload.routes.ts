@@ -2,16 +2,31 @@ import { Router } from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import os from "os";
 
 const router = Router();
 
-const uploadsDir = path.join(process.cwd(), "uploads");
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
+// On Vercel (serverless), the filesystem is read-only except /tmp.
+// Locally, use the project-level uploads/ folder.
+const isVercel = !!process.env.VERCEL;
+const uploadsDir = isVercel
+  ? path.join(os.tmpdir(), "uploads")
+  : path.join(process.cwd(), "uploads");
+
+try {
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+} catch (err) {
+  console.warn("Could not create uploads dir, using /tmp fallback:", err);
 }
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
+    // Ensure the dir exists at request time (Vercel /tmp can be cleaned between invocations)
+    if (!fs.existsSync(uploadsDir)) {
+      fs.mkdirSync(uploadsDir, { recursive: true });
+    }
     cb(null, uploadsDir);
   },
   filename: (req, file, cb) => {

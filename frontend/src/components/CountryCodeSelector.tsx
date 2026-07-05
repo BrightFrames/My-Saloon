@@ -7,7 +7,7 @@ export interface Country {
   flag: string;
   dialCode: string;
 }
-
+//good
 export const countries: Country[] = [
   { code: "IN", name: "India", flag: "🇮🇳", dialCode: "+91" },
   { code: "US", name: "United States", flag: "🇺🇸", dialCode: "+1" },

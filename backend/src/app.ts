@@ -5,6 +5,7 @@ import morgan from "morgan";
 import dotenv from "dotenv";
 import session from "express-session";
 import path from "path";
+import os from "os";
 
 import routes from "./routes";
 
@@ -74,7 +75,10 @@ app.use(
 app.use(morgan("dev"));
 
 // Serve static files from uploads folder
-app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
+const uploadsPath = process.env.VERCEL
+  ? path.join(os.tmpdir(), "uploads")
+  : path.join(process.cwd(), "uploads");
+app.use("/uploads", express.static(uploadsPath));
 
 // Routes
 app.get("/", (req, res) => {

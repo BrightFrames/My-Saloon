@@ -338,7 +338,7 @@ export default function Salons() {
                     <Input 
                       value={salonForm.name} 
                       onChange={e => setSalonForm({...salonForm, name: e.target.value})} 
-                      placeholder="e.g. Glowup Downtown"
+                      placeholder="e.g. Downtown Salon"
                       autoFocus
                     />
                   </div>

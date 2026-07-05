@@ -1,5 +1,11 @@
 import { NextFunction, Request, Response } from "express";
 
+interface AuthenticatedRequest extends Request {
+  user?: {
+    id: string;
+  };
+}
+
 /** Rate limiting configuration with enhanced security features */
 // Configurable throttle duration in milliseconds (10 minutes by default)
 // Max attempts before blocking (8 by default)
@@ -28,7 +34,7 @@ const buckets = new Map<string, Bucket>();
  * The key now includes: IP, method, base URL, path, and user ID (if authenticated)
  */
 export function createRateLimit(options: RateLimitOptions) {
-  return (req: Request, res: Response, next: NextFunction) => {
+  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
     const now = Date.now();
     const key = `${req.ip}:${req.method}:${req.baseUrl}${req.path}${req.user?.id || ""}`;
 

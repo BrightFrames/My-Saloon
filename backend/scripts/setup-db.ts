@@ -112,12 +112,6 @@ async function setupDatabase() {
       throw new Error('MAIN_ADMIN_EMAIL and MAIN_ADMIN_PASSWORD must be set in .env file');
     }
     
-    // Remove old test accounts
-    await client.query(`
-      DELETE FROM public.users 
-      WHERE email IN ('admin@glowup.test', 'superadmin@glowup.test', 'elena@glowup.test', 'marcus@glowup.test', 'sophie@glowup.test');
-    `);
-    
     // Check if main admin already exists
     const adminExists = await client.query('SELECT id FROM public.users WHERE email = $1', [mainAdminEmail]);
     

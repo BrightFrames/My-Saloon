@@ -162,7 +162,7 @@ export function MyBookingsPage() {
             onClick={() => navigate("/")}
             className="text-2xl font-semibold font-serif italic text-[#313131] hover:text-[#C49B89] transition-colors"
           >
-            Glowup
+            Bookings
           </button>
         </div>
 

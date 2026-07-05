@@ -12,7 +12,7 @@ const navItems = [
 export default function Sidebar() {
   return (
     <aside className="sidebar">
-      <div className="brand">Glowup</div>
+      <div className="brand">Salon Admin</div>
       <nav>
         <ul>
           {navItems.map((item) => (

@@ -48,8 +48,12 @@ export const authenticateJWT = (req: AuthRequest, res: Response, next: NextFunct
 
     req.user = decoded;
     next();
-  } catch (err) {
-    if (err.name === "TokenExpiredError") {
+  } catch (err: unknown) {
+    if (
+      err instanceof Error &&
+      "name" in err &&
+      err.name === "TokenExpiredError"
+    ) {
       return res.status(401).json({
         success: false,
         message: "Token expired",

@@ -25,7 +25,7 @@ const highlights = [
     icon: Users,
     title: "Built for regulars",
     description:
-      "Glowup helps repeat guests keep their favorite salons in one place.",
+      "This platform helps guests keep their favorite salons in one place.",
   },
 ];
 
@@ -39,13 +39,13 @@ export default function AboutPage() {
           <div>
             <div className="inline-flex items-center gap-2 rounded-full bg-[#F4E9E5] px-4 py-2 text-sm font-medium text-[#6B554D] mb-6">
               <Heart size={14} fill="currentColor" />
-              Glowup About
+              About Us
             </div>
             <h1 className="font-serif text-3xl leading-tight text-stone-900 mb-6 sm:text-4xl md:text-5xl">
               A calmer way to discover salons you actually want to book.
             </h1>
             <p className="max-w-2xl text-lg leading-relaxed text-stone-600 mb-8">
-              Glowup is designed to make salon discovery feel polished instead
+              This experience is designed to make salon discovery feel polished instead
               of noisy. It blends nearby search, clear location context, and
               straightforward booking so users can move faster from inspiration
               to appointment.
@@ -74,7 +74,7 @@ export default function AboutPage() {
 
             <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
               <p className="mb-2 text-xs uppercase tracking-[0.35em] text-white/70">
-                Glowup experience
+                of a frustrating one
               </p>
               <p className="max-w-md text-sm leading-6 text-white/90">
                 Designed for quick discovery, nearby salons, and a cleaner

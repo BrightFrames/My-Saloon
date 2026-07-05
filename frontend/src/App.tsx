@@ -57,7 +57,7 @@ function AppRoutes() {
           setLongitude(longitude);
 
           const response = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&email=admin@glowup.com`,
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&email=admin@example.com`,
           );
           const data = await response.json();
 
@@ -78,7 +78,7 @@ function AppRoutes() {
           }
 
           if (autoDetect) {
-            sessionStorage.setItem("glowup-location-auto-detected", "true");
+            sessionStorage.setItem("location-auto-detected", "true");
           }
         } catch (error) {
           console.error("Error fetching location details:", error);
@@ -86,7 +86,7 @@ function AppRoutes() {
             `${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`,
           );
           if (autoDetect) {
-            sessionStorage.setItem("glowup-location-auto-detected", "true");
+            sessionStorage.setItem("location-auto-detected", "true");
           }
         } finally {
           setIsLoadingLocation(false);
@@ -120,9 +120,9 @@ function AppRoutes() {
   useEffect(() => {
     if (routeLocation.pathname !== "/") return;
     if (locationPermission !== "unknown") return;
-    if (sessionStorage.getItem("glowup-location-prompted") === "true") return;
+    if (sessionStorage.getItem("location-prompted") === "true") return;
 
-    sessionStorage.setItem("glowup-location-prompted", "true");
+    sessionStorage.setItem("location-prompted", "true");
     handleUseMyLocation(true);
   }, [handleUseMyLocation, locationPermission, routeLocation.pathname]);
 

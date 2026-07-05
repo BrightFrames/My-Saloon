@@ -34,7 +34,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         {/* Mobile Header (replaces Navbar on very small screens or works alongside) */}
         <div className="lg:hidden bg-white/80 backdrop-blur-md border-b border-stone-200 px-4 py-3 flex items-center justify-between sticky top-0 z-30 shadow-sm">
           <div className="flex items-center gap-2">
-            <span className="font-serif font-bold text-lg bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-purple-600">Glowup Admin</span>
+            <span className="font-serif font-bold text-lg bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-purple-600">Admin Panel</span>
           </div>
           <button 
             onClick={() => setIsSidebarOpen(!isSidebarOpen)}

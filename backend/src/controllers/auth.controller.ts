@@ -5,19 +5,8 @@ import { query } from "../config/db";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
-// Ensure env vars are loaded early so we can use them in DEMO_ACCOUNTS
+// Ensure env vars are loaded early for authentication.
 dotenv.config();
-
-const DEMO_ACCOUNTS = {
-  admin: {
-    email: "admin@glowup.test",
-    password: "admin123",
-  },
-  superadmin: {
-    email: process.env.MAIN_ADMIN_EMAIL || "superadmin@glowup.test",
-    password: process.env.MAIN_ADMIN_PASSWORD || "superadmin123",
-  },
-} as const;
 
 function createAuthResponse(user: {
   id: string;
@@ -42,67 +31,50 @@ function createAuthResponse(user: {
   };
 }
 
-function getDemoAuthResponse(role: "admin" | "superadmin") {
-  const demoAccount = DEMO_ACCOUNTS[role];
-
-  return createAuthResponse({
-    id: `demo-${role}`,
-    email: demoAccount.email,
-    role,
-    salon_id: null,
-  });
-}
-
-async function bootstrapDemoUser(
-  role: "admin" | "superadmin",
+async function authenticateUser(
   email: string,
   password: string,
+  role: "admin" | "superadmin",
 ) {
-  const demoAccount = DEMO_ACCOUNTS[role];
+  const mainAdminEmail = process.env.MAIN_ADMIN_EMAIL?.trim();
+  const mainAdminPassword = process.env.MAIN_ADMIN_PASSWORD;
 
-  if (email !== demoAccount.email || password !== demoAccount.password) {
+  if (
+    role === "superadmin" &&
+    mainAdminEmail &&
+    mainAdminPassword &&
+    email === mainAdminEmail &&
+    password === mainAdminPassword
+  ) {
+    return createAuthResponse({
+      id: "main-admin",
+      email: mainAdminEmail,
+      role,
+      salon_id: null,
+    });
+  }
+
+  const result = await query("SELECT * FROM users WHERE email = $1 AND role = $2", [
+    email,
+    role,
+  ]);
+
+  const user = result.rows[0];
+  if (!user) {
     return null;
   }
 
-  const existing = await query(
-    "SELECT * FROM users WHERE email = $1 AND role = $2",
-    [demoAccount.email, role],
-  );
-
-  if (existing.rows[0]) {
-    const currentUser = existing.rows[0];
-    const passwordMatches = await bcrypt.compare(
-      demoAccount.password,
-      currentUser.password,
-    );
-
-    if (passwordMatches) {
-      return currentUser;
-    }
-
-    const refreshedHash = await bcrypt.hash(demoAccount.password, 10);
-    const updated = await query(
-      "UPDATE users SET password = $1 WHERE email = $2 AND role = $3 RETURNING *",
-      [refreshedHash, demoAccount.email, role],
-    );
-
-    return updated.rows[0] || currentUser;
+  const isMatch = await bcrypt.compare(password, user.password);
+  if (!isMatch) {
+    return null;
   }
 
-  let salonId: string | null = null;
-
-  if (role === "admin") {
-    const salonResult = await query("SELECT id FROM salons LIMIT 1");
-    salonId = salonResult.rows[0]?.id || null;
-  }
-
-  const hashedPassword = await bcrypt.hash(demoAccount.password, 10);
-  const inserted = await query(
-    "INSERT INTO users (email, password, role, salon_id) VALUES ($1, $2, $3, $4) RETURNING *",
-    [demoAccount.email, hashedPassword, role, salonId],
-  );
-
-  return inserted.rows[0] || null;
+  return createAuthResponse({
+    id: String(user.id),
+    email: user.email,
+    role: user.role,
+    salon_id: user.salon_id,
+  });
 }
 
 // Env vars are loaded at the top of the file
@@ -206,50 +178,18 @@ export const adminLogin = async (req: Request, res: Response) => {
     return res.status(400).json({ message: "Email and password are required" });
   }
 
-  if (
-    email === DEMO_ACCOUNTS.admin.email &&
-    password === DEMO_ACCOUNTS.admin.password
-  ) {
-    return res.json(getDemoAuthResponse("admin"));
-  }
-
   try {
-    const result = await query(
-      "SELECT * FROM users WHERE email = $1 AND role = $2",
-      [email, "admin"],
-    );
-    const user =
-      result.rows[0] || (await bootstrapDemoUser("admin", email, password));
+    const authResponse = await authenticateUser(email, password, "admin");
 
-    if (!user) {
+    if (!authResponse) {
       return res
         .status(401)
         .json({ message: "Invalid credentials or not an admin" });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
-
-    res.json(
-      createAuthResponse({
-        id: String(user.id),
-        email: user.email,
-        role: user.role,
-        salon_id: user.salon_id,
-      }),
-    );
+    res.json(authResponse);
   } catch (err: any) {
     console.error("Admin login error:", err);
-
-    if (
-      email === DEMO_ACCOUNTS.admin.email &&
-      password === DEMO_ACCOUNTS.admin.password
-    ) {
-      return res.json(getDemoAuthResponse("admin"));
-    }
-
     res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -260,55 +200,19 @@ export const superAdminLogin = async (req: Request, res: Response) => {
   if (!email || !password) {
     return res.status(400).json({ message: "Email and password are required" });
   }
-  
-  console.log("LOGIN ATTEMPT:", email, password);
-  console.log("EXPECTED:", DEMO_ACCOUNTS.superadmin);
-
-  if (
-    email === DEMO_ACCOUNTS.superadmin.email &&
-    password === DEMO_ACCOUNTS.superadmin.password
-  ) {
-    return res.json(getDemoAuthResponse("superadmin"));
-  }
 
   try {
-    const result = await query(
-      "SELECT * FROM users WHERE email = $1 AND role = $2",
-      [email, "superadmin"],
-    );
-    const user =
-      result.rows[0] ||
-      (await bootstrapDemoUser("superadmin", email, password));
+    const authResponse = await authenticateUser(email, password, "superadmin");
 
-    if (!user) {
+    if (!authResponse) {
       return res
         .status(401)
         .json({ message: "Invalid credentials or not a superadmin" });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
-
-    res.json(
-      createAuthResponse({
-        id: String(user.id),
-        email: user.email,
-        role: user.role,
-        salon_id: user.salon_id,
-      }),
-    );
+    res.json(authResponse);
   } catch (err: any) {
     console.error("Super Admin login error:", err);
-
-    if (
-      email === DEMO_ACCOUNTS.superadmin.email &&
-      password === DEMO_ACCOUNTS.superadmin.password
-    ) {
-      return res.json(getDemoAuthResponse("superadmin"));
-    }
-
     res.status(500).json({ message: "Internal server error" });
   }
 };

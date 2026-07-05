@@ -32,7 +32,7 @@ const Navbar: React.FC = () => {
     window.location.reload();
   };
 
-  const handleGlowupReload = () => {
+  const handlePageReload = () => {
     if (isHome) {
       window.location.reload();
       return;
@@ -61,11 +61,11 @@ const Navbar: React.FC = () => {
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
         {/* Logo */}
         <button
-          onClick={handleGlowupReload}
+          onClick={handlePageReload}
           className="text-xl font-semibold font-serif text-[#C49B89] transition-colors hover:text-[#b08774] sm:text-2xl cursor-pointer"
-          title="Reload Glowup"
+          title="Reload page"
         >
-          Glowup
+          Home
         </button>
 
         {/* Desktop Nav Links */}

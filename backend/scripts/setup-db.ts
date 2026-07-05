@@ -44,8 +44,10 @@ async function setupDatabase() {
       CREATE TABLE IF NOT EXISTS public.users (
         id SERIAL PRIMARY KEY,
         email TEXT UNIQUE NOT NULL,
-        password TEXT NOT NULL,
+        password TEXT,
         role TEXT NOT NULL DEFAULT 'user',
+        name TEXT,
+        mobile TEXT,
         salon_id UUID REFERENCES public.salons(id) ON DELETE SET NULL,
         created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
       );
@@ -54,7 +56,15 @@ async function setupDatabase() {
     // Alter users table to make sure salon_id column exists
     await client.query(`
       ALTER TABLE public.users 
-      ADD COLUMN IF NOT EXISTS salon_id UUID REFERENCES public.salons(id) ON DELETE SET NULL;
+      ADD COLUMN IF NOT EXISTS salon_id UUID REFERENCES public.salons(id) ON DELETE SET NULL,
+      ADD COLUMN IF NOT EXISTS name TEXT,
+      ADD COLUMN IF NOT EXISTS mobile TEXT,
+      ADD COLUMN IF NOT EXISTS password TEXT;
+    `);
+
+    await client.query(`
+      ALTER TABLE public.users
+      ALTER COLUMN password DROP NOT NULL;
     `);
 
     // 3. Create bookings table

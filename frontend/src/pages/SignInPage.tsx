@@ -56,6 +56,8 @@ const SignInPage: React.FC = () => {
         credentials: "include",
         body: JSON.stringify({
           email: form.email,
+          name: form.name,
+          mobile: form.mobile,
         }),
       });
 
@@ -104,6 +106,8 @@ const SignInPage: React.FC = () => {
         body: JSON.stringify({
           email: form.email,
           otp,
+          name: form.name,
+          mobile: form.mobile,
         }),
       });
 
@@ -114,12 +118,16 @@ const SignInPage: React.FC = () => {
         sessionStorage.setItem("isVerified", "true");
         sessionStorage.setItem("userName", form.name);
         sessionStorage.setItem("userEmail", form.email);
+        if (data?.user?.user?.email) {
+          sessionStorage.setItem("userEmail", data.user.user.email);
+        }
+        const hasBookingContext = Boolean(sessionStorage.getItem("selectedSalon"));
         setPopup({
           open: true,
           title: "Welcome aboard",
           message: `${form.name}, your email was verified successfully.`,
           tone: "success",
-          onConfirm: () => navigate("/"),
+          onConfirm: () => navigate(hasBookingContext ? "/checkout" : "/"),
         });
       } else {
         setPopup({

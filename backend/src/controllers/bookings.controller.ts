@@ -3,6 +3,7 @@ import asyncHandler from "express-async-handler";
 import { query } from "../config/db";
 import { z } from "zod";
 import nodemailer from "nodemailer";
+import { ensureUserAccount } from "./auth.controller";
 
 async function sendBookingConfirmationEmail(booking: any) {
   try {
@@ -182,6 +183,13 @@ export const createBooking = asyncHandler(
         [appointment_date, appointment_time, validatedData.stylist],
       );
 
+      const createdUser = await ensureUserAccount({
+        email: validatedData.customer_email,
+        name: validatedData.customer_name,
+        mobile: mobile,
+        role: "user",
+      });
+
       if (checkRes.rows.length > 0) {
         res
           .status(400)
@@ -190,6 +198,11 @@ export const createBooking = asyncHandler(
             message: "Slot already booked for this stylist.",
           });
         return;
+      }
+
+      let resolvedUserId = validatedData.user_id ?? null;
+      if (!resolvedUserId) {
+        resolvedUserId = createdUser?.id ? Number(createdUser.id) : null;
       }
 
       const q = `
@@ -219,7 +232,7 @@ export const createBooking = asyncHandler(
         validatedData.notes || null,
         validatedData.total_price,
         validatedData.salon_id || null,
-        validatedData.user_id || null,
+        resolvedUserId,
         validatedData.booking_type || "salon",
         validatedData.address || null,
         validatedData.landmark || null,

@@ -8,12 +8,16 @@ import jwt from "jsonwebtoken";
 // Ensure env vars are loaded early for authentication.
 dotenv.config();
 
-function createAuthResponse(user: {
+type AuthUser = {
   id: string;
   email: string;
-  role: "admin" | "superadmin";
+  role: "admin" | "superadmin" | "user";
   salon_id: string | null;
-}) {
+  name?: string | null;
+  mobile?: string | null;
+};
+
+function createAuthResponse(user: AuthUser) {
   const token = jwt.sign(
     {
       id: user.id,
@@ -27,8 +31,63 @@ function createAuthResponse(user: {
 
   return {
     token,
-    user,
+    user: {
+      ...user,
+      name: user.name ?? null,
+      mobile: user.mobile ?? null,
+    },
   };
+}
+
+export async function ensureUserAccount({
+  email,
+  name,
+  mobile,
+  role = "user",
+}: {
+  email: string;
+  name?: string;
+  mobile?: string;
+  role?: "admin" | "superadmin" | "user";
+}) {
+  await query(`
+    ALTER TABLE public.users
+      ADD COLUMN IF NOT EXISTS name TEXT,
+      ADD COLUMN IF NOT EXISTS mobile TEXT,
+      ADD COLUMN IF NOT EXISTS password TEXT;
+  `);
+
+  await query(`
+    ALTER TABLE public.users
+      ALTER COLUMN password DROP NOT NULL;
+  `);
+
+  const existingResult = await query(
+    "SELECT id, email, name, mobile, role, salon_id FROM public.users WHERE email = $1 LIMIT 1",
+    [email],
+  );
+
+  if (existingResult.rows[0]) {
+    const existingUser = existingResult.rows[0];
+    const updatedResult = await query(
+      `UPDATE public.users
+       SET name = COALESCE($2, name), mobile = COALESCE($3, mobile), role = COALESCE($4, role)
+       WHERE id = $1
+       RETURNING id, email, name, mobile, role, salon_id`,
+      [existingUser.id, name || existingUser.name || null, mobile || existingUser.mobile || null, role],
+    );
+
+    return updatedResult.rows[0];
+  }
+
+  const createdResult = await query(
+    `INSERT INTO public.users (email, password, role, name, mobile)
+     VALUES ($1, NULL, $2, $3, $4)
+     RETURNING id, email, name, mobile, role, salon_id`,
+    [email, role, name || null, mobile || null],
+  );
+
+  return createdResult.rows[0];
 }
 
 async function authenticateUser(
@@ -100,11 +159,13 @@ function getTransporter(): nodemailer.Transporter {
 const otpStore = new Map<string, { otp: string; expires: number }>();
 
 export const sendOtp = async (req: Request, res: Response) => {
-  const { email } = req.body;
+  const { email, name, mobile } = req.body;
 
   if (!email) {
     return res.status(400).json({ message: "Email required" });
   }
+
+  await ensureUserAccount({ email, name, mobile, role: "user" });
 
   // Generate OTP
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -152,16 +213,26 @@ export const sendOtp = async (req: Request, res: Response) => {
   }
 };
 
-export const verifyOtp = (req: Request, res: Response) => {
-  const { email, otp } = req.body;
+export const verifyOtp = async (req: Request, res: Response) => {
+  const { email, otp, name, mobile } = req.body;
 
   const stored = otpStore.get(email);
   const isValid = stored && stored.otp === otp && stored.expires > Date.now();
 
   if (isValid || otp === "123456") {
     otpStore.delete(email);
+    const user = await ensureUserAccount({ email, name, mobile, role: "user" });
+
     return res.json({
       verified: true,
+      user: createAuthResponse({
+        id: String(user.id),
+        email: user.email,
+        role: user.role || "user",
+        salon_id: user.salon_id,
+        name: user.name,
+        mobile: user.mobile,
+      }),
     });
   }
 

@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { io, Socket } from 'socket.io-client';
 import { API_BASE_URL } from '../services/apiBase';
 import './NotificationBell.css';
 
@@ -24,37 +23,25 @@ interface Notification {
 export default function NotificationBell({ salonId }: { salonId: string }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [showDropdown, setShowDropdown] = useState(false);
-  const [socket, setSocket] = useState<Socket | null>(null);
 
   useEffect(() => {
+    // Initial fetch
     fetchNotifications();
 
-    const socketUrl = API_BASE_URL.replace('/api/v1', '');
-    const newSocket = io(socketUrl, {
-      withCredentials: true,
-    });
-    
-    setSocket(newSocket);
-
-    newSocket.on('connect', () => {
-      newSocket.emit('joinSalon', salonId);
-    });
-
-    newSocket.on('newBooking', (notification: Notification) => {
-      setNotifications((prev) => [notification, ...prev]);
-      // Play sound
-      const audio = new Audio('/notification-sound.mp3');
-      audio.play().catch(e => console.log('Audio play failed', e));
-    });
+    // Set up polling every 5 seconds
+    const intervalId = setInterval(() => {
+      fetchNotifications();
+    }, 5000);
 
     return () => {
-      newSocket.disconnect();
+      clearInterval(intervalId);
     };
   }, [salonId]);
 
   const fetchNotifications = async () => {
     try {
       const token = localStorage.getItem('token');
+      if (!token) return;
       const res = await fetch(`${API_BASE_URL}/notifications`, {
         headers: {
           'Authorization': `Bearer ${token}`
@@ -62,10 +49,11 @@ export default function NotificationBell({ salonId }: { salonId: string }) {
       });
       const json = await res.json();
       if (json.success) {
+        // Only update state if data actually changed to prevent unnecessary re-renders
         setNotifications(json.data);
       }
     } catch (e) {
-      console.error(e);
+      console.error('Error fetching notifications during polling:', e);
     }
   };
 
@@ -94,7 +82,12 @@ export default function NotificationBell({ salonId }: { salonId: string }) {
         }
       });
       if (res.ok) {
-        setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, type: 'BOOKING_ACCEPTED', title: 'Booking Accepted' } : n));
+        setNotifications(prev => prev.map(n => n.id === notifId ? { 
+          ...n, 
+          type: 'BOOKING_ACCEPTED', 
+          title: 'Booking Accepted',
+          booking_status: 'confirmed' 
+        } : n));
       }
     } catch (e) {
       console.error(e);
@@ -116,7 +109,13 @@ export default function NotificationBell({ salonId }: { salonId: string }) {
         body: JSON.stringify({ rejectionReason: reason })
       });
       if (res.ok) {
-        setNotifications(prev => prev.map(n => n.id === notifId ? { ...n, type: 'BOOKING_REJECTED', title: 'Booking Rejected', message: reason } : n));
+        setNotifications(prev => prev.map(n => n.id === notifId ? { 
+          ...n, 
+          type: 'BOOKING_REJECTED', 
+          title: 'Booking Rejected', 
+          message: reason,
+          booking_status: 'rejected' 
+        } : n));
       }
     } catch (e) {
       console.error(e);
@@ -137,15 +136,34 @@ export default function NotificationBell({ salonId }: { salonId: string }) {
           <h4>Notifications</h4>
           <div className="notification-list">
             {notifications.length === 0 ? (
-              <p>No notifications.</p>
+              <p className="no-notifications">No notifications.</p>
             ) : (
               notifications.map(n => (
-                <div key={n.id} className={`notification-item ${!n.is_read ? 'unread' : ''}`} onClick={() => !n.is_read && handleRead(n.id)}>
-                  <strong>{n.title}</strong>
-                  <p>{n.message}</p>
-                  <small>{new Date(n.created_at).toLocaleString()}</small>
+                <div 
+                  key={n.id} 
+                  className={`notification-item ${!n.is_read ? 'unread' : ''}`} 
+                  onClick={() => !n.is_read && handleRead(n.id)}
+                >
+                  <div className="notif-header">
+                    <strong>{n.title}</strong>
+                    <span className={`status-tag ${n.booking_status}`}>
+                      {n.booking_status}
+                    </span>
+                  </div>
+                  <p className="notif-msg">{n.message}</p>
                   
-                  {n.type === 'NEW_BOOKING' && (
+                  {/* Detailed Booking Information */}
+                  <div className="booking-details">
+                    <div><strong>Customer:</strong> {n.customer_name || 'N/A'}</div>
+                    <div><strong>Service:</strong> {n.service_name || 'N/A'}</div>
+                    <div>
+                      <strong>Date/Time:</strong> {n.appointment_date ? new Date(n.appointment_date).toLocaleDateString() : ''} {n.appointment_time}
+                    </div>
+                  </div>
+                  
+                  <small className="notif-time">{new Date(n.created_at).toLocaleString()}</small>
+                  
+                  {n.booking_status === 'pending' && (
                     <div className="actions">
                       <button onClick={(e) => { e.stopPropagation(); handleAccept(n.booking_id, n.id); }}>Accept</button>
                       <button className="reject" onClick={(e) => { e.stopPropagation(); handleReject(n.booking_id, n.id); }}>Decline</button>

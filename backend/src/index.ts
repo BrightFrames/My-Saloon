@@ -1,7 +1,6 @@
 import app from './app';
 import { env } from './config/env';
 import { ensureSalonsSchema } from './config/salonSchema';
-import { initSocket } from './socket';
 
 async function startServer() {
     try {
@@ -15,9 +14,6 @@ async function startServer() {
     const server = app.listen(env.PORT, () => {
         console.log(`[server]: Server is running at http://localhost:${env.PORT} in ${env.NODE_ENV} mode`);
     });
-
-    // Initialize Socket.IO with the HTTP server
-    initSocket(server);
 
     return server;
 }

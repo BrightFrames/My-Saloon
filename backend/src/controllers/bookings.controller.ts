@@ -265,14 +265,6 @@ export const createBooking = asyncHandler(
         ];
         const notifResult = await query(notifQ, notifVals);
         const newNotif = notifResult.rows[0];
-
-        // Emit Socket.IO event
-        try {
-          const { getIO } = require('../socket');
-          getIO().to(`salon_${validatedData.salon_id}`).emit('newBooking', newNotif);
-        } catch (e) {
-          console.error('[Socket.io error]', e);
-        }
       }
 
       sendBookingConfirmationEmail(newBooking);
@@ -753,16 +745,6 @@ export const acceptBooking = asyncHandler(
     // Update notification if it exists
     await query(`UPDATE public.notifications SET type = 'BOOKING_ACCEPTED', title = 'Booking Accepted' WHERE booking_id = $1`, [id]);
 
-    // Emit event to customer room
-    try {
-      const { getIO } = require('../socket');
-      if (booking.user_id) {
-        getIO().to(`customer_${booking.user_id}`).emit('bookingAccepted', { bookingId: id });
-      }
-    } catch (e) {
-      console.error('[Socket.io error]', e);
-    }
-
     res.json({
       success: true,
       message: "Booking accepted",
@@ -803,16 +785,6 @@ export const rejectBooking = asyncHandler(
     
     // Update notification if it exists
     await query(`UPDATE public.notifications SET type = 'BOOKING_REJECTED', title = 'Booking Rejected', message = $1 WHERE booking_id = $2`, [rejectionReason, id]);
-
-    // Emit event to customer room
-    try {
-      const { getIO } = require('../socket');
-      if (booking.user_id) {
-        getIO().to(`customer_${booking.user_id}`).emit('bookingRejected', { bookingId: id, reason: rejectionReason });
-      }
-    } catch (e) {
-      console.error('[Socket.io error]', e);
-    }
 
     res.json({
       success: true,

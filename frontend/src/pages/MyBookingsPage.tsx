@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { io } from "socket.io-client";
 
 import {
   Calendar,
@@ -47,12 +46,12 @@ export function MyBookingsPage() {
     booking?.hairstyle ||
     "Service";
 
-  const fetchBookings = async () => {
+  const fetchBookings = async (background = false) => {
     if (!userEmail) {
       setLoading(false);
       return;
     }
-    setLoading(true);
+    if (!background) setLoading(true);
     try {
       const res = await fetch(`${API_BASE_URL}/bookings/user/${userEmail}`);
       const data = await res.json();
@@ -62,7 +61,7 @@ export function MyBookingsPage() {
     } catch (error) {
       console.error("Error fetching user bookings", error);
     } finally {
-      setLoading(false);
+      if (!background) setLoading(false);
     }
   };
 
@@ -73,29 +72,13 @@ export function MyBookingsPage() {
     }
     fetchBookings();
 
-    const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
-    const userId = storedUser?.id || sessionStorage.getItem("userId");
+    const intervalId = setInterval(() => {
+      fetchBookings(true);
+    }, 5000);
 
-    if (userId) {
-      const socketUrl = API_BASE_URL.replace('/api/v1', '');
-      const socket = io(socketUrl, { withCredentials: true });
-
-      socket.on('connect', () => {
-        socket.emit('joinCustomer', userId.toString());
-      });
-
-      socket.on('bookingAccepted', ({ bookingId }) => {
-        setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, booking_status: 'confirmed' } : b));
-      });
-
-      socket.on('bookingRejected', ({ bookingId, reason }) => {
-        setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, booking_status: 'rejected', rejection_reason: reason } : b));
-      });
-
-      return () => {
-        socket.disconnect();
-      };
-    }
+    return () => {
+      clearInterval(intervalId);
+    };
   }, [isVerified, userEmail]);
 
   const handleCancelBooking = async (id: string) => {

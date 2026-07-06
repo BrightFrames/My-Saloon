@@ -36,7 +36,7 @@ router.get("/:id", getBooking);
 router.patch("/:id/cancel", writeLimiter, cancelBooking);
 
 // Real-time booking actions for Salon Admin
-router.post("/:id/accept", authenticateJWT, acceptBooking);
-router.post("/:id/reject", authenticateJWT, rejectBooking);
+router.post("/:id/accept", authenticateJWT, requireAdmin, acceptBooking);
+router.post("/:id/reject", authenticateJWT, requireAdmin, rejectBooking);
 
 export default router;

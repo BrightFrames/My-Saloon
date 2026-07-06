@@ -114,12 +114,14 @@ const SignInPage: React.FC = () => {
         sessionStorage.setItem("isVerified", "true");
         sessionStorage.setItem("userName", form.name);
         sessionStorage.setItem("userEmail", form.email);
+        const redirectPath = sessionStorage.getItem("redirectAfterSignIn") || "/";
+        sessionStorage.removeItem("redirectAfterSignIn");
         setPopup({
           open: true,
           title: "Welcome aboard",
           message: `${form.name}, your email was verified successfully.`,
           tone: "success",
-          onConfirm: () => navigate("/"),
+          onConfirm: () => navigate(redirectPath),
         });
       } else {
         setPopup({

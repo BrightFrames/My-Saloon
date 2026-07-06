@@ -95,6 +95,32 @@ export function SalonDetailsPage() {
       });
       return;
     }
+
+    // Check if user is signed in
+    const isVerified = sessionStorage.getItem("isVerified") === "true";
+    if (!isVerified) {
+      // Save selections so they persist after sign-in
+      sessionStorage.setItem("selectedSalon", JSON.stringify(salon));
+      sessionStorage.setItem(
+        "selectedServices",
+        JSON.stringify(selectedServices),
+      );
+      sessionStorage.setItem(
+        "selectedSalonServices",
+        JSON.stringify(salon?.services || []),
+      );
+      sessionStorage.setItem("redirectAfterSignIn", `/salon/${id}`);
+      setPopup({
+        open: true,
+        title: "Sign in required",
+        message:
+          "Please sign in to continue with your booking.",
+        tone: "warning",
+      });
+      navigate("/signin");
+      return;
+    }
+
     // Save selections in sessionStorage for dynamic Checkout consumption
     sessionStorage.setItem("selectedSalon", JSON.stringify(salon));
     sessionStorage.setItem(

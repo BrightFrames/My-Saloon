@@ -7,7 +7,9 @@ import {
   getUserBookings,
   getAllBookings,
   getSalonBookings,
-  allocateBarber
+  allocateBarber,
+  acceptBooking,
+  rejectBooking
 } from "../controllers/bookings.controller";
 import { authenticateJWT, requireAdmin } from "../middlewares/auth";
 import { createRateLimit } from "../middlewares/rateLimit";
@@ -32,5 +34,9 @@ router.get("/user/:email", getUserBookings);
 router.post("/", writeLimiter, createBooking);
 router.get("/:id", getBooking);
 router.patch("/:id/cancel", writeLimiter, cancelBooking);
+
+// Real-time booking actions for Salon Admin
+router.post("/:id/accept", authenticateJWT, acceptBooking);
+router.post("/:id/reject", authenticateJWT, rejectBooking);
 
 export default router;

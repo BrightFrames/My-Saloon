@@ -197,10 +197,11 @@ export const createBooking = asyncHandler(
           appointment_time, booking_time, payment_method, notes, total_price,
           booking_status, payment_status, salon_id, user_id, booking_type, address, landmark, city, pincode, service_charge
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'confirmed', 'pending', $16, $17, $18, $19, $20, $21, $22, $23
-        ) RETURNING *;
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'pending', 'pending', $16, $17, $18, $19, $20, $21, $22, $23
+        ) RETURNING *
       `;
-      const values = [
+
+      const vals = [
         validatedData.customer_name,
         validatedData.customer_email,
         phone,
@@ -214,20 +215,48 @@ export const createBooking = asyncHandler(
         appointment_time,
         booking_time,
         validatedData.payment_method,
-        validatedData.notes || null,
+        validatedData.notes || "",
         validatedData.total_price,
-        validatedData.salon_id || null,
-        validatedData.user_id || null,
-        validatedData.booking_type || "salon",
-        validatedData.address || null,
-        validatedData.landmark || null,
-        validatedData.city || null,
-        validatedData.pincode || null,
-        validatedData.service_charge || 0,
+        validatedData.salon_id,
+        validatedData.user_id,
+        validatedData.booking_type,
+        validatedData.address || "",
+        validatedData.landmark || "",
+        validatedData.city || "",
+        validatedData.pincode || "",
+        validatedData.service_charge,
       ];
 
-      const result = await query(q, values);
+      const result = await query(q, vals);
       const newBooking = result.rows[0];
+
+      if (validatedData.salon_id) {
+        // Create notification for salon admin
+        const notifQ = `
+          INSERT INTO public.notifications (
+            salon_id, booking_id, customer_id, type, title, message
+          ) VALUES ($1, $2, $3, $4, $5, $6)
+          RETURNING *
+        `;
+        const notifVals = [
+          validatedData.salon_id,
+          newBooking.id,
+          validatedData.user_id || null,
+          'NEW_BOOKING',
+          'New Booking Request',
+          `${validatedData.customer_name} has requested a booking for ${service_name} on ${appointment_date} at ${appointment_time}.`
+        ];
+        const notifResult = await query(notifQ, notifVals);
+        const newNotif = notifResult.rows[0];
+
+        // Emit Socket.IO event
+        try {
+          const { getIO } = require('../socket');
+          getIO().to(`salon_${validatedData.salon_id}`).emit('newBooking', newNotif);
+        } catch (e) {
+          console.error('[Socket.io error]', e);
+        }
+      }
 
       sendBookingConfirmationEmail(newBooking);
 
@@ -673,4 +702,100 @@ export const deleteAdminBooking = asyncHandler(
       message: "Booking deleted successfully",
     });
   },
+);
+
+export const acceptBooking = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { salon_id, id: admin_id } = (req as any).user;
+
+    const checkResult = await query(
+      "SELECT * FROM public.bookings WHERE id = $1 AND salon_id = $2",
+      [id, salon_id],
+    );
+    if (checkResult.rows.length === 0) {
+      res.status(404).json({ success: false, message: "Booking not found or access denied" });
+      return;
+    }
+
+    const booking = checkResult.rows[0];
+
+    const q = `
+      UPDATE public.bookings
+      SET booking_status = 'confirmed', accepted_by = $1, accepted_at = NOW(), updated_at = NOW()
+      WHERE id = $2
+      RETURNING *
+    `;
+    const result = await query(q, [admin_id, id]);
+    
+    // Update notification if it exists
+    await query(`UPDATE public.notifications SET type = 'BOOKING_ACCEPTED', title = 'Booking Accepted' WHERE booking_id = $1`, [id]);
+
+    // Emit event to customer room
+    try {
+      const { getIO } = require('../socket');
+      if (booking.user_id) {
+        getIO().to(`customer_${booking.user_id}`).emit('bookingAccepted', { bookingId: id });
+      }
+    } catch (e) {
+      console.error('[Socket.io error]', e);
+    }
+
+    res.json({
+      success: true,
+      message: "Booking accepted",
+      data: result.rows[0],
+    });
+  }
+);
+
+export const rejectBooking = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { rejectionReason } = req.body;
+    const { salon_id, id: admin_id } = (req as any).user;
+
+    if (!rejectionReason) {
+      res.status(400).json({ success: false, message: "Rejection reason is required" });
+      return;
+    }
+
+    const checkResult = await query(
+      "SELECT * FROM public.bookings WHERE id = $1 AND salon_id = $2",
+      [id, salon_id],
+    );
+    if (checkResult.rows.length === 0) {
+      res.status(404).json({ success: false, message: "Booking not found or access denied" });
+      return;
+    }
+
+    const booking = checkResult.rows[0];
+
+    const q = `
+      UPDATE public.bookings
+      SET booking_status = 'rejected', rejected_by = $1, rejected_at = NOW(), rejection_reason = $2, updated_at = NOW()
+      WHERE id = $3
+      RETURNING *
+    `;
+    const result = await query(q, [admin_id, rejectionReason, id]);
+    
+    // Update notification if it exists
+    await query(`UPDATE public.notifications SET type = 'BOOKING_REJECTED', title = 'Booking Rejected', message = $1 WHERE booking_id = $2`, [rejectionReason, id]);
+
+    // Emit event to customer room
+    try {
+      const { getIO } = require('../socket');
+      if (booking.user_id) {
+        getIO().to(`customer_${booking.user_id}`).emit('bookingRejected', { bookingId: id, reason: rejectionReason });
+      }
+    } catch (e) {
+      console.error('[Socket.io error]', e);
+    }
+
+    res.json({
+      success: true,
+      message: "Booking rejected",
+      data: result.rows[0],
+    });
+  }
 );

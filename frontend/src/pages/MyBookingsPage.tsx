@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { io } from "socket.io-client";
 
 import {
   Calendar,
@@ -71,6 +72,30 @@ export function MyBookingsPage() {
       return;
     }
     fetchBookings();
+
+    const storedUser = JSON.parse(localStorage.getItem("user") || "{}");
+    const userId = storedUser?.id || sessionStorage.getItem("userId");
+
+    if (userId) {
+      const socketUrl = API_BASE_URL.replace('/api/v1', '');
+      const socket = io(socketUrl, { withCredentials: true });
+
+      socket.on('connect', () => {
+        socket.emit('joinCustomer', userId.toString());
+      });
+
+      socket.on('bookingAccepted', ({ bookingId }) => {
+        setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, booking_status: 'confirmed' } : b));
+      });
+
+      socket.on('bookingRejected', ({ bookingId, reason }) => {
+        setBookings(prev => prev.map(b => b.id === bookingId ? { ...b, booking_status: 'rejected', rejection_reason: reason } : b));
+      });
+
+      return () => {
+        socket.disconnect();
+      };
+    }
   }, [isVerified, userEmail]);
 
   const handleCancelBooking = async (id: string) => {
@@ -244,7 +269,13 @@ export function MyBookingsPage() {
                     <div className="flex shrink-0 flex-col gap-4 md:justify-between md:border-l md:border-stone-100 md:pl-8 md:items-end">
                       <div className="flex flex-wrap items-center gap-3 md:justify-end">
                         <span
-                          className={`px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider ${isCancelled ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600"}`}
+                          className={`px-3 py-1 rounded-full text-xs font-semibold uppercase tracking-wider ${
+                            booking.booking_status === 'pending'
+                              ? 'bg-yellow-50 text-yellow-600'
+                              : booking.booking_status === 'confirmed'
+                              ? 'bg-green-50 text-green-600'
+                              : 'bg-red-50 text-red-600'
+                          }`}
                         >
                           {booking.booking_status}
                         </span>
@@ -253,6 +284,12 @@ export function MyBookingsPage() {
                           {formatINR(Number(booking.total_price) || 0)}
                         </span>
                       </div>
+                      
+                      {booking.booking_status === 'rejected' && booking.rejection_reason && (
+                        <div className="text-xs text-red-500 max-w-xs md:text-right mt-1">
+                          <strong>Reason:</strong> {booking.rejection_reason}
+                        </div>
+                      )}
 
                       <div className="flex items-center gap-1.5 text-sm text-stone-500 md:justify-end">
                         <CreditCard size={14} />
@@ -261,7 +298,7 @@ export function MyBookingsPage() {
                         </span>
                       </div>
 
-                      {!isCancelled && (
+                      {booking.booking_status !== 'cancelled' && booking.booking_status !== 'rejected' && (
                         <button
                           onClick={() => handleCancelBooking(booking.id)}
                           disabled={cancellingId === booking.id}

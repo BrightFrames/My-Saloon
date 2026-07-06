@@ -18,6 +18,7 @@ import { createRateLimit } from "../middlewares/rateLimit";
 import bookingRoutes from "./bookings.routes";
 import adminRoutes from "./admin.routes";
 import uploadRoutes from "./upload.routes";
+import notificationsRoutes from "./notifications.routes";
 
 const router = Router();
 const authLimiter = createRateLimit({
@@ -35,6 +36,7 @@ router.get("/team", getPublicTeam);
 router.use("/bookings", bookingRoutes);
 router.use("/admin", authenticateJWT, requireAdmin, adminRoutes);
 router.use("/upload", uploadRoutes);
+router.use("/notifications", notificationsRoutes);
 
 // Auth routes
 router.post("/auth/send-otp", authLimiter, sendOtp);

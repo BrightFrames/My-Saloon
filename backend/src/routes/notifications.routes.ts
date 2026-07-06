@@ -4,11 +4,11 @@ import {
   markAsRead,
   deleteNotification,
 } from "../controllers/notifications.controller";
-import { authenticateJWT, requireSalon } from "../middlewares/auth";
+import { authenticateJWT, requireSalonAdmin } from "../middlewares/auth";
 
 const router = Router();
 
-router.use(authenticateJWT, requireSalon);
+router.use(authenticateJWT, requireSalonAdmin);
 
 router.get("/", getNotifications);
 router.patch("/:id/read", markAsRead);

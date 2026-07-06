@@ -232,16 +232,7 @@ export const createBooking = asyncHandler(
         validatedData.payment_method,
         validatedData.notes || "",
         validatedData.total_price,
-<<<<<<< HEAD
-        validatedData.salon_id,
-        validatedData.user_id,
-        validatedData.booking_type,
-        validatedData.address || "",
-        validatedData.landmark || "",
-        validatedData.city || "",
-        validatedData.pincode || "",
-        validatedData.service_charge,
-=======
+
         validatedData.salon_id || null,
         resolvedUserId,
         validatedData.booking_type || "salon",
@@ -250,7 +241,7 @@ export const createBooking = asyncHandler(
         validatedData.city || null,
         validatedData.pincode || null,
         validatedData.service_charge || 0,
->>>>>>> 6fb1937457141e02a53b7a58581b8925071b3ffb
+
       ];
 
       const result = await query(q, vals);

@@ -152,15 +152,30 @@ export class SalonsController {
    */
   public createReview = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const { user_name, rating, comment } = req.body;
+    const { user_name, customer_email, rating, comment } = req.body;
 
-    if (!user_name || !rating) {
-      throw ApiError.badRequest("Please provide user_name and rating (1-5)");
+    if (!user_name || !customer_email || !rating) {
+      throw ApiError.badRequest("Please provide your name, email, and rating (1-5)");
+    }
+
+    const bookingResult = await query(
+      `SELECT id FROM public.bookings
+       WHERE customer_email = $1
+         AND salon_id = $2
+         AND booking_status IN ('confirmed', 'completed')
+       LIMIT 1`,
+      [String(customer_email).trim().toLowerCase(), id],
+    );
+
+    if (bookingResult.rows.length === 0) {
+      throw ApiError.forbidden(
+        "Only customers who booked this salon can leave a review.",
+      );
     }
 
     const result = await query(
       "INSERT INTO public.reviews (salon_id, user_name, rating, comment) VALUES ($1, $2, $3, $4) RETURNING *",
-      [id, user_name, rating, comment || null]
+      [id, user_name, rating, comment || null],
     );
 
     res.status(201).json({

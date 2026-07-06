@@ -9,7 +9,7 @@ export default function Navbar() {
           </div>
           <div className="hidden sm:block text-left">
             <p className="text-xs font-bold text-stone-800 leading-tight">Super Admin</p>
-            <p className="text-[10px] text-stone-500 font-medium">superadmin@glowup</p>
+            <p className="text-[10px] text-stone-500 font-medium">admin@example.com</p>
           </div>
         </button>
       </div>

@@ -5,26 +5,19 @@ import { query } from "../config/db";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 
-// Ensure env vars are loaded early so we can use them in DEMO_ACCOUNTS
+// Ensure env vars are loaded early for authentication.
 dotenv.config();
 
-const DEMO_ACCOUNTS = {
-  admin: {
-    email: "admin@glowup.test",
-    password: "admin123",
-  },
-  superadmin: {
-    email: process.env.MAIN_ADMIN_EMAIL || "superadmin@glowup.test",
-    password: process.env.MAIN_ADMIN_PASSWORD || "superadmin123",
-  },
-} as const;
-
-function createAuthResponse(user: {
+type AuthUser = {
   id: string;
   email: string;
-  role: "admin" | "superadmin";
+  role: "admin" | "superadmin" | "user";
   salon_id: string | null;
-}) {
+  name?: string | null;
+  mobile?: string | null;
+};
+
+function createAuthResponse(user: AuthUser) {
   const token = jwt.sign(
     {
       id: user.id,
@@ -38,71 +31,109 @@ function createAuthResponse(user: {
 
   return {
     token,
-    user,
+    user: {
+      ...user,
+      name: user.name ?? null,
+      mobile: user.mobile ?? null,
+    },
   };
 }
 
-function getDemoAuthResponse(role: "admin" | "superadmin") {
-  const demoAccount = DEMO_ACCOUNTS[role];
+export async function ensureUserAccount({
+  email,
+  name,
+  mobile,
+  role = "user",
+}: {
+  email: string;
+  name?: string;
+  mobile?: string;
+  role?: "admin" | "superadmin" | "user";
+}) {
+  await query(`
+    ALTER TABLE public.users
+      ADD COLUMN IF NOT EXISTS name TEXT,
+      ADD COLUMN IF NOT EXISTS mobile TEXT,
+      ADD COLUMN IF NOT EXISTS password TEXT;
+  `);
 
-  return createAuthResponse({
-    id: `demo-${role}`,
-    email: demoAccount.email,
-    role,
-    salon_id: null,
-  });
+  await query(`
+    ALTER TABLE public.users
+      ALTER COLUMN password DROP NOT NULL;
+  `);
+
+  const existingResult = await query(
+    "SELECT id, email, name, mobile, role, salon_id FROM public.users WHERE email = $1 LIMIT 1",
+    [email],
+  );
+
+  if (existingResult.rows[0]) {
+    const existingUser = existingResult.rows[0];
+    const updatedResult = await query(
+      `UPDATE public.users
+       SET name = COALESCE($2, name), mobile = COALESCE($3, mobile), role = COALESCE($4, role)
+       WHERE id = $1
+       RETURNING id, email, name, mobile, role, salon_id`,
+      [existingUser.id, name || existingUser.name || null, mobile || existingUser.mobile || null, role],
+    );
+
+    return updatedResult.rows[0];
+  }
+
+  const createdResult = await query(
+    `INSERT INTO public.users (email, password, role, name, mobile)
+     VALUES ($1, NULL, $2, $3, $4)
+     RETURNING id, email, name, mobile, role, salon_id`,
+    [email, role, name || null, mobile || null],
+  );
+
+  return createdResult.rows[0];
 }
 
-async function bootstrapDemoUser(
-  role: "admin" | "superadmin",
+async function authenticateUser(
   email: string,
   password: string,
+  role: "admin" | "superadmin",
 ) {
-  const demoAccount = DEMO_ACCOUNTS[role];
+  const mainAdminEmail = process.env.MAIN_ADMIN_EMAIL?.trim();
+  const mainAdminPassword = process.env.MAIN_ADMIN_PASSWORD;
 
-  if (email !== demoAccount.email || password !== demoAccount.password) {
+  if (
+    role === "superadmin" &&
+    mainAdminEmail &&
+    mainAdminPassword &&
+    email === mainAdminEmail &&
+    password === mainAdminPassword
+  ) {
+    return createAuthResponse({
+      id: "main-admin",
+      email: mainAdminEmail,
+      role,
+      salon_id: null,
+    });
+  }
+
+  const result = await query("SELECT * FROM users WHERE email = $1 AND role = $2", [
+    email,
+    role,
+  ]);
+
+  const user = result.rows[0];
+  if (!user) {
     return null;
   }
 
-  const existing = await query(
-    "SELECT * FROM users WHERE email = $1 AND role = $2",
-    [demoAccount.email, role],
-  );
-
-  if (existing.rows[0]) {
-    const currentUser = existing.rows[0];
-    const passwordMatches = await bcrypt.compare(
-      demoAccount.password,
-      currentUser.password,
-    );
-
-    if (passwordMatches) {
-      return currentUser;
-    }
-
-    const refreshedHash = await bcrypt.hash(demoAccount.password, 10);
-    const updated = await query(
-      "UPDATE users SET password = $1 WHERE email = $2 AND role = $3 RETURNING *",
-      [refreshedHash, demoAccount.email, role],
-    );
-
-    return updated.rows[0] || currentUser;
+  const isMatch = await bcrypt.compare(password, user.password);
+  if (!isMatch) {
+    return null;
   }
 
-  let salonId: string | null = null;
-
-  if (role === "admin") {
-    const salonResult = await query("SELECT id FROM salons LIMIT 1");
-    salonId = salonResult.rows[0]?.id || null;
-  }
-
-  const hashedPassword = await bcrypt.hash(demoAccount.password, 10);
-  const inserted = await query(
-    "INSERT INTO users (email, password, role, salon_id) VALUES ($1, $2, $3, $4) RETURNING *",
-    [demoAccount.email, hashedPassword, role, salonId],
-  );
-
-  return inserted.rows[0] || null;
+  return createAuthResponse({
+    id: String(user.id),
+    email: user.email,
+    role: user.role,
+    salon_id: user.salon_id,
+  });
 }
 
 // Env vars are loaded at the top of the file
@@ -128,11 +159,13 @@ function getTransporter(): nodemailer.Transporter {
 const otpStore = new Map<string, { otp: string; expires: number }>();
 
 export const sendOtp = async (req: Request, res: Response) => {
-  const { email } = req.body;
+  const { email, name, mobile } = req.body;
 
   if (!email) {
     return res.status(400).json({ message: "Email required" });
   }
+
+  await ensureUserAccount({ email, name, mobile, role: "user" });
 
   // Generate OTP
   const otp = Math.floor(100000 + Math.random() * 900000).toString();
@@ -180,16 +213,26 @@ export const sendOtp = async (req: Request, res: Response) => {
   }
 };
 
-export const verifyOtp = (req: Request, res: Response) => {
-  const { email, otp } = req.body;
+export const verifyOtp = async (req: Request, res: Response) => {
+  const { email, otp, name, mobile } = req.body;
 
   const stored = otpStore.get(email);
   const isValid = stored && stored.otp === otp && stored.expires > Date.now();
 
   if (isValid || otp === "123456") {
     otpStore.delete(email);
+    const user = await ensureUserAccount({ email, name, mobile, role: "user" });
+
     return res.json({
       verified: true,
+      user: createAuthResponse({
+        id: String(user.id),
+        email: user.email,
+        role: user.role || "user",
+        salon_id: user.salon_id,
+        name: user.name,
+        mobile: user.mobile,
+      }),
     });
   }
 
@@ -206,50 +249,18 @@ export const adminLogin = async (req: Request, res: Response) => {
     return res.status(400).json({ message: "Email and password are required" });
   }
 
-  if (
-    email === DEMO_ACCOUNTS.admin.email &&
-    password === DEMO_ACCOUNTS.admin.password
-  ) {
-    return res.json(getDemoAuthResponse("admin"));
-  }
-
   try {
-    const result = await query(
-      "SELECT * FROM users WHERE email = $1 AND role = $2",
-      [email, "admin"],
-    );
-    const user =
-      result.rows[0] || (await bootstrapDemoUser("admin", email, password));
+    const authResponse = await authenticateUser(email, password, "admin");
 
-    if (!user) {
+    if (!authResponse) {
       return res
         .status(401)
         .json({ message: "Invalid credentials or not an admin" });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
-
-    res.json(
-      createAuthResponse({
-        id: String(user.id),
-        email: user.email,
-        role: user.role,
-        salon_id: user.salon_id,
-      }),
-    );
+    res.json(authResponse);
   } catch (err: any) {
     console.error("Admin login error:", err);
-
-    if (
-      email === DEMO_ACCOUNTS.admin.email &&
-      password === DEMO_ACCOUNTS.admin.password
-    ) {
-      return res.json(getDemoAuthResponse("admin"));
-    }
-
     res.status(500).json({ message: "Internal server error" });
   }
 };
@@ -260,55 +271,19 @@ export const superAdminLogin = async (req: Request, res: Response) => {
   if (!email || !password) {
     return res.status(400).json({ message: "Email and password are required" });
   }
-  
-  console.log("LOGIN ATTEMPT:", email, password);
-  console.log("EXPECTED:", DEMO_ACCOUNTS.superadmin);
-
-  if (
-    email === DEMO_ACCOUNTS.superadmin.email &&
-    password === DEMO_ACCOUNTS.superadmin.password
-  ) {
-    return res.json(getDemoAuthResponse("superadmin"));
-  }
 
   try {
-    const result = await query(
-      "SELECT * FROM users WHERE email = $1 AND role = $2",
-      [email, "superadmin"],
-    );
-    const user =
-      result.rows[0] ||
-      (await bootstrapDemoUser("superadmin", email, password));
+    const authResponse = await authenticateUser(email, password, "superadmin");
 
-    if (!user) {
+    if (!authResponse) {
       return res
         .status(401)
         .json({ message: "Invalid credentials or not a superadmin" });
     }
 
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ message: "Invalid credentials" });
-    }
-
-    res.json(
-      createAuthResponse({
-        id: String(user.id),
-        email: user.email,
-        role: user.role,
-        salon_id: user.salon_id,
-      }),
-    );
+    res.json(authResponse);
   } catch (err: any) {
     console.error("Super Admin login error:", err);
-
-    if (
-      email === DEMO_ACCOUNTS.superadmin.email &&
-      password === DEMO_ACCOUNTS.superadmin.password
-    ) {
-      return res.json(getDemoAuthResponse("superadmin"));
-    }
-
     res.status(500).json({ message: "Internal server error" });
   }
 };

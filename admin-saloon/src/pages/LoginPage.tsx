@@ -30,16 +30,10 @@ export default function LoginPage({ onLogin }: Props) {
         <div className="login-background-overlay" />
       </div>
       <div className="login-card">
-        <h1 className="brand">Glowup Admin</h1>
+        <h1 className="brand">Salon Admin</h1>
         <p className="lead">Sign in to manage bookings, services and team.</p>
 
         <LoginForm onSuccess={handleLogin} />
-
-        <div className="hint">
-          <strong>Demo credentials:</strong>
-          <div>email: admin@glowup.test</div>
-          <div>password: admin123</div>
-        </div>
       </div>
     </div>
   );

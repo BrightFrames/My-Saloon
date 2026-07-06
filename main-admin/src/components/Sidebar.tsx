@@ -21,7 +21,7 @@ export default function Sidebar() {
           <Scissors size={20} className="drop-shadow-sm" />
         </div>
         <div>
-          <h2 className="m-0 text-stone-900 font-bold text-xl tracking-tight">Glowup</h2>
+          <h2 className="m-0 text-stone-900 font-bold text-xl tracking-tight">Admin</h2>
           <p className="text-[10px] text-stone-500 font-bold uppercase tracking-widest mt-0.5">Global Admin</p>
         </div>
       </div>

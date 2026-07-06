@@ -54,7 +54,7 @@ export default function Login() {
                 <Scissors size={28} className="drop-shadow-sm" />
               </motion.div>
               <h1 className="m-0 text-2xl font-bold text-stone-900 tracking-tight text-center">Global Admin</h1>
-              <p className="mt-2 text-stone-500 text-sm font-medium text-center">Sign in to manage the Glowup network.</p>
+              <p className="mt-2 text-stone-500 text-sm font-medium text-center">Sign in to manage your salon network.</p>
             </div>
             
             <form onSubmit={handleSubmit} className="flex flex-col gap-4">
@@ -64,7 +64,7 @@ export default function Login() {
                   type="email"
                   value={email} 
                   onChange={e => setEmail(e.target.value)} 
-                  placeholder="admin@glowup.com"
+                  placeholder="admin@example.com"
                   className="bg-white/80 border-stone-200 focus-visible:ring-indigo-600"
                   required
                 />
@@ -110,11 +110,6 @@ export default function Login() {
               </Button>
             </form>
 
-            <div className="mt-8 text-xs text-stone-500 bg-stone-50/80 p-4 rounded-2xl font-medium border border-stone-100/80 text-center flex flex-col gap-1">
-              <strong className="text-stone-700 block mb-1 uppercase tracking-wider text-[10px]">Demo Credentials</strong>
-              <span>superadmin@glowup.test</span>
-              <span>superadmin123</span>
-            </div>
           </CardContent>
         </Card>
       </motion.div>

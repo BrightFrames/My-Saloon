@@ -1,9 +1,17 @@
 (async ()=>{
   try {
+    const adminEmail = process.env.ADMIN_EMAIL;
+    const adminPassword = process.env.ADMIN_PASSWORD;
+
+    if (!adminEmail || !adminPassword) {
+      console.error('Set ADMIN_EMAIL and ADMIN_PASSWORD before running this script.');
+      process.exit(1);
+    }
+
     const loginRes = await fetch('http://localhost:3000/api/v1/auth/admin-login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: 'admin@glowup.test', password: 'admin123' })
+      body: JSON.stringify({ email: adminEmail, password: adminPassword })
     });
     const login = await loginRes.json();
     console.log('login status', loginRes.status, login);

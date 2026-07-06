@@ -3,6 +3,7 @@ import asyncHandler from "express-async-handler";
 import { query } from "../config/db";
 import { z } from "zod";
 import nodemailer from "nodemailer";
+import { ensureUserAccount } from "./auth.controller";
 
 async function sendBookingConfirmationEmail(booking: any) {
   try {
@@ -16,7 +17,9 @@ async function sendBookingConfirmationEmail(booking: any) {
       },
     });
 
-    const paymentLabel = booking.payment_method.replace("_", " ").toUpperCase();
+    const paymentLabel = (booking.payment_method || "cash")
+      .replace("_", " ")
+      .toUpperCase();
     const serviceLabel =
       booking.service_name ||
       booking.serviceName ||
@@ -180,6 +183,13 @@ export const createBooking = asyncHandler(
         [appointment_date, appointment_time, validatedData.stylist],
       );
 
+      const createdUser = await ensureUserAccount({
+        email: validatedData.customer_email,
+        name: validatedData.customer_name,
+        mobile: mobile,
+        role: "user",
+      });
+
       if (checkRes.rows.length > 0) {
         res
           .status(400)
@@ -188,6 +198,11 @@ export const createBooking = asyncHandler(
             message: "Slot already booked for this stylist.",
           });
         return;
+      }
+
+      let resolvedUserId = validatedData.user_id ?? null;
+      if (!resolvedUserId) {
+        resolvedUserId = createdUser?.id ? Number(createdUser.id) : null;
       }
 
       const q = `
@@ -217,6 +232,7 @@ export const createBooking = asyncHandler(
         validatedData.payment_method,
         validatedData.notes || "",
         validatedData.total_price,
+<<<<<<< HEAD
         validatedData.salon_id,
         validatedData.user_id,
         validatedData.booking_type,
@@ -225,6 +241,16 @@ export const createBooking = asyncHandler(
         validatedData.city || "",
         validatedData.pincode || "",
         validatedData.service_charge,
+=======
+        validatedData.salon_id || null,
+        resolvedUserId,
+        validatedData.booking_type || "salon",
+        validatedData.address || null,
+        validatedData.landmark || null,
+        validatedData.city || null,
+        validatedData.pincode || null,
+        validatedData.service_charge || 0,
+>>>>>>> 6fb1937457141e02a53b7a58581b8925071b3ffb
       ];
 
       const result = await query(q, vals);
@@ -661,11 +687,16 @@ export const updateAdminBooking = asyncHandler(
     values.push(id);
     const q = `UPDATE public.bookings SET ${updates.join(", ")} WHERE id = $${paramIndex} RETURNING *`;
     const result = await query(q, values);
+    const updatedBooking = result.rows[0];
+
+    if (booking_status === "confirmed" && booking.booking_status !== "confirmed") {
+      await sendBookingConfirmationEmail(updatedBooking);
+    }
 
     res.json({
       success: true,
       message: "Booking updated successfully",
-      data: result.rows[0],
+      data: updatedBooking,
     });
   },
 );

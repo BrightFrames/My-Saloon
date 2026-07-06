@@ -1,4 +1,4 @@
-import { Star, Clock, Plus, ArrowRight, Loader2 } from "lucide-react";
+import { Star, Clock, Plus, ArrowRight, Loader2, UserCircle2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { PopupDialog } from "../components/PopupDialog";
@@ -15,7 +15,12 @@ export function SalonDetailsPage() {
   const [selectedServices, setSelectedServices] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState("Services");
   
-  const [reviewForm, setReviewForm] = useState({ user_name: "", rating: 5, comment: "" });
+  const [reviewForm, setReviewForm] = useState({
+    user_name: "",
+    customer_email: "",
+    rating: 5,
+    comment: "",
+  });
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
 
   const [popup, setPopup] = useState<{
@@ -136,11 +141,11 @@ export function SalonDetailsPage() {
 
   const handleReviewSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!reviewForm.user_name || !reviewForm.rating) {
+    if (!reviewForm.user_name || !reviewForm.customer_email || !reviewForm.rating) {
       setPopup({
         open: true,
         title: "Incomplete Review",
-        message: "Please provide your name and a rating.",
+        message: "Please provide your name, email, and a rating.",
         tone: "warning",
       });
       return;
@@ -160,7 +165,7 @@ export function SalonDetailsPage() {
           message: "Thank you for your review!",
           tone: "success",
         });
-        setReviewForm({ user_name: "", rating: 5, comment: "" });
+        setReviewForm({ user_name: "", customer_email: "", rating: 5, comment: "" });
         // Refresh salon details to get the new review
         const updatedRes = await fetch(`${API_BASE_URL}/salons/${id}`);
         const updatedBody = await updatedRes.json();
@@ -233,7 +238,7 @@ export function SalonDetailsPage() {
           {/* Content on Image */}
           <div className="absolute bottom-6 left-6 z-10 text-white sm:bottom-8 sm:left-8">
             <h1 className="mb-3 text-2xl font-serif font-medium sm:text-3xl">
-              {salon?.name || "Glowup Atelier"}
+              {salon?.name || "Salon Details"}
             </h1>
             <div className="flex flex-wrap items-center gap-3 text-sm font-medium text-white/90 sm:gap-4">
               <span className="flex items-center py-1 px-3 bg-black/20 backdrop-blur-md rounded-full gap-1.5">
@@ -383,6 +388,10 @@ export function SalonDetailsPage() {
                       <input type="text" value={reviewForm.user_name} onChange={e => setReviewForm({...reviewForm, user_name: e.target.value})} className="border border-stone-200 rounded-lg px-3 py-2 text-sm" placeholder="John Doe" required />
                     </div>
                     <div className="flex flex-col gap-1.5">
+                      <label className="text-sm text-stone-600">Email</label>
+                      <input type="email" value={reviewForm.customer_email} onChange={e => setReviewForm({...reviewForm, customer_email: e.target.value})} className="border border-stone-200 rounded-lg px-3 py-2 text-sm" placeholder="you@example.com" required />
+                    </div>
+                    <div className="flex flex-col gap-1.5">
                       <label className="text-sm text-stone-600">Rating (1-5)</label>
                       <select value={reviewForm.rating} onChange={e => setReviewForm({...reviewForm, rating: Number(e.target.value)})} className="border border-stone-200 rounded-lg px-3 py-2 text-sm bg-white">
                         <option value={5}>5 Stars</option>
@@ -407,7 +416,15 @@ export function SalonDetailsPage() {
                     salon.reviews.map((r: any) => (
                       <div key={r.id} className="border border-stone-100 rounded-xl p-5 bg-white shadow-sm">
                         <div className="flex items-center justify-between mb-2">
-                          <span className="font-medium text-stone-800">{r.user_name}</span>
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F5E8E0] text-[#B67B63]">
+                              <UserCircle2 size={22} />
+                            </div>
+                            <div>
+                              <span className="font-medium text-stone-800 block">{r.user_name}</span>
+                              <span className="text-xs text-stone-400">{new Date(r.created_at).toLocaleDateString()}</span>
+                            </div>
+                          </div>
                           <span className="text-xs text-stone-400">{new Date(r.created_at).toLocaleDateString()}</span>
                         </div>
                         <div className="flex items-center gap-1 mb-3">

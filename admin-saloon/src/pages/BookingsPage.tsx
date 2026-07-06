@@ -109,6 +109,28 @@ export default function BookingsPage({ user, onLogout }: Props) {
     }
   };
 
+  const handleDeclineTable = async (id: string) => {
+    const reason = prompt("Please enter a rejection reason:");
+    if (!reason) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/bookings/${id}/reject`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
+        },
+        body: JSON.stringify({ rejectionReason: reason })
+      });
+      if (res.ok) {
+        fetchBookings();
+      } else {
+        alert("Failed to decline booking.");
+      }
+    } catch (err: any) {
+      alert(err.message || "Error declining booking.");
+    }
+  };
+
   const handleAllocate = async (bookingId: string) => {
     const stylist = allocationStylist[bookingId];
     if (!stylist) return alert("Please enter a barber's name.");
@@ -296,6 +318,23 @@ export default function BookingsPage({ user, onLogout }: Props) {
                         </>
                       )}
                       
+                      {b.booking_status === 'pending' && (
+                        <>
+                          <button 
+                            onClick={() => handleConfirm(b.id)}
+                            style={{ padding: '6px 12px', background: '#5cb85c', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 500 }}
+                          >
+                            Accept
+                          </button>
+                          <button 
+                            onClick={() => handleDeclineTable(b.id)}
+                            style={{ padding: '6px 12px', background: '#d9534f', color: '#fff', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '12px', fontWeight: 500 }}
+                          >
+                            Decline
+                          </button>
+                        </>
+                      )}
+
                       {b.booking_status === 'cancelled' && (
                         <button 
                           onClick={() => handleConfirm(b.id)}

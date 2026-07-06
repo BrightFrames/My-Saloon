@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../services/apiBase';
 import './NotificationBell.css';
 
@@ -128,7 +128,7 @@ export default function NotificationBell({ salonId }: { salonId: string }) {
     <div className="notification-bell-container">
       <button className="bell-btn" onClick={() => setShowDropdown(!showDropdown)}>
         🔔
-        {unreadCount > 0 && <span className="badge">{unreadCount}</span>}
+        {unreadCount > 0 && <span className="notif-badge">{unreadCount}</span>}
       </button>
 
       {showDropdown && (

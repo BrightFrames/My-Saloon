@@ -12,7 +12,7 @@
   position: relative;
 }
 
-.badge {
+.notif-badge {
   position: absolute;
   top: -5px;
   right: -5px;

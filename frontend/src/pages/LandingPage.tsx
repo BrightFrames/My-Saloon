@@ -19,6 +19,8 @@ import L from "leaflet";
 import { formatINR } from "../utils/currency";
 import { API_BASE_URL } from "../services/apiBase";
 import heroImage from "../assets/sign.jpg";
+import { motion } from "framer-motion";
+import { useTheme } from "../context/ThemeContext";
 
 interface LandingPageProps {
   location: string;
@@ -209,43 +211,59 @@ export function LandingPage({
     onSearch?.();
   };
 
+  useTheme();
+
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#FDFBF9] font-sans text-stone-800">
+    <div className="min-h-screen overflow-x-hidden bg-[#ffffff] dark:bg-[#000000] font-sans text-stone-800 dark:text-[#fafafa] relative">
+      {/* Background Visual Depth circles (Aceternity UI style glow in dark mode) */}
+      <div className="hidden dark:block absolute top-[10%] left-[-10%] w-[35rem] h-[35rem] rounded-full bg-radial from-[#C89B7B]/5 to-transparent blur-3xl pointer-events-none -z-10"></div>
+      <div className="hidden dark:block absolute top-[30%] left-[20%] w-[25rem] h-[25rem] rounded-full bg-radial from-[#6B554D]/2 to-transparent blur-3xl pointer-events-none -z-10"></div>
+
       {/* Hero Section */}
       <main className="relative mx-auto flex h-155 max-w-7xl items-center px-4 py-10 sm:px-6 sm:py-14 lg:px-8 lg:py-16">
         {/* Background Image/Overlay */}
-        <div className="absolute right-0 top-0 -z-10 hidden h-full w-[48%] overflow-hidden rounded-[40px] shadow-[0_20px_60px_rgba(0,0,0,0.08)] lg:block">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 1, ease: "easeOut" }}
+          className="absolute right-0 top-0 -z-10 hidden h-full w-[48%] overflow-hidden rounded-[40px] shadow-[0_20px_60px_rgba(0,0,0,0.08)] dark:shadow-black/60 lg:block"
+        >
           <img
             src={heroImage}
             alt="Salon background"
-            className="w-full h-full object-cover object-center opacity-85 blur-[1px]"
+            className="w-full h-full object-cover object-center opacity-85 dark:opacity-40 blur-[1px]"
           />
-          <div className="absolute inset-0 bg-linear-to-r from-[#FDFBF9]/20 via-[#FDFBF9]/10 to-transparent"></div>
-        </div>
+          <div className="absolute inset-0 bg-linear-to-r from-[#ffffff] dark:from-[#000000] via-transparent to-transparent"></div>
+        </motion.div>
 
-        <div className="w-full max-w-2xl">
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="w-full max-w-2xl"
+        >
           {isVerified ? (
             <>
-              <div className="inline-flex items-center gap-2 bg-[#F4E9E5] text-[#6B554D] text-sm font-medium px-4 py-1.5 rounded-full mb-5">
+              <div className="inline-flex items-center gap-2 bg-[#F4E9E5] dark:bg-[#121214] text-[#6B554D] dark:text-[#a1a1aa] text-sm font-medium px-4 py-1.5 rounded-full mb-5 border border-transparent dark:border-white/10">
                 <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></span>
                 You're all set
               </div>
-              <h1 className="max-w-xl text-[clamp(2.25rem,7vw,3.75rem)] leading-[1.05] font-serif mb-4 text-stone-900">
+              <h1 className="max-w-xl text-[clamp(2.25rem,7vw,3.75rem)] leading-[1.05] font-serif mb-4 text-stone-900 dark:text-white">
                 Welcome, {userName}!
               </h1>
-              <p className="max-w-[42ch] text-base sm:text-lg mb-10 leading-relaxed text-stone-500">
+              <p className="max-w-[42ch] text-base sm:text-lg mb-10 leading-relaxed text-stone-500 dark:text-[#a1a1aa]">
                 Great to see you again! Explore top-rated salons near you and
                 book your next pampering session instantly.
               </p>
             </>
           ) : (
             <>
-              <h1 className="max-w-2xl text-[clamp(2.5rem,8vw,4.5rem)] leading-[1.05] font-serif mb-6 text-stone-900">
+              <h1 className="max-w-2xl text-[clamp(2.5rem,8vw,4.5rem)] leading-[1.05] font-serif mb-6 text-stone-900 dark:text-white">
                 Find & Book Top Salons Near
                 <br />
                 You Instantly
               </h1>
-              <p className="max-w-[42ch] text-base sm:text-lg mb-10 leading-relaxed text-stone-500">
+              <p className="max-w-[42ch] text-base sm:text-lg mb-10 leading-relaxed text-stone-500 dark:text-[#a1a1aa]">
                 Real-time availability. Verified salons. Instant booking.
                 Elevate your self-care routine with curated professionals.
               </p>
@@ -254,28 +272,25 @@ export function LandingPage({
 
           {/* Search/Location Form */}
           <div className="mb-12 flex flex-col gap-4 sm:flex-row sm:flex-wrap">
-            <button
+            <motion.button
+              whileHover={{ scale: 1.03, y: -2 }}
+              whileTap={{ scale: 0.98 }}
               type="button"
               onClick={() => onUseMyLocation()}
               disabled={isLoadingLocation}
-              className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#6B554D] px-6 py-3.5 font-medium text-white shadow-sm transition-colors hover:bg-[#5C4841] disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto sm:min-w-45 cursor-pointer"
+              className="flex min-h-11 dark:min-h-12 w-full items-center justify-center gap-2 rounded-lg dark:rounded-xl bg-[#6B554D] hover:bg-[#5C4841] dark:bg-white dark:hover:bg-zinc-200 px-6 py-3.5 dark:py-4 font-medium dark:font-semibold text-white dark:text-black shadow-sm dark:shadow-lg transition-colors disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto sm:min-w-45 cursor-pointer"
             >
               {isLoadingLocation ? (
-                <Loader2 size={18} className="text-white animate-spin" />
+                <Loader2 size={18} className="animate-spin" />
               ) : (
-                <MapPin size={18} fill="currentColor" className="text-white" />
+                <MapPin size={18} fill="currentColor" />
               )}
               {isLoadingLocation ? "Locating..." : "Use My Location"}
-            </button>
+            </motion.button>
             <form
               onSubmit={handleSearchSubmit}
               className="w-full max-w-none sm:max-w-105"
             >
-              <div className="h-2.5">
-                {location && !isLoadingLocation && (
-                  <div className="mb-2 flex items-center gap-2 text-sm text-stone-500 animate-in fade-in duration-300"></div>
-                )}
-              </div>
               <div className="flex flex-col gap-3 sm:flex-row">
                 <div className="relative flex-1">
                   <input
@@ -283,20 +298,22 @@ export function LandingPage({
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
                     placeholder="Enter city manually..."
-                    className="w-full rounded-lg border border-stone-200 bg-white py-3.5 pl-5 pr-12 text-stone-600 shadow-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-[#C49B89]"
+                    className="w-full rounded-lg dark:rounded-xl border border-stone-200 dark:border-white/10 bg-white dark:bg-zinc-950/80 backdrop-blur-none dark:backdrop-blur-md py-3.5 dark:py-4 pl-5 pr-12 text-stone-600 dark:text-white shadow-sm dark:shadow-md focus:border-transparent dark:focus:border-white/20 focus:outline-none focus:ring-2 focus:ring-[#C49B89] dark:focus:ring-white/20 transition-all"
                   />
                   <MapPin
                     size={18}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400"
+                    className="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 dark:text-stone-500"
                   />
                 </div>
-                <button
+                <motion.button
+                  whileHover={{ scale: 1.03, y: -2 }}
+                  whileTap={{ scale: 0.98 }}
                   type="submit"
-                  className="flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-[#C49B89] px-6 py-3.5 font-medium text-white shadow-sm transition-colors hover:bg-[#b78675] sm:w-auto sm:min-w-40 cursor-pointer"
+                  className="flex min-h-11 dark:min-h-12 w-full items-center justify-center gap-2 rounded-lg dark:rounded-xl bg-[#C49B89] hover:bg-[#b78675] dark:bg-black dark:hover:bg-zinc-900 px-6 py-3.5 dark:py-4 font-medium dark:font-semibold text-white dark:text-white border border-transparent dark:border-white/15 shadow-sm dark:shadow-lg transition-colors sm:w-auto sm:min-w-40 cursor-pointer"
                 >
                   <Search size={18} />
                   Search Salons
-                </button>
+                </motion.button>
               </div>
             </form>
           </div>
@@ -320,7 +337,7 @@ export function LandingPage({
               <span>10,000+ Bookings</span>
             </div>
           </div>
-        </div>
+        </motion.div>
       </main>
 
       {/* Advanced Search & Filtering Section */}
@@ -439,9 +456,13 @@ export function LandingPage({
               salons.map((s) => {
                 const isActive = selectedSalonId === s.id;
                 return (
-                  <div
+                  <motion.div
                     key={s.id}
                     id={`salon-card-${s.id}`}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    whileHover={{ scale: 1.02, y: -4 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 20 }}
                     onClick={() =>
                       handleSalonSelect(
                         s.id,
@@ -449,10 +470,10 @@ export function LandingPage({
                         Number(s.longitude),
                       )
                     }
-                    className={`group flex cursor-pointer flex-col gap-4 rounded-2xl border bg-white p-4 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.03)] transition-all duration-300 hover:shadow-md sm:flex-row sm:gap-5 ${
+                    className={`group flex cursor-pointer flex-col gap-4 rounded-2xl border p-4 transition-all duration-300 sm:flex-row sm:gap-5 ${
                       isActive
-                        ? "border-[#C49B89] bg-[#FDFBF9] shadow-lg ring-2 ring-[#C49B89]/10 scale-[1.01]"
-                        : "border-stone-100"
+                        ? "border-[#C49B89] dark:border-white/30 bg-[#FDFBF9] dark:bg-zinc-900 shadow-lg ring-2 ring-[#C49B89]/10 scale-[1.01]"
+                        : "border-stone-100 dark:border-white/5 bg-white dark:bg-zinc-950 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.03)] dark:shadow-black/20 hover:shadow-md dark:hover:shadow-white/5"
                     }`}
                   >
                     {/* Salon Image */}
@@ -546,7 +567,7 @@ export function LandingPage({
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </motion.div>
                 );
               })
             )}

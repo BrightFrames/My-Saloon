@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
 import { Menu, X, LogOut } from "lucide-react";
+import { useTheme } from "../context/ThemeContext";
+import { motion } from "framer-motion";
 
 const Navbar: React.FC = () => {
   const navigate = useNavigate();
@@ -16,6 +18,8 @@ const Navbar: React.FC = () => {
 
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const { theme, toggleTheme } = useTheme();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -90,6 +94,21 @@ const Navbar: React.FC = () => {
 
         {/* Right Side */}
         <div className="flex items-center gap-2 sm:gap-4">
+          {/* Theme Toggle Button */}
+          <button
+            onClick={toggleTheme}
+            className="flex min-h-11 min-w-11 items-center justify-center rounded-lg p-2 text-stone-600 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800 transition-colors cursor-pointer text-lg relative overflow-hidden"
+            title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+          >
+            <motion.div
+              initial={false}
+              animate={{ rotate: theme === 'light' ? 0 : 360 }}
+              transition={{ type: "spring", stiffness: 200, damping: 15 }}
+            >
+              {theme === 'light' ? '🌙' : '☀️'}
+            </motion.div>
+          </button>
+
           {/* Conditional rendering: logged in vs logged out */}
           {!isVerified ? (
             // NOT LOGGED IN: Show "Sign In" on home, "Home" on other pages

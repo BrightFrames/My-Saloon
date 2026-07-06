@@ -36,6 +36,18 @@ export default function Dashboard({ user, onLogout }: Props) {
     fetchData();
   }, [user]);
 
+  useEffect(() => {
+    const handleBookingUpdate = () => {
+      console.log("[dashboard page] Real-time booking update received, refreshing stats...");
+      fetchData();
+    };
+
+    window.addEventListener('booking-update', handleBookingUpdate);
+    return () => {
+      window.removeEventListener('booking-update', handleBookingUpdate);
+    };
+  }, [user]);
+
   const today = new Date().toLocaleDateString("en-US", {
     weekday: "long",
     month: "long",

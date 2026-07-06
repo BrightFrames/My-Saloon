@@ -7,6 +7,7 @@ import {
   useLocation,
 } from "react-router-dom";
 import "./App.css";
+import { ThemeProvider } from "./context/ThemeContext";
 import { LandingPageWrapper } from "./pages/LandingPage";
 import AboutPage from "./pages/AboutPage";
 import MembershipsPage from "./pages/MembershipsPage";
@@ -184,9 +185,11 @@ function InnerApp() {
 
 function App() {
   return (
-    <BrowserRouter>
-      <InnerApp />
-    </BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
+        <InnerApp />
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }
 

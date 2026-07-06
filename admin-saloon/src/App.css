@@ -201,3 +201,183 @@ input, textarea, select {
     border-right-color: var(--border);
   }
 }
+
+/* Dark Mode Overrides for Salon Admin Dashboard (Pure Black) */
+html.dark {
+  --bg: #000000;
+  --panel-bg: #0B0B0C;
+  --border: rgba(255,255,255,0.06);
+  --shadow: 0 8px 30px rgba(0,0,0,0.6);
+  --input-bg: #030303;
+  --input-border: rgba(255,255,255,0.08);
+  --text: #a1a1aa;
+  --text-h: #ffffff;
+  --muted: #71717a;
+  --accent: #7C5CFC;
+  --accent-bg: rgba(124, 92, 252, 0.1);
+  --accent-border: #7C5CFC;
+}
+
+html.dark body {
+  background-color: #000000 !important;
+  color: #a1a1aa !important;
+}
+
+html.dark input, 
+html.dark textarea, 
+html.dark select {
+  color: #ffffff !important;
+  background-color: #030303 !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+html.dark .sidebar {
+  background: #0d0d0e !important;
+  border-right: 1px solid rgba(255,255,255,0.06) !important;
+}
+
+html.dark .sidebar li {
+  color: #71717a !important;
+}
+
+html.dark .sidebar a.active li {
+  background: rgba(124, 92, 252, 0.12) !important;
+  color: #7C5CFC !important;
+  box-shadow: inset 3px 0 0 #7C5CFC;
+}
+
+html.dark .sidebar li:hover {
+  background: rgba(255, 255, 255, 0.03) !important;
+  color: #ffffff !important;
+}
+
+html.dark .topbar {
+  background: rgba(0, 0, 0, 0.8) !important;
+  backdrop-filter: blur(12px) !important;
+  border-bottom: 1px solid rgba(255,255,255,0.06) !important;
+}
+
+html.dark .dropdown {
+  background: #0B0B0C !important;
+  border-color: rgba(255,255,255,0.08) !important;
+}
+
+html.dark .dropdown h4 {
+  background: #0d0d0e !important;
+  color: #ffffff !important;
+  border-bottom-color: rgba(255,255,255,0.08) !important;
+}
+
+html.dark .booking-details {
+  background: #0d0d0e !important;
+  border-color: rgba(255,255,255,0.08) !important;
+}
+
+html.dark .notification-item.unread {
+  background: rgba(124, 92, 252, 0.08) !important;
+}
+
+html.dark .notification-item {
+  border-bottom-color: rgba(255,255,255,0.06) !important;
+}
+
+html.dark .no-notifications {
+  color: #71717a !important;
+}
+
+html.dark .toast-card {
+  background: #0B0B0C !important;
+  border-color: rgba(255,255,255,0.08) !important;
+}
+
+html.dark .toast-booking-info {
+  background: #0d0d0e !important;
+  border-color: rgba(255,255,255,0.08) !important;
+}
+
+html.dark .data-table thead {
+  background: #0d0d0e !important;
+}
+
+html.dark .data-table th {
+  color: #ffffff !important;
+  border-bottom-color: rgba(255,255,255,0.08) !important;
+}
+
+html.dark .data-table td {
+  border-bottom-color: rgba(255,255,255,0.06) !important;
+}
+
+html.dark .btn-sm {
+  background: #0B0B0C !important;
+  border-color: rgba(255,255,255,0.1) !important;
+  color: #a1a1aa !important;
+}
+
+html.dark .btn-sm:hover {
+  background: rgba(255,255,255,0.05) !important;
+  color: #ffffff !important;
+}
+
+/* Sidebar Collapsible style overrides */
+.sidebar.collapsed {
+  width: 80px !important;
+  flex: 0 0 80px !important;
+  padding: 24px 10px !important;
+}
+
+.sidebar.collapsed li {
+  justify-content: center !important;
+  padding: 12px 0 !important;
+  gap: 0 !important;
+}
+
+.sidebar.collapsed li:hover {
+  transform: none !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+}
+
+.sidebar.collapsed .nav-icon {
+  margin: 0 !important;
+}
+
+.sidebar {
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), flex 0.3s cubic-bezier(0.4, 0, 0.2, 1), padding 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+/* Metric Cards style enhancements */
+html.dark .metric-card {
+  background: #0B0B0C !important;
+  border-color: rgba(255, 255, 255, 0.06) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+  transition: transform 0.2s, box-shadow 0.2s !important;
+}
+
+html.dark .metric-card:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 30px rgba(124, 92, 252, 0.1) !important;
+  border-color: rgba(124, 92, 252, 0.3) !important;
+}
+
+/* Charts and common panels */
+html.dark .card {
+  background: #0B0B0C !important;
+  border-color: rgba(255, 255, 255, 0.06) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* Status Badges */
+html.dark .status-badge.confirmed {
+  background: rgba(61, 220, 151, 0.12) !important;
+  color: #3DDC97 !important;
+}
+
+html.dark .status-badge.pending {
+  background: rgba(244, 183, 64, 0.12) !important;
+  color: #F4B740 !important;
+}
+
+html.dark .status-badge.cancelled {
+  background: rgba(255, 94, 120, 0.12) !important;
+  color: #FF5E78 !important;
+}

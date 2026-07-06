@@ -132,7 +132,7 @@ export function MyBookingsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#FDFBF9] gap-4">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#ffffff] gap-4">
         <Loader2 className="animate-spin text-[#CA9A86]" size={36} />
         <span className="text-stone-500 font-medium">
           Fetching your appointments...
@@ -142,7 +142,7 @@ export function MyBookingsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FDFBF9] font-sans text-stone-800 pb-20">
+    <div className="min-h-screen bg-[#ffffff] font-sans text-stone-800 pb-20">
       <PopupDialog
         open={popup.open}
         title={popup.title}
@@ -175,7 +175,7 @@ export function MyBookingsPage() {
         </div>
 
         <button
-          onClick={fetchBookings}
+          onClick={() => fetchBookings()}
           className="flex items-center gap-1.5 bg-white border border-stone-200 hover:bg-stone-50 text-stone-600 px-4 py-2 rounded-lg text-sm font-medium transition-all shadow-sm"
         >
           <RefreshCw size={14} /> Refresh

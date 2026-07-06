@@ -35,7 +35,7 @@ export function BookingConfirmationPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#FDFBF9]">
+      <div className="min-h-screen flex items-center justify-center bg-[#ffffff]">
         <span className="animate-pulse text-[#CA9A86]">Loading...</span>
       </div>
     );
@@ -43,7 +43,7 @@ export function BookingConfirmationPage() {
 
   if (!booking) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#FDFBF9] gap-4">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#ffffff] gap-4">
         <p className="text-xl text-stone-600">Booking not found.</p>
         <button
           onClick={() => navigate("/")}
@@ -56,7 +56,7 @@ export function BookingConfirmationPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FDFBF9] font-sans text-stone-800 flex flex-col items-center justify-center py-12 px-4">
+    <div className="min-h-screen bg-[#ffffff] font-sans text-stone-800 flex flex-col items-center justify-center py-12 px-4">
       <div className="w-full max-w-2xl bg-white rounded-3xl p-8 md:p-12 shadow-2xl shadow-stone-200/50 border border-stone-100 flex flex-col items-center relative overflow-hidden">
         {/* Success Animation Container */}
         <div className="mb-6 animate-[bounce_1s_ease-in-out]">

@@ -33,7 +33,7 @@ export default function AboutPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="min-h-screen bg-[#FDFBF9] text-stone-800">
+    <div className="min-h-screen bg-[#ffffff] text-stone-800">
       <main className="mx-auto max-w-7xl px-4 py-10 sm:px-6 sm:py-16 lg:px-8">
         <section className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] items-center">
           <div>

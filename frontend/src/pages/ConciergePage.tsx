@@ -34,7 +34,7 @@ const ConciergePage: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFBF9] px-4 py-12 sm:px-6 sm:py-20 lg:px-8">
+    <div className="min-h-screen bg-[#ffffff] px-4 py-12 sm:px-6 sm:py-20 lg:px-8">
       <PopupDialog
         open={popup.open}
         title={popup.title}

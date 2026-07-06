@@ -69,6 +69,18 @@ export default function BookingsPage({ user, onLogout }: Props) {
     }
   }, [statusFilter, searchQuery]);
 
+  useEffect(() => {
+    const handleBookingUpdate = () => {
+      console.log("[bookings page] Real-time booking update received, fetching latest data...");
+      fetchBookings();
+    };
+
+    window.addEventListener('booking-update', handleBookingUpdate);
+    return () => {
+      window.removeEventListener('booking-update', handleBookingUpdate);
+    };
+  }, [statusFilter, searchQuery]);
+
   const handleConfirm = async (id: string) => {
     try {
       const res = await api.confirmBooking(id);

@@ -197,7 +197,7 @@ export function SalonDetailsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FDFBF9] flex flex-col items-center justify-center gap-4">
+      <div className="min-h-screen bg-[#ffffff] flex flex-col items-center justify-center gap-4">
         <Loader2 size={40} className="text-[#C49B89] animate-spin" />
         <p className="text-stone-500 font-medium font-serif text-lg">
           Curating luxury experience...
@@ -210,7 +210,7 @@ export function SalonDetailsPage() {
     salon?.services && salon.services.length > 0 ? salon.services : [];
 
   return (
-    <div className="min-h-screen bg-[#FDFBF9] font-sans text-stone-800">
+    <div className="min-h-screen bg-[#ffffff] font-sans text-stone-800">
       <PopupDialog
         open={popup.open}
         title={popup.title}

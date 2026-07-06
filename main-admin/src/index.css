@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
@@ -33,4 +34,191 @@ body, html {
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #d4d4d4;
+}
+
+/* Dark Mode Support for Super Admin (Pure Black) */
+html.dark body {
+  background: #000000 !important;
+  color: #f8fafc !important;
+  background-image: 
+    radial-gradient(at 0% 0%, hsla(253,16%,7%,0.8) 0, transparent 50%), 
+    radial-gradient(at 50% 0%, hsla(245,45%,15%,0.3) 0, transparent 50%), 
+    radial-gradient(at 100% 0%, hsla(265,55%,20%,0.2) 0, transparent 50%) !important;
+}
+
+html.dark header {
+  background-color: rgba(0, 0, 0, 0.8) !important;
+  border-bottom-color: rgba(255,255,255,0.06) !important;
+}
+
+html.dark aside {
+  background-color: #0d0d0e !important;
+  border-right-color: rgba(255,255,255,0.06) !important;
+  box-shadow: 4px 0 24px rgba(0,0,0,0.4) !important;
+}
+
+html.dark aside .brand, 
+html.dark aside h2 {
+  color: #ffffff !important;
+}
+
+html.dark .text-stone-900 {
+  color: #ffffff !important;
+}
+
+html.dark .text-stone-800 {
+  color: #f1f5f9 !important;
+}
+
+html.dark .text-stone-600 {
+  color: #cbd5e1 !important;
+}
+
+html.dark .text-stone-500 {
+  color: #94a3b8 !important;
+}
+
+html.dark .text-stone-400 {
+  color: #64748b !important;
+}
+
+html.dark .bg-white {
+  background-color: #0B0B0C !important;
+}
+
+html.dark .border-stone-200 {
+  border-color: rgba(255,255,255,0.06) !important;
+}
+
+html.dark .border-stone-200\/50 {
+  border-color: rgba(255,255,255,0.04) !important;
+}
+
+html.dark .hover\:bg-stone-50:hover {
+  background-color: #0B0B0C !important;
+}
+
+html.dark .hover\:bg-stone-100:hover {
+  background-color: #0B0B0C !important;
+}
+
+html.dark .bg-indigo-50 {
+  background-color: rgba(123, 97, 255, 0.1) !important;
+}
+
+html.dark .text-indigo-700 {
+  color: #e0e7ff !important;
+}
+
+html.dark .text-indigo-600 {
+  color: #7B61FF !important;
+}
+
+html.dark input, 
+html.dark textarea, 
+html.dark select {
+  background-color: #030303 !important;
+  color: #ffffff !important;
+  border-color: rgba(255,255,255,0.08) !important;
+}
+
+/* Ensure mobile header matches dark mode */
+html.dark .lg\:hidden {
+  background-color: rgba(13, 13, 14, 0.8) !important;
+  border-bottom-color: rgba(255,255,255,0.06) !important;
+}
+
+/* Premium gradient styling for super admin */
+html.dark .bg-indigo-600 {
+  background: linear-gradient(135deg, #7B61FF 0%, #634beb 100%) !important;
+}
+
+html.dark .hover\:bg-indigo-700:hover {
+  background: linear-gradient(135deg, #8c75ff 0%, #7B61FF 100%) !important;
+}
+
+html.dark .text-indigo-600 {
+  color: #7B61FF !important;
+}
+
+/* Row hover highlight */
+html.dark tr {
+  transition: background-color 0.2s !important;
+}
+
+html.dark tr:hover {
+  background-color: rgba(255,255,255,0.02) !important;
+}
+
+/* Large metric numbers glow on hover */
+html.dark .metric-card {
+  transition: transform 0.2s, box-shadow 0.2s !important;
+}
+
+html.dark .metric-card:hover {
+  transform: translateY(-2px) !important;
+  box-shadow: 0 8px 30px rgba(123, 97, 255, 0.1) !important;
+  border-color: rgba(123, 97, 255, 0.2) !important;
+}
+
+/* Card and container dark mode overrides */
+html.dark .bg-white\/70 {
+  background-color: #0B0B0C !important;
+  color: #ffffff !important;
+  border-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+html.dark .text-stone-955,
+html.dark .text-stone-950 {
+  color: #ffffff !important;
+}
+
+/* Outline and default button dark mode contrast overrides */
+html.dark button.border-stone-200,
+html.dark .border-stone-200 {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+html.dark button.border-stone-200 {
+  background-color: #030303 !important;
+  color: #ffffff !important;
+}
+
+html.dark button.border-stone-200:hover {
+  background-color: #0B0B0C !important;
+  color: #7B61FF !important;
+}
+
+html.dark button {
+  color: #ffffff !important;
+}
+
+/* Modal dark overlays and boxes */
+html.dark .bg-white {
+  background-color: #0B0B0C !important;
+  color: #ffffff !important;
+}
+
+html.dark .bg-stone-50\/50 {
+  background-color: #0d0d0e !important;
+}
+
+html.dark .border-stone-100 {
+  border-color: rgba(255, 255, 255, 0.06) !important;
+}
+
+html.dark .text-stone-800 {
+  color: #f1f5f9 !important;
+}
+
+html.dark .text-stone-600 {
+  color: #cbd5e1 !important;
+}
+
+html.dark .text-stone-500 {
+  color: #94a3b8 !important;
+}
+
+html.dark .bg-stone-100 {
+  background-color: #030303 !important;
 }

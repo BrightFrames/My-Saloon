@@ -4,6 +4,7 @@ import Salons from './pages/Salons';
 import Login from './pages/Login';
 import { auth } from './services/auth';
 import './App.css';
+import { ThemeProvider } from './context/ThemeContext';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const user = auth.getCurrent();
@@ -13,13 +14,15 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
 function App() {
   return (
-    <BrowserRouter>
-      <Routes>
-        <Route path='/login' element={<Login />} />
-        <Route path='/' element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-        <Route path='/salons' element={<ProtectedRoute><Salons /></ProtectedRoute>} />
-      </Routes>
-    </BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path='/login' element={<Login />} />
+          <Route path='/' element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+          <Route path='/salons' element={<ProtectedRoute><Salons /></ProtectedRoute>} />
+        </Routes>
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }
 

@@ -408,7 +408,7 @@ export function CheckoutPage() {
   const finalAmount = basePriceWithCharge + tax;
 
   return (
-    <div className="min-h-screen bg-[#FDFBF9] font-sans text-stone-800 pb-20">
+    <div className="min-h-screen bg-[#ffffff] font-sans text-stone-800 pb-20">
       <PopupDialog
         open={popup.open}
         title={popup.title}

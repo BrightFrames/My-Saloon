@@ -4,6 +4,7 @@ import { query } from "../config/db";
 import { z } from "zod";
 import nodemailer from "nodemailer";
 import { ensureUserAccount } from "./auth.controller";
+import { getIO } from "../socket";
 
 async function sendBookingConfirmationEmail(booking: any) {
   try {
@@ -265,6 +266,25 @@ export const createBooking = asyncHandler(
         ];
         const notifResult = await query(notifQ, notifVals);
         const newNotif = notifResult.rows[0];
+
+        // Real-time update via socket.io
+        try {
+          const io = getIO();
+          io.to(`salon_${validatedData.salon_id}`).emit("newBooking", {
+            notification: {
+              ...newNotif,
+              customer_name: validatedData.customer_name,
+              service_name,
+              appointment_date,
+              appointment_time,
+              payment_method: validatedData.payment_method,
+              booking_status: 'pending'
+            },
+            booking: newBooking
+          });
+        } catch (err) {
+          console.error("[socket] Failed to emit newBooking:", err);
+        }
       }
 
       sendBookingConfirmationEmail(newBooking);
@@ -328,12 +348,25 @@ export const cancelBooking = asyncHandler(
       res.status(404).json({ success: false, message: "Booking not found" });
       return;
     }
+    const updatedBooking = result.rows[0];
+
+    if (updatedBooking.salon_id) {
+      try {
+        const io = getIO();
+        io.to(`salon_${updatedBooking.salon_id}`).emit("bookingUpdated", {
+          booking: updatedBooking
+        });
+      } catch (err) {
+        console.error("[socket] Failed to emit bookingUpdated on cancel:", err);
+      }
+    }
+
     res
       .status(200)
       .json({
         success: true,
         message: "Booking cancelled successfully",
-        data: result.rows[0],
+        data: updatedBooking,
       });
   },
 );
@@ -741,14 +774,25 @@ export const acceptBooking = asyncHandler(
       RETURNING *
     `;
     const result = await query(q, [admin_id, id]);
+    const updatedBooking = result.rows[0];
     
     // Update notification if it exists
     await query(`UPDATE public.notifications SET type = 'BOOKING_ACCEPTED', title = 'Booking Accepted' WHERE booking_id = $1`, [id]);
 
+    // Emit socket event
+    try {
+      const io = getIO();
+      io.to(`salon_${salon_id}`).emit("bookingUpdated", {
+        booking: updatedBooking
+      });
+    } catch (err) {
+      console.error("[socket] Failed to emit bookingUpdated on accept:", err);
+    }
+
     res.json({
       success: true,
       message: "Booking accepted",
-      data: result.rows[0],
+      data: updatedBooking,
     });
   }
 );
@@ -782,14 +826,25 @@ export const rejectBooking = asyncHandler(
       RETURNING *
     `;
     const result = await query(q, [admin_id, rejectionReason, id]);
+    const updatedBooking = result.rows[0];
     
     // Update notification if it exists
     await query(`UPDATE public.notifications SET type = 'BOOKING_REJECTED', title = 'Booking Rejected', message = $1 WHERE booking_id = $2`, [rejectionReason, id]);
 
+    // Emit socket event
+    try {
+      const io = getIO();
+      io.to(`salon_${salon_id}`).emit("bookingUpdated", {
+        booking: updatedBooking
+      });
+    } catch (err) {
+      console.error("[socket] Failed to emit bookingUpdated on reject:", err);
+    }
+
     res.json({
       success: true,
       message: "Booking rejected",
-      data: result.rows[0],
+      data: updatedBooking,
     });
   }
 );

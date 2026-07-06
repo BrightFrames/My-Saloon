@@ -52,7 +52,7 @@ const TreatmentsPage: React.FC<{
   }, [latitude, longitude]);
 
   return (
-    <div className="min-h-screen bg-[#FDFBF9] px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
+    <div className="min-h-screen bg-[#ffffff] px-4 py-10 sm:px-6 sm:py-12 lg:px-8">
       <div className="mx-auto max-w-7xl">
         <h2 className="mb-6 text-3xl font-serif">Treatments</h2>
         <p className="mb-8 text-stone-600">

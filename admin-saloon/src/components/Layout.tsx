@@ -16,7 +16,7 @@ export default function Layout({ children, user, salonId, onLogout }: Props) {
   let currentSalonId = salonId;
   if (!currentSalonId) {
     try {
-      const storedUser = JSON.parse(localStorage.getItem('user') || '{}');
+      const storedUser = JSON.parse(localStorage.getItem('admin_user') || localStorage.getItem('user') || '{}');
       currentSalonId = storedUser.salon_id || storedUser.id;
     } catch(e) {}
   }

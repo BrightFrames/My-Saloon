@@ -131,19 +131,52 @@ export class SalonsController {
   public deleteSalon = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
 
-    const result = await query(
-      "DELETE FROM salons WHERE id = $1 RETURNING *",
-      [id]
-    );
+    // Delete associated records first to avoid foreign key constraint violations
+    // We wrap each in a try-catch in case a table or column doesn't exist in the production DB yet
+    const cascadeQueries = [
+      "DELETE FROM notifications WHERE salon_id = $1",
+      "DELETE FROM bookings WHERE salon_id = $1",
+      "DELETE FROM users WHERE salon_id = $1",
+      "DELETE FROM reviews WHERE salon_id = $1",
+      "DELETE FROM team_members WHERE salon_id = $1",
+      "DELETE FROM services WHERE salon_id = $1"
+    ];
 
-    if (result.rowCount === 0) {
-      throw ApiError.notFound("Salon not found");
+    for (const q of cascadeQueries) {
+      try {
+        await query(q, [id]);
+      } catch (err: any) {
+        console.warn(`Warning: Cascade delete query failed (${q}) - ${err.message}`);
+      }
     }
 
-    res.status(200).json({
-      success: true,
-      message: "Salon deleted successfully",
-    });
+    try {
+      const result = await query(
+        "DELETE FROM salons WHERE id = $1 RETURNING *",
+        [id]
+      );
+
+      if (result.rowCount === 0) {
+        res.status(404).json({ success: false, message: "Salon not found" });
+        return;
+      }
+
+      res.status(200).json({
+        success: true,
+        message: "Salon deleted successfully",
+      });
+    } catch (err: any) {
+      console.error("Error deleting salon:", err);
+      // If it's still a foreign key violation (23503), return a friendly message
+      if (err.code === '23503') {
+        res.status(400).json({
+          success: false,
+          message: "Cannot delete salon because it has associated records that could not be removed."
+        });
+        return;
+      }
+      throw err;
+    }
   });
 
   /**

@@ -118,25 +118,27 @@ const SignInPage: React.FC = () => {
         sessionStorage.setItem("isVerified", "true");
         sessionStorage.setItem("userName", form.name);
         sessionStorage.setItem("userEmail", form.email);
-<<<<<<< HEAD
-        const redirectPath = sessionStorage.getItem("redirectAfterSignIn") || "/";
-        sessionStorage.removeItem("redirectAfterSignIn");
-=======
         if (data?.user?.user?.email) {
           sessionStorage.setItem("userEmail", data.user.user.email);
         }
+
+        const redirectPath = sessionStorage.getItem("redirectAfterSignIn");
         const hasBookingContext = Boolean(sessionStorage.getItem("selectedSalon"));
->>>>>>> 6fb1937457141e02a53b7a58581b8925071b3ffb
+        sessionStorage.removeItem("redirectAfterSignIn");
+
+        let finalPath = "/";
+        if (redirectPath) {
+          finalPath = redirectPath;
+        } else if (hasBookingContext) {
+          finalPath = "/checkout";
+        }
+
         setPopup({
           open: true,
           title: "Welcome aboard",
           message: `${form.name}, your email was verified successfully.`,
           tone: "success",
-<<<<<<< HEAD
-          onConfirm: () => navigate(redirectPath),
-=======
-          onConfirm: () => navigate(hasBookingContext ? "/checkout" : "/"),
->>>>>>> 6fb1937457141e02a53b7a58581b8925071b3ffb
+          onConfirm: () => navigate(finalPath),
         });
       } else {
         setPopup({

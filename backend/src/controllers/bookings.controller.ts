@@ -81,15 +81,18 @@ async function sendBookingReceivedEmail(booking: any) {
       booking.serviceName ||
       booking.hairstyle ||
       "Service";
-    const formattedDate = new Date(booking.booking_date).toLocaleDateString(
-      "en-US",
-      {
-        weekday: "long",
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-      },
-    );
+    const formattedDate = new Date(
+      booking.booking_date || booking.appointment_date
+    ).toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+
+    const timeSlotLabel = booking.booking_time || booking.appointment_time || "N/A";
+    const serviceCharge = Number(booking.service_charge || 0);
+    const totalPrice = Number(booking.total_price || 0);
 
     await transporter.sendMail({
       from:
@@ -119,12 +122,12 @@ async function sendBookingReceivedEmail(booking: any) {
                 <strong style="color: #313131;">${booking.booking_type === "home" ? "Home Service" : "Salon Visit"}</strong>
               </div>
               <div style="margin-bottom: 16px; display: flex; justify-content: space-between;">
-                <span style="color: #8C8682;">Service:</span>
+                <span style="color: #8C8682;">Hairstyle / Treatment:</span>
                 <strong style="color: #313131;">${serviceLabel}</strong>
               </div>
               <div style="margin-bottom: 16px; display: flex; justify-content: space-between;">
                 <span style="color: #8C8682;">Stylist:</span>
-                <strong style="color: #313131;">${booking.stylist}</strong>
+                <strong style="color: #313131;">${booking.stylist || "Assigned Stylist"}</strong>
               </div>
               <div style="margin-bottom: 16px; display: flex; justify-content: space-between;">
                 <span style="color: #8C8682;">Date:</span>
@@ -132,7 +135,15 @@ async function sendBookingReceivedEmail(booking: any) {
               </div>
               <div style="margin-bottom: 16px; display: flex; justify-content: space-between;">
                 <span style="color: #8C8682;">Time Slot:</span>
-                <strong style="color: #313131;">${booking.booking_time}</strong>
+                <strong style="color: #313131;">${timeSlotLabel}</strong>
+              </div>
+              <div style="margin-bottom: 16px; display: flex; justify-content: space-between;">
+                <span style="color: #8C8682;">Home Service Charge:</span>
+                <strong style="color: #313131;">₹${serviceCharge}</strong>
+              </div>
+              <div style="margin-bottom: 16px; display: flex; justify-content: space-between;">
+                <span style="color: #8C8682;">Total Amount:</span>
+                <strong style="color: #CA9A86; font-size: 16px;">₹${totalPrice}</strong>
               </div>
             </div>
           </div>
@@ -162,15 +173,18 @@ async function sendBookingConfirmedEmail(booking: any) {
       booking.serviceName ||
       booking.hairstyle ||
       "Service";
-    const formattedDate = new Date(booking.booking_date).toLocaleDateString(
-      "en-US",
-      {
-        weekday: "long",
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-      },
-    );
+    const formattedDate = new Date(
+      booking.booking_date || booking.appointment_date
+    ).toLocaleDateString("en-US", {
+      weekday: "long",
+      month: "long",
+      day: "numeric",
+      year: "numeric",
+    });
+
+    const timeSlotLabel = booking.booking_time || booking.appointment_time || "N/A";
+    const serviceCharge = Number(booking.service_charge || 0);
+    const totalPrice = Number(booking.total_price || 0);
 
     await transporter.sendMail({
       from:
@@ -185,10 +199,10 @@ async function sendBookingConfirmedEmail(booking: any) {
 
           <div style="background-color: #FFFFFF; border-radius: 24px; padding: 40px; box-shadow: 0 4px 20px rgba(202, 154, 134, 0.08); border: 1px solid #FAF6F4;">
             <div style="text-align: center; margin-bottom: 30px;">
-              <h2 style="font-family: Georgia, serif; font-size: 24px; font-weight: 400; color: #2E7D32; margin: 0 0 8px 0;">🎉 Slot Confirmed!</h2>
-              <p style="font-family: 'Segoe UI', sans-serif; font-size: 14px; color: #8C8682; margin: 0 0 16px 0;">Great news, ${booking.customer_name}! The salon has officially confirmed your slot.</p>
+              <h2 style="font-family: Georgia, serif; font-size: 24px; font-weight: 400; color: #2E7D32; margin: 0 0 8px 0;">Appointment Confirmed</h2>
+              <p style="font-family: 'Segoe UI', sans-serif; font-size: 14px; color: #8C8682; margin: 0 0 16px 0;">Great news, ${booking.customer_name}! The salon has accepted your booking and your slot is confirmed.</p>
               <div style="background-color: #E8F5E9; border: 1px solid #A5D6A7; color: #2E7D32; font-family: 'Segoe UI', sans-serif; font-size: 14px; font-weight: 600; padding: 12px 16px; border-radius: 12px; display: inline-block;">
-                ✅ Your appointment is locked for ${formattedDate} at ${booking.booking_time}.
+                ✅ Your slot is confirmed for ${formattedDate} at ${timeSlotLabel}.
               </div>
             </div>
 
@@ -200,12 +214,12 @@ async function sendBookingConfirmedEmail(booking: any) {
                 <strong style="color: #313131;">${booking.booking_type === "home" ? "Home Service" : "Salon Visit"}</strong>
               </div>
               <div style="margin-bottom: 16px; display: flex; justify-content: space-between;">
-                <span style="color: #8C8682;">Service:</span>
+                <span style="color: #8C8682;">Hairstyle / Treatment:</span>
                 <strong style="color: #313131;">${serviceLabel}</strong>
               </div>
               <div style="margin-bottom: 16px; display: flex; justify-content: space-between;">
                 <span style="color: #8C8682;">Stylist:</span>
-                <strong style="color: #313131;">${booking.stylist}</strong>
+                <strong style="color: #313131;">${booking.stylist || "Assigned Stylist"}</strong>
               </div>
               <div style="margin-bottom: 16px; display: flex; justify-content: space-between;">
                 <span style="color: #8C8682;">Date:</span>
@@ -213,7 +227,15 @@ async function sendBookingConfirmedEmail(booking: any) {
               </div>
               <div style="margin-bottom: 16px; display: flex; justify-content: space-between;">
                 <span style="color: #8C8682;">Time Slot:</span>
-                <strong style="color: #313131;">${booking.booking_time}</strong>
+                <strong style="color: #313131;">${timeSlotLabel}</strong>
+              </div>
+              <div style="margin-bottom: 16px; display: flex; justify-content: space-between;">
+                <span style="color: #8C8682;">Home Service Charge:</span>
+                <strong style="color: #313131;">₹${serviceCharge}</strong>
+              </div>
+              <div style="margin-bottom: 16px; display: flex; justify-content: space-between;">
+                <span style="color: #8C8682;">Total Amount:</span>
+                <strong style="color: #2E7D32; font-size: 16px;">₹${totalPrice}</strong>
               </div>
             </div>
           </div>
@@ -500,6 +522,9 @@ export const createBooking = asyncHandler(
       }
 
       sendBookingReceivedEmail(newBooking);
+      if (newBooking.booking_status === "confirmed") {
+        sendBookingConfirmedEmail(newBooking);
+      }
 
       res.status(201).json({
         success: true,

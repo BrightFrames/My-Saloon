@@ -289,7 +289,7 @@ const SignInPage: React.FC = () => {
         <img
           src={signImage}
           alt="Salon background"
-          className="w-full h-full object-cover object-center scale-105 opacity-75 blur-[2px]"
+          className="w-full h-full object-cover object-center scale-105 opacity-75 blur-[0.8px]"
         />
         <div className="absolute inset-0 bg-linear-to-br from-white/20 via-white/10 to-[#f5e9e2]/35" />
       </div>

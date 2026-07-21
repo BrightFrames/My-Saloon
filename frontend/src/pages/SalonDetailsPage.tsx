@@ -497,7 +497,7 @@ export function SalonDetailsPage() {
                 <span>{formatINR(subtotal)}</span>
               </div>
               <div className="flex justify-between items-center text-[15px] text-stone-500">
-                <span>Tax (8%)</span>
+                <span>GST (8%)</span>
                 <span>{formatINR(tax)}</span>
               </div>
             </div>

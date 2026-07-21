@@ -1053,21 +1053,24 @@ export function CheckoutPage() {
             )}
           </div>
 
-          {/* Right Summary Sticky Panel */}
           <div className="bg-white border border-stone-100 shadow-[0_8px_30px_-6px_rgba(0,0,0,0.05)] rounded-4xl overflow-hidden lg:sticky lg:top-8">
-            <div className="w-full h-32 relative">
-              <img
-                src="https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=2874&auto=format&fit=crop"
-                className="w-full h-full object-cover"
-                alt="Salon header"
-              />
-              <div className="absolute inset-0 bg-linear-to-t from-black/80 to-transparent"></div>
-              <div className="absolute bottom-4 left-5 text-white">
-                <h3 className="font-serif text-xl font-medium mb-1">
-                  The Aurelia Atelier
+            <div className={`w-full ${salonData?.image ? "h-32 relative" : "p-5 pb-0"}`}>
+              {salonData?.image && (
+                <>
+                  <img
+                    src={salonData.image}
+                    className="w-full h-full object-cover"
+                    alt={salonData?.name || "Salon"}
+                  />
+                  <div className="absolute inset-0 bg-linear-to-t from-black/80 to-transparent"></div>
+                </>
+              )}
+              <div className={salonData?.image ? "absolute bottom-4 left-5 text-white" : "text-stone-800"}>
+                <h3 className={`font-serif text-xl font-medium mb-1 ${!salonData?.image && "text-stone-800"}`}>
+                  {salonData?.name || "Salon"}
                 </h3>
-                <div className="text-white/80 text-xs flex items-center gap-1.5">
-                  Beverly Hills, CA
+                <div className={`${salonData?.image ? "text-white/80" : "text-stone-500"} text-xs flex items-center gap-1.5`}>
+                  {salonData?.city ? `${salonData.city}${salonData?.state ? `, ${salonData.state}` : ''}` : "Premium Salon"}
                 </div>
               </div>
             </div>
@@ -1132,7 +1135,7 @@ export function CheckoutPage() {
                 </div>
 
                 <div className="flex justify-between items-center text-[13px] text-stone-500">
-                  <span>Taxes (8%)</span>
+                  <span>GST (8%)</span>
                   <span>{formatINR(tax)}</span>
                 </div>
                 <div className="flex justify-between items-center text-[18px] font-medium text-stone-800 border-t border-stone-200 border-dashed pt-3 mt-1">

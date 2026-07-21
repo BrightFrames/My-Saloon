@@ -105,6 +105,24 @@ export function LandingPage({
   const [filterRating, setFilterRating] = useState<number | "">("");
   const [filterService, setFilterService] = useState("");
   const [filterMaxPrice, setFilterMaxPrice] = useState<number | "">("");
+  const [availableServiceNames, setAvailableServiceNames] = useState<string[]>([]);
+
+  // Fetch all unique services dynamically for the filter
+  useEffect(() => {
+    const fetchAllServices = async () => {
+      try {
+        const res = await fetch(`${API_BASE_URL}/services`);
+        const body = await res.json();
+        if (body && body.success && Array.isArray(body.data)) {
+          const uniqueNames = Array.from(new Set(body.data.map((s: any) => s.name)));
+          setAvailableServiceNames(uniqueNames as string[]);
+        }
+      } catch (err) {
+        console.error("Failed to fetch all services:", err);
+      }
+    };
+    fetchAllServices();
+  }, []);
 
   // Map States
   const [selectedSalonId, setSelectedSalonId] = useState<string | null>(null);
@@ -384,13 +402,27 @@ export function LandingPage({
 
             {/* Service Filter */}
             <div className="relative">
-              <input
-                type="text"
-                placeholder="Service (e.g. Haircut)"
+              <select
+                className="w-full bg-[#f8f9fa] dark:bg-stone-900 border border-stone-200 dark:border-white/10 px-4 py-3 rounded-xl focus:ring-2 focus:ring-[#C89B7B] text-stone-700 dark:text-white"
                 value={filterService}
                 onChange={(e) => setFilterService(e.target.value)}
-                className="w-full rounded-xl border border-stone-200 bg-stone-50/50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#C49B89]"
-              />
+              >
+                <option value="">Any Service</option>
+                {availableServiceNames.length > 0 ? (
+                  availableServiceNames.map(name => (
+                    <option key={name} value={name}>{name}</option>
+                  ))
+                ) : (
+                  <>
+                    <option value="Haircut">Haircut</option>
+                    <option value="Coloring">Coloring</option>
+                    <option value="Styling">Styling</option>
+                    <option value="Massage">Massage</option>
+                    <option value="Facial">Facial</option>
+                    <option value="Manicure">Manicure</option>
+                  </>
+                )}
+              </select>
             </div>
 
             {/* Rating Filter */}

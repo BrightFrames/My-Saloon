@@ -6,8 +6,65 @@ import nodemailer from "nodemailer";
 import { ensureUserAccount } from "./auth.controller";
 import { getIO } from "../socket";
 import { validateFullName, validatePhoneNumber } from "../utils/validation";
+import {
+  calculateAvailableSlots,
+  timeToMinutes,
+  minutesToTimeString,
+  hasOverlap,
+  parseDurationInMinutes,
+} from "../utils/slotHelper";
 
-async function sendBookingConfirmationEmail(booking: any) {
+async function ensureBookingColumns() {
+  try {
+    await query(`
+      ALTER TABLE public.bookings
+        ADD COLUMN IF NOT EXISTS service_id UUID,
+        ADD COLUMN IF NOT EXISTS team_member_id UUID,
+        ADD COLUMN IF NOT EXISTS duration_minutes INTEGER DEFAULT 30,
+        ADD COLUMN IF NOT EXISTS start_time TEXT,
+        ADD COLUMN IF NOT EXISTS end_time TEXT;
+
+      ALTER TABLE public.salons
+        ADD COLUMN IF NOT EXISTS working_hours JSONB;
+    `);
+  } catch (err) {
+    console.warn("[db] Could not ensure booking/salon columns:", err);
+  }
+}
+ensureBookingColumns();
+
+function normalizeDateVariants(rawDate: string): string[] {
+  if (!rawDate) return [""];
+  const clean = rawDate.trim();
+
+  const isoMatch = clean.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    const [_, y, m, d] = isoMatch;
+    return [
+      clean,
+      `${y}-${m}-${d}`,
+      `${m}/${d}/${y}`,
+      `${parseInt(m, 10)}/${parseInt(d, 10)}/${y}`,
+    ];
+  }
+
+  const usMatch = clean.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (usMatch) {
+    const [_, m, d, y] = usMatch;
+    const mm = m.padStart(2, "0");
+    const dd = d.padStart(2, "0");
+    return [
+      clean,
+      `${y}-${mm}-${dd}`,
+      `${mm}/${dd}/${y}`,
+      `${parseInt(m, 10)}/${parseInt(d, 10)}/${y}`,
+    ];
+  }
+
+  return [clean];
+}
+
+async function sendBookingReceivedEmail(booking: any) {
   try {
     const transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST || "smtp.gmail.com",
@@ -19,9 +76,6 @@ async function sendBookingConfirmationEmail(booking: any) {
       },
     });
 
-    const paymentLabel = (booking.payment_method || "cash")
-      .replace("_", " ")
-      .toUpperCase();
     const serviceLabel =
       booking.service_name ||
       booking.serviceName ||
@@ -41,7 +95,7 @@ async function sendBookingConfirmationEmail(booking: any) {
       from:
         process.env.SMTP_FROM || process.env.SMTP_USER || "noreply@glowup.com",
       to: booking.customer_email,
-      subject: `Your Glamour Session is Booked! Glowup Salon (ID: ${booking.id})`,
+      subject: `Booking Request Received - Glowup Salon (ID: ${booking.id})`,
       html: `
         <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background-color: #FDFBF9; color: #333333; border: 1px solid #F3ECE7; border-radius: 20px;">
           <div style="text-align: center; margin-bottom: 40px;">
@@ -50,8 +104,11 @@ async function sendBookingConfirmationEmail(booking: any) {
 
           <div style="background-color: #FFFFFF; border-radius: 24px; padding: 40px; box-shadow: 0 4px 20px rgba(202, 154, 134, 0.08); border: 1px solid #FAF6F4;">
             <div style="text-align: center; margin-bottom: 30px;">
-              <h2 style="font-family: Georgia, serif; font-size: 24px; font-weight: 400; color: #313131; margin: 0 0 8px 0;">Appointment Confirmed</h2>
-              <p style="font-family: 'Segoe UI', sans-serif; font-size: 14px; color: #8C8682; margin: 0;">We are excited to welcome you, ${booking.customer_name}.</p>
+              <h2 style="font-family: Georgia, serif; font-size: 24px; font-weight: 400; color: #313131; margin: 0 0 8px 0;">Booking Request Received</h2>
+              <p style="font-family: 'Segoe UI', sans-serif; font-size: 14px; color: #8C8682; margin: 0 0 16px 0;">We have received your booking request, ${booking.customer_name}.</p>
+              <div style="background-color: #FAF4F0; border: 1px solid #E8D5CB; color: #8C5E4A; font-family: 'Segoe UI', sans-serif; font-size: 14px; font-weight: 600; padding: 12px 16px; border-radius: 12px; display: inline-block;">
+                ⏰ The salon will confirm your appointment within 15 minutes.
+              </div>
             </div>
 
             <hr style="border: 0; border-top: 1px dashed #EBE4E0; margin: 30px 0;" />
@@ -61,12 +118,6 @@ async function sendBookingConfirmationEmail(booking: any) {
                 <span style="color: #8C8682;">Booking Type:</span>
                 <strong style="color: #313131;">${booking.booking_type === "home" ? "Home Service" : "Salon Visit"}</strong>
               </div>
-              ${booking.booking_type === "home" && booking.address ? `
-              <div style="margin-bottom: 16px; display: flex; justify-content: space-between;">
-                <span style="color: #8C8682;">Service Address:</span>
-                <strong style="color: #313131; text-align: right; max-width: 60%;">${booking.address}, ${booking.landmark ? booking.landmark + ", " : ""}${booking.city} - ${booking.pincode}</strong>
-              </div>
-              ` : ""}
               <div style="margin-bottom: 16px; display: flex; justify-content: space-between;">
                 <span style="color: #8C8682;">Service:</span>
                 <strong style="color: #313131;">${serviceLabel}</strong>
@@ -83,26 +134,97 @@ async function sendBookingConfirmationEmail(booking: any) {
                 <span style="color: #8C8682;">Time Slot:</span>
                 <strong style="color: #313131;">${booking.booking_time}</strong>
               </div>
-              <div style="margin-bottom: 16px; display: flex; justify-content: space-between; border-top: 1px solid #eee; padding-top: 10px;">
-                <span style="color: #8C8682;">Total Amount:</span>
-                <strong style="color: #313131; font-size: 16px;">₹${booking.total_price}</strong>
+            </div>
+          </div>
+        </div>
+      `,
+    });
+    console.log(`Booking received email sent to ${booking.customer_email}`);
+  } catch (err: any) {
+    console.error("Failed to send booking received email:", err?.message || err);
+  }
+}
+
+async function sendBookingConfirmedEmail(booking: any) {
+  try {
+    const transporter = nodemailer.createTransport({
+      host: process.env.SMTP_HOST || "smtp.gmail.com",
+      port: Number(process.env.SMTP_PORT) || 587,
+      secure: false,
+      auth: {
+        user: process.env.SMTP_USER,
+        pass: process.env.SMTP_PASS,
+      },
+    });
+
+    const serviceLabel =
+      booking.service_name ||
+      booking.serviceName ||
+      booking.hairstyle ||
+      "Service";
+    const formattedDate = new Date(booking.booking_date).toLocaleDateString(
+      "en-US",
+      {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      },
+    );
+
+    await transporter.sendMail({
+      from:
+        process.env.SMTP_FROM || process.env.SMTP_USER || "noreply@glowup.com",
+      to: booking.customer_email,
+      subject: `🎉 Slot Confirmed! Glowup Salon (ID: ${booking.id})`,
+      html: `
+        <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 40px 20px; background-color: #FDFBF9; color: #333333; border: 1px solid #F3ECE7; border-radius: 20px;">
+          <div style="text-align: center; margin-bottom: 40px;">
+            <span style="font-family: Georgia, serif; font-size: 36px; font-weight: 300; font-style: italic; color: #CA9A86; letter-spacing: 4px;">Glowup</span>
+          </div>
+
+          <div style="background-color: #FFFFFF; border-radius: 24px; padding: 40px; box-shadow: 0 4px 20px rgba(202, 154, 134, 0.08); border: 1px solid #FAF6F4;">
+            <div style="text-align: center; margin-bottom: 30px;">
+              <h2 style="font-family: Georgia, serif; font-size: 24px; font-weight: 400; color: #2E7D32; margin: 0 0 8px 0;">🎉 Slot Confirmed!</h2>
+              <p style="font-family: 'Segoe UI', sans-serif; font-size: 14px; color: #8C8682; margin: 0 0 16px 0;">Great news, ${booking.customer_name}! The salon has officially confirmed your slot.</p>
+              <div style="background-color: #E8F5E9; border: 1px solid #A5D6A7; color: #2E7D32; font-family: 'Segoe UI', sans-serif; font-size: 14px; font-weight: 600; padding: 12px 16px; border-radius: 12px; display: inline-block;">
+                ✅ Your appointment is locked for ${formattedDate} at ${booking.booking_time}.
+              </div>
+            </div>
+
+            <hr style="border: 0; border-top: 1px dashed #EBE4E0; margin: 30px 0;" />
+
+            <div style="font-family: 'Segoe UI', sans-serif; font-size: 14px; line-height: 1.6; color: #555555;">
+              <div style="margin-bottom: 16px; display: flex; justify-content: space-between;">
+                <span style="color: #8C8682;">Booking Type:</span>
+                <strong style="color: #313131;">${booking.booking_type === "home" ? "Home Service" : "Salon Visit"}</strong>
+              </div>
+              <div style="margin-bottom: 16px; display: flex; justify-content: space-between;">
+                <span style="color: #8C8682;">Service:</span>
+                <strong style="color: #313131;">${serviceLabel}</strong>
+              </div>
+              <div style="margin-bottom: 16px; display: flex; justify-content: space-between;">
+                <span style="color: #8C8682;">Stylist:</span>
+                <strong style="color: #313131;">${booking.stylist}</strong>
+              </div>
+              <div style="margin-bottom: 16px; display: flex; justify-content: space-between;">
+                <span style="color: #8C8682;">Date:</span>
+                <strong style="color: #313131;">${formattedDate}</strong>
+              </div>
+              <div style="margin-bottom: 16px; display: flex; justify-content: space-between;">
+                <span style="color: #8C8682;">Time Slot:</span>
+                <strong style="color: #313131;">${booking.booking_time}</strong>
               </div>
             </div>
           </div>
         </div>
       `,
     });
-    console.log(
-      `Booking confirmation email sent successfully to ${booking.customer_email}`,
-    );
+    console.log(`Booking confirmed email sent to ${booking.customer_email}`);
   } catch (err: any) {
-    console.error(
-      "Failed to send booking confirmation email:",
-      err?.message || err,
-    );
+    console.error("Failed to send booking confirmed email:", err?.message || err);
   }
 }
-
 const bookingSchema = z.object({
   customer_name: z.string().min(1, "Name is required"),
   customer_email: z.string().email("Invalid email format"),
@@ -111,6 +233,9 @@ const bookingSchema = z.object({
   country_code: z.string().min(1, "Country code is required").default("+91"),
   service_name: z.string().optional(),
   serviceName: z.string().optional(),
+  service_id: z.string().optional().nullable(),
+  team_member_id: z.string().optional().nullable(),
+  duration_minutes: z.number().optional(),
   hairstyle: z.string().optional(),
   stylist: z.string().min(1, "Stylist is required"),
   appointment_date: z.string().optional(),
@@ -171,12 +296,19 @@ export const createBooking = asyncHandler(
       const appointment_time =
         validatedData.appointment_time || validatedData.booking_time || "";
       const booking_time =
-        validatedData.booking_time || validatedData.appointment_time || ""; "";
+        validatedData.booking_time || validatedData.appointment_time || "";
 
       if (!appointment_date) {
         res
           .status(400)
           .json({ success: false, message: "Booking date is required." });
+        return;
+      }
+
+      if (!booking_time) {
+        res
+          .status(400)
+          .json({ success: false, message: "Booking time is required." });
         return;
       }
 
@@ -190,10 +322,65 @@ export const createBooking = asyncHandler(
         return;
       }
 
-      const checkRes = await query(
-        `SELECT id FROM public.bookings WHERE appointment_date = $1 AND appointment_time = $2 AND stylist = $3 AND booking_status = 'confirmed'`,
-        [appointment_date, appointment_time, validatedData.stylist],
+      // Determine requested service duration in minutes
+      let durationMins = parseDurationInMinutes(validatedData.duration_minutes);
+      if (validatedData.service_id) {
+        const sRes = await query("SELECT duration FROM public.services WHERE id = $1 LIMIT 1", [
+          validatedData.service_id,
+        ]);
+        if (sRes.rows[0]?.duration) {
+          durationMins = parseDurationInMinutes(sRes.rows[0].duration);
+        }
+      } else if (service_name) {
+        const sRes = await query(
+          "SELECT duration FROM public.services WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)) LIMIT 1",
+          [service_name],
+        );
+        if (sRes.rows[0]?.duration) {
+          durationMins = parseDurationInMinutes(sRes.rows[0].duration);
+        }
+      }
+
+      const reqStartMins = timeToMinutes(booking_time);
+      const reqEndMins = reqStartMins + durationMins;
+      const startTimeStr = minutesToTimeString(reqStartMins);
+      const endTimeStr = minutesToTimeString(reqEndMins);
+
+      // Fetch active (non-cancelled) bookings for this barber & date
+      const dateVariants = normalizeDateVariants(appointment_date);
+      const activeCheck = await query(
+        `SELECT id, booking_time, appointment_time, start_time, end_time, duration_minutes, booking_status
+         FROM public.bookings
+         WHERE (
+           booking_date::text = ANY($1)
+           OR appointment_date::text = ANY($1)
+           OR booking_date::text LIKE $2 || '%'
+           OR appointment_date::text LIKE $2 || '%'
+         )
+         AND (
+           LOWER(TRIM(stylist)) = LOWER(TRIM($3))
+           OR (team_member_id IS NOT NULL AND team_member_id::text = $4)
+         )
+         AND booking_status NOT IN ('cancelled', 'completed', 'rejected')`,
+        [dateVariants, appointment_date, validatedData.stylist, validatedData.team_member_id || ""],
       );
+
+      // Check for time range overlaps
+      for (const exBooking of activeCheck.rows) {
+        const exStart = timeToMinutes(
+          exBooking.start_time || exBooking.booking_time || exBooking.appointment_time,
+        );
+        const exDuration = Number(exBooking.duration_minutes) || 30;
+        const exEnd = exStart + exDuration;
+
+        if (hasOverlap(reqStartMins, reqEndMins, exStart, exEnd)) {
+          res.status(400).json({
+            success: false,
+            message: "This barber is unavailable during the selected time. Please select another available slot.",
+          });
+          return;
+        }
+      }
 
       const createdUser = await ensureUserAccount({
         email: validatedData.customer_email,
@@ -201,16 +388,6 @@ export const createBooking = asyncHandler(
         mobile: mobile,
         role: "user",
       });
-
-      if (checkRes.rows.length > 0) {
-        res
-          .status(400)
-          .json({
-            success: false,
-            message: "Slot already booked for this stylist.",
-          });
-        return;
-      }
 
       let resolvedUserId = validatedData.user_id ?? null;
       if (!resolvedUserId) {
@@ -222,9 +399,11 @@ export const createBooking = asyncHandler(
           customer_name, customer_email, phone, mobile, country_code,
           service_name, hairstyle, stylist, appointment_date, booking_date,
           appointment_time, booking_time, payment_method, notes, total_price,
-          booking_status, payment_status, salon_id, user_id, booking_type, address, landmark, city, pincode, service_charge
+          booking_status, payment_status, salon_id, user_id, booking_type, address, landmark, city, pincode, service_charge,
+          service_id, team_member_id, duration_minutes, start_time, end_time
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'pending', 'pending', $16, $17, $18, $19, $20, $21, $22, $23
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, 'pending', 'pending', $16, $17, $18, $19, $20, $21, $22, $23,
+          $24, $25, $26, $27, $28
         ) RETURNING *
       `;
 
@@ -254,6 +433,11 @@ export const createBooking = asyncHandler(
         validatedData.pincode || null,
         validatedData.service_charge || 0,
 
+        validatedData.service_id || null,
+        validatedData.team_member_id || null,
+        durationMins,
+        startTimeStr,
+        endTimeStr,
       ];
 
       const result = await query(q, vals);
@@ -293,31 +477,51 @@ export const createBooking = asyncHandler(
             },
             booking: newBooking
           });
+
+          io.emit("booking_updated", { action: "create", booking: newBooking });
+          io.emit("slot_status_changed", {
+            date: booking_date,
+            barber: validatedData.stylist,
+          });
         } catch (err) {
           console.error("[socket] Failed to emit newBooking:", err);
         }
+      } else {
+        try {
+          const io = getIO();
+          io.emit("booking_updated", { action: "create", booking: newBooking });
+          io.emit("slot_status_changed", {
+            date: booking_date,
+            barber: validatedData.stylist,
+          });
+        } catch (err) {
+          console.error("[socket] Failed to emit booking_updated:", err);
+        }
       }
 
-      sendBookingConfirmationEmail(newBooking);
+      sendBookingReceivedEmail(newBooking);
 
       res.status(201).json({
         success: true,
         message: "Booking created successfully",
         data: newBooking,
       });
-    } catch (error) {
+    } catch (error: any) {
       if (error instanceof z.ZodError) {
-        res
-          .status(400)
-          .json({
-            success: false,
-            message: "Validation Error",
-            errors: error.issues,
-          });
+        res.status(400).json({
+          success: false,
+          message: "Validation Error",
+          errors: error.issues,
+        });
         return;
       }
-      console.error("Create booking error:", error);
-      res.status(500).json({ success: false, message: "Server Error" });
+
+      console.error("Booking Creation Error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Internal Server Error",
+        error: error.message,
+      });
     }
   },
 );
@@ -384,42 +588,129 @@ export const cancelBooking = asyncHandler(
 
 export const getAvailableSlots = asyncHandler(
   async (req: Request, res: Response): Promise<void> => {
-    const { date, stylist } = req.query;
-    if (!date || !stylist) {
-      res
-        .status(400)
-        .json({
+    try {
+      const date = (req.query.date || req.query.booking_date || req.query.appointment_date) as string;
+      const stylist = (req.query.stylist || req.query.barber || req.query.team_member_id) as string;
+      const service_id = req.query.service_id as string;
+      const service_name = req.query.service_name as string;
+      const queryDuration = req.query.duration ? parseInt(req.query.duration as string, 10) : NaN;
+      const salon_id = req.query.salon_id as string;
+
+      if (!date || !stylist) {
+        res.status(400).json({
           success: false,
           message: "Date and stylist parameters are required",
         });
-      return;
+        return;
+      }
+
+      // Determine requested service duration in minutes
+      let requestedDuration = 30; // Default 30 minutes
+
+      if (!isNaN(queryDuration) && queryDuration > 0) {
+        requestedDuration = queryDuration;
+      } else if (service_id) {
+        try {
+          const sRes = await query("SELECT duration FROM public.services WHERE id = $1 LIMIT 1", [
+            service_id,
+          ]);
+          if (sRes.rows[0]?.duration) {
+            requestedDuration = parseDurationInMinutes(sRes.rows[0].duration);
+          }
+        } catch (e) {}
+      } else if (service_name) {
+        try {
+          const sRes = await query(
+            "SELECT duration FROM public.services WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)) LIMIT 1",
+            [service_name],
+          );
+          if (sRes.rows[0]?.duration) {
+            requestedDuration = parseDurationInMinutes(sRes.rows[0].duration);
+          }
+        } catch (e) {}
+      }
+
+      // Fetch working hours of salon if salon_id provided
+      let salonOpeningTime = "09:00 AM";
+      let salonClosingTime = "08:00 PM";
+      if (salon_id) {
+        try {
+          const salonRes = await query("SELECT working_hours FROM public.salons WHERE id = $1 LIMIT 1", [
+            salon_id,
+          ]);
+          const hours = salonRes.rows[0]?.working_hours;
+          if (hours && typeof hours === "object") {
+            if (hours.open) salonOpeningTime = hours.open;
+            if (hours.close) salonClosingTime = hours.close;
+          }
+        } catch (err) {
+          // Column working_hours might not exist yet, fallback gracefully
+        }
+      }
+
+      // Fetch active (non-cancelled) bookings for this barber on this date
+      let existingBookings: any[] = [];
+      try {
+        const dateVariants = normalizeDateVariants(date);
+        const checkRes = await query(
+          `SELECT id, booking_time, appointment_time, start_time, end_time, duration_minutes, service_name, booking_status
+           FROM public.bookings
+           WHERE (
+             booking_date::text = ANY($1)
+             OR appointment_date::text = ANY($1)
+             OR booking_date::text LIKE $2 || '%'
+             OR appointment_date::text LIKE $2 || '%'
+           )
+           AND (
+             LOWER(TRIM(stylist)) = LOWER(TRIM($3))
+             OR team_member_id::text = $3
+           )
+           AND booking_status NOT IN ('cancelled', 'completed', 'rejected')`,
+          [dateVariants, date, stylist],
+        );
+
+        existingBookings = checkRes.rows.map((b) => ({
+          ...b,
+          duration_minutes: parseDurationInMinutes(b.duration_minutes),
+        }));
+      } catch (err) {
+        console.warn("[getAvailableSlots] Failed to fetch existing bookings:", err);
+      }
+
+      const result = calculateAvailableSlots({
+        requestedDuration,
+        salonOpeningTime,
+        salonClosingTime,
+        slotInterval: 30,
+        existingBookings,
+      });
+
+      res.status(200).json({
+        success: true,
+        date,
+        stylist,
+        service_duration: requestedDuration,
+        availableSlots: result.availableSlots,
+        allSlots: result.allSlots,
+      });
+    } catch (err: any) {
+      console.error("[getAvailableSlots] Error:", err);
+      const fallback = calculateAvailableSlots({
+        requestedDuration: 30,
+        salonOpeningTime: "09:00 AM",
+        salonClosingTime: "08:00 PM",
+        slotInterval: 30,
+        existingBookings: [],
+      });
+      res.status(200).json({
+        success: true,
+        date: req.query.date,
+        stylist: req.query.stylist,
+        service_duration: 30,
+        availableSlots: fallback.availableSlots,
+        allSlots: fallback.allSlots,
+      });
     }
-
-    const allSlots = [
-      "09:00 AM",
-      "10:00 AM",
-      "11:00 AM",
-      "12:00 PM",
-      "01:00 PM",
-      "02:00 PM",
-      "03:00 PM",
-      "04:00 PM",
-      "05:00 PM",
-      "06:00 PM",
-      "07:00 PM",
-      "08:00 PM",
-    ];
-
-    let bookedSlots: string[] = [];
-    const checkRes = await query(
-      "SELECT booking_time FROM public.bookings WHERE booking_date = $1 AND stylist = $2 AND booking_status = 'confirmed'",
-      [date, stylist],
-    );
-    bookedSlots = checkRes.rows.map((b) => b.booking_time);
-    const availableSlots = allSlots.filter(
-      (slot) => !bookedSlots.includes(slot),
-    );
-    res.status(200).json({ success: true, date, stylist, availableSlots });
   },
 );
 
@@ -717,7 +1008,7 @@ export const updateAdminBooking = asyncHandler(
     const updatedBooking = result.rows[0];
 
     if (booking_status === "confirmed" && booking.booking_status !== "confirmed") {
-      await sendBookingConfirmationEmail(updatedBooking);
+      await sendBookingConfirmedEmail(updatedBooking);
     }
 
     res.json({
@@ -799,6 +1090,9 @@ export const acceptBooking = asyncHandler(
     } catch (err) {
       console.error("[socket] Failed to emit bookingUpdated on accept:", err);
     }
+
+    // Send confirmation email to customer
+    sendBookingConfirmedEmail(updatedBooking);
 
     res.json({
       success: true,

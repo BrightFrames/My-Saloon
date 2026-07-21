@@ -68,11 +68,13 @@ export function BookingConfirmationPage() {
         <h1 className="font-serif text-3xl md:text-4xl font-medium text-stone-900 mb-2 text-center">
           Booking Confirmed!
         </h1>
-        <p className="text-stone-500 text-center mb-10 max-w-md">
-          Thank you, {booking.customer_name}. Your appointment has been
-          successfully scheduled. We've sent a confirmation email to{" "}
+        <p className="text-stone-500 text-center mb-2 max-w-md">
+          Thank you, {booking.customer_name}. Your appointment request has been received. We've sent a confirmation email to{" "}
           {booking.customer_email}.
         </p>
+        <div className="bg-[#FAF4F0] border border-[#E8D5CB] text-[#8C5E4A] font-medium text-sm px-4 py-2.5 rounded-xl mb-8 text-center">
+          ⏰ The salon will confirm your appointment within 15 minutes.
+        </div>
 
         {/* Booking Card Details */}
         <div className="w-full bg-[#F6F5F2] rounded-2xl p-6 md:p-8 flex flex-col gap-6">

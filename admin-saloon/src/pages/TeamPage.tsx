@@ -284,24 +284,64 @@ export default function TeamPage({ user, onLogout }: Props) {
                   />
                 </div>
                 <div className="form-group">
-                  <label>Services (select multiple)</label>
-                  <select
-                    multiple
-                    value={form.service_ids}
-                    onChange={(e) => {
-                      const opts = Array.from(e.target.selectedOptions).map(
-                        (o) => o.value,
-                      );
-                      setForm({ ...form, service_ids: opts });
-                    }}
-                    style={{ minHeight: 120 }}
-                  >
-                    {services.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.name}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="services-checkbox-header">
+                    <label>
+                      Services {form.service_ids.length > 0 && `(${form.service_ids.length} selected)`}
+                    </label>
+                    {services.length > 0 && (
+                      <button
+                        type="button"
+                        className="btn-select-toggle"
+                        onClick={() => {
+                          if (form.service_ids.length === services.length) {
+                            setForm({ ...form, service_ids: [] });
+                          } else {
+                            setForm({
+                              ...form,
+                              service_ids: services.map((s) => s.id),
+                            });
+                          }
+                        }}
+                      >
+                        {form.service_ids.length === services.length
+                          ? "Deselect All"
+                          : "Select All"}
+                      </button>
+                    )}
+                  </div>
+                  <div className="services-checkbox-container">
+                    {services.length === 0 ? (
+                      <div style={{ padding: "12px", textAlign: "center", fontSize: "13px", color: "var(--muted)" }}>
+                        No services available
+                      </div>
+                    ) : (
+                      services.map((s) => {
+                        const isChecked = form.service_ids.includes(s.id);
+                        return (
+                          <div
+                            key={s.id}
+                            className={`service-checkbox-item ${isChecked ? "selected" : ""}`}
+                            onClick={() => {
+                              const updated = isChecked
+                                ? form.service_ids.filter((id) => id !== s.id)
+                                : [...form.service_ids, s.id];
+                              setForm({ ...form, service_ids: updated });
+                            }}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => {}}
+                            />
+                            <span className="service-checkbox-name">{s.name}</span>
+                            {s.price !== undefined && (
+                              <span className="service-checkbox-price">₹{s.price}</span>
+                            )}
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
                 </div>
                 <div className="modal-actions">
                   <button

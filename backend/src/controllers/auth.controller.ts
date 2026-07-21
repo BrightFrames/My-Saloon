@@ -4,6 +4,7 @@ import dotenv from "dotenv";
 import { query } from "../config/db";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
+import { validateFullName, validatePhoneNumber } from "../utils/validation";
 
 // Ensure env vars are loaded early for authentication.
 dotenv.config();
@@ -50,6 +51,19 @@ export async function ensureUserAccount({
   mobile?: string;
   role?: "admin" | "superadmin" | "user";
 }) {
+  if (name) {
+    const nameVal = validateFullName(name);
+    if (!nameVal.valid) {
+      throw new Error(nameVal.message);
+    }
+  }
+  if (mobile) {
+    const mobileVal = validatePhoneNumber(mobile);
+    if (!mobileVal.valid) {
+      throw new Error(mobileVal.message);
+    }
+  }
+
   await query(`
     ALTER TABLE public.users
       ADD COLUMN IF NOT EXISTS name TEXT,
@@ -165,6 +179,20 @@ export const sendOtp = async (req: Request, res: Response) => {
     return res.status(400).json({ message: "Email required" });
   }
 
+  if (name) {
+    const nameVal = validateFullName(name);
+    if (!nameVal.valid) {
+      return res.status(400).json({ message: nameVal.message });
+    }
+  }
+
+  if (mobile) {
+    const mobileVal = validatePhoneNumber(mobile);
+    if (!mobileVal.valid) {
+      return res.status(400).json({ message: mobileVal.message });
+    }
+  }
+
   await ensureUserAccount({ email, name, mobile, role: "user" });
 
   // Generate OTP
@@ -215,6 +243,20 @@ export const sendOtp = async (req: Request, res: Response) => {
 
 export const verifyOtp = async (req: Request, res: Response) => {
   const { email, otp, name, mobile } = req.body;
+
+  if (name) {
+    const nameVal = validateFullName(name);
+    if (!nameVal.valid) {
+      return res.status(400).json({ verified: false, message: nameVal.message });
+    }
+  }
+
+  if (mobile) {
+    const mobileVal = validatePhoneNumber(mobile);
+    if (!mobileVal.valid) {
+      return res.status(400).json({ verified: false, message: mobileVal.message });
+    }
+  }
 
   const stored = otpStore.get(email);
   const isValid = stored && stored.otp === otp && stored.expires > Date.now();

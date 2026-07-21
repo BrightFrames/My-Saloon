@@ -17,12 +17,15 @@ import { PopupDialog } from "../components/PopupDialog";
 
 import { formatINR } from "../utils/currency";
 import { API_BASE_URL } from "../services/apiBase";
+import { validateFullName, validatePhoneNumber } from "../utils/validation";
 
 export function CheckoutPage() {
   const navigate = useNavigate();
   const base = API_BASE_URL;
   const [step, setStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [mobileError, setMobileError] = useState<string | null>(null);
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
@@ -316,16 +319,16 @@ export function CheckoutPage() {
       }
     }
     if (step === 2) {
-      if (
-        !bookingData.customer_name ||
-        !bookingData.customer_email ||
-        !bookingData.mobile
-      ) {
+      const nErr = validateFullName(bookingData.customer_name);
+      const mErr = validatePhoneNumber(bookingData.mobile);
+      setNameError(nErr);
+      setMobileError(mErr);
+
+      if (nErr || mErr || !bookingData.customer_email) {
         setPopup({
           open: true,
-          title: "Missing contact details",
-          message:
-            "Please fill in your name, email, and mobile number to continue.",
+          title: "Validation Error",
+          message: nErr || mErr || "Please fill in valid contact details to continue.",
           tone: "warning",
         });
         return;
@@ -700,11 +703,36 @@ export function CheckoutPage() {
                         type="text"
                         placeholder="Julianne Moore"
                         value={bookingData.customer_name}
-                        onChange={(e) =>
-                          handleUpdate("customer_name", e.target.value)
-                        }
-                        className="bg-[#F6F5F2] border-transparent focus:border-[#C49B89] focus:ring-1 focus:ring-[#C49B89] focus:bg-white rounded-xl px-5 py-3.5 outline-none transition-all text-stone-700"
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          handleUpdate("customer_name", val);
+                          setNameError(validateFullName(val));
+                        }}
+                        className={`px-5 py-3.5 outline-none transition-all text-stone-700 rounded-xl ${
+                          nameError
+                            ? "bg-red-50/30 border border-red-500 ring-1 ring-red-500"
+                            : "bg-[#F6F5F2] border-transparent focus:border-[#C49B89] focus:ring-1 focus:ring-[#C49B89] focus:bg-white"
+                        }`}
                       />
+                      {nameError && (
+                        <div className="flex items-center gap-1.5 text-red-600 text-xs font-medium mt-1">
+                          <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="h-4 w-4 shrink-0 text-red-500"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                            />
+                          </svg>
+                          <span>{nameError}</span>
+                        </div>
+                      )}
                     </div>
                     <div className="flex flex-col gap-2">
                       <label className="text-sm font-medium text-stone-600">
@@ -734,10 +762,38 @@ export function CheckoutPage() {
                         type="tel"
                         placeholder="9876543210"
                         value={bookingData.mobile}
-                        onChange={(e) => handleUpdate("mobile", e.target.value)}
-                        className="flex-1 bg-[#F6F5F2] border-transparent focus:border-[#C49B89] focus:ring-1 focus:ring-[#C49B89] focus:bg-white rounded-r-xl px-5 py-3.5 outline-none transition-all text-stone-700"
+                        maxLength={10}
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          handleUpdate("mobile", val);
+                          setMobileError(validatePhoneNumber(val));
+                        }}
+                        className={`flex-1 px-5 py-3.5 outline-none transition-all text-stone-700 rounded-r-xl ${
+                          mobileError
+                            ? "bg-red-50/30 border border-red-500 ring-1 ring-red-500"
+                            : "bg-[#F6F5F2] border-transparent focus:border-[#C49B89] focus:ring-1 focus:ring-[#C49B89] focus:bg-white"
+                        }`}
                       />
                     </div>
+                    {mobileError && (
+                      <div className="flex items-center gap-1.5 text-red-600 text-xs font-medium mt-1">
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          className="h-4 w-4 shrink-0 text-red-500"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
+                          />
+                        </svg>
+                        <span>{mobileError}</span>
+                      </div>
+                    )}
                   </div>
 
                   {bookingData.booking_type === "home" && (

@@ -3,6 +3,8 @@ import "./login.css";
 import { useNavigate } from "react-router-dom";
 import { auth } from "../services/auth";
 import adminBackground from "../assets/admin.png";
+import { useTheme } from "../context/ThemeContext";
+import { motion } from "framer-motion";
 
 type Props = {
   onLogin?: () => void;
@@ -10,6 +12,7 @@ type Props = {
 
 export default function LoginPage({ onLogin }: Props) {
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
 
   function handleLogin(email: string) {
     if (typeof auth === "object" && "setCurrent" in auth) {
@@ -21,6 +24,18 @@ export default function LoginPage({ onLogin }: Props) {
 
   return (
     <div className="login-root">
+      {/* Floating Theme Toggle Button */}
+      <motion.button
+        whileHover={{ scale: 1.05 }}
+        whileTap={{ scale: 0.95 }}
+        onClick={toggleTheme}
+        className="theme-toggle-btn"
+        title={theme === 'light' ? 'Switch to Dark Mode' : 'Switch to Light Mode'}
+      >
+        <span className="theme-toggle-icon">{theme === 'light' ? '🌙' : '☀️'}</span>
+        <span className="theme-toggle-text">{theme === 'light' ? 'Dark Mode' : 'Light Mode'}</span>
+      </motion.button>
+
       <div className="login-background">
         <img
           src={adminBackground}
@@ -38,3 +53,4 @@ export default function LoginPage({ onLogin }: Props) {
     </div>
   );
 }
+

@@ -5,6 +5,7 @@ import { z } from "zod";
 import nodemailer from "nodemailer";
 import { ensureUserAccount } from "./auth.controller";
 import { getIO } from "../socket";
+import { validateFullName, validatePhoneNumber } from "../utils/validation";
 
 async function sendBookingConfirmationEmail(booking: any) {
   try {
@@ -67,7 +68,7 @@ async function sendBookingConfirmationEmail(booking: any) {
               </div>
               ` : ""}
               <div style="margin-bottom: 16px; display: flex; justify-content: space-between;">
-                <span style="color: #8C8682;">Hairstyle / Treatment:</span>
+                <span style="color: #8C8682;">Service:</span>
                 <strong style="color: #313131;">${serviceLabel}</strong>
               </div>
               <div style="margin-bottom: 16px; display: flex; justify-content: space-between;">
@@ -82,12 +83,6 @@ async function sendBookingConfirmationEmail(booking: any) {
                 <span style="color: #8C8682;">Time Slot:</span>
                 <strong style="color: #313131;">${booking.booking_time}</strong>
               </div>
-              ${booking.service_charge ? `
-              <div style="margin-bottom: 16px; display: flex; justify-content: space-between;">
-                <span style="color: #8C8682;">Home Service Charge:</span>
-                <strong style="color: #313131;">₹${booking.service_charge}</strong>
-              </div>
-              ` : ""}
               <div style="margin-bottom: 16px; display: flex; justify-content: space-between; border-top: 1px solid #eee; padding-top: 10px;">
                 <span style="color: #8C8682;">Total Amount:</span>
                 <strong style="color: #313131; font-size: 16px;">₹${booking.total_price}</strong>
@@ -140,6 +135,22 @@ export const createBooking = asyncHandler(
     try {
       const validatedData = bookingSchema.parse(req.body);
 
+      // Validate customer_name and phone/mobile using strict rules
+      const nameVal = validateFullName(validatedData.customer_name);
+      if (!nameVal.valid) {
+        res.status(400).json({ success: false, message: nameVal.message });
+        return;
+      }
+
+      const phoneToValidate = validatedData.mobile || validatedData.phone || "";
+      if (phoneToValidate) {
+        const phoneVal = validatePhoneNumber(phoneToValidate);
+        if (!phoneVal.valid) {
+          res.status(400).json({ success: false, message: phoneVal.message });
+          return;
+        }
+      }
+
       // Resolve synchronized fields
       const phone = validatedData.phone || validatedData.mobile || "";
       const mobile = validatedData.mobile || validatedData.phone || "";
@@ -160,7 +171,7 @@ export const createBooking = asyncHandler(
       const appointment_time =
         validatedData.appointment_time || validatedData.booking_time || "";
       const booking_time =
-        validatedData.booking_time || validatedData.appointment_time || "";
+        validatedData.booking_time || validatedData.appointment_time || ""; "";
 
       if (!appointment_date) {
         res

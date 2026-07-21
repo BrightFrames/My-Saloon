@@ -117,9 +117,9 @@ html.dark .text-indigo-600 {
 html.dark input, 
 html.dark textarea, 
 html.dark select {
-  background-color: #030303 !important;
-  color: #ffffff !important;
-  border-color: rgba(255,255,255,0.08) !important;
+  background-color: #030303;
+  color: #ffffff;
+  border-color: rgba(255,255,255,0.08);
 }
 
 /* Ensure mobile header matches dark mode */

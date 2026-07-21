@@ -114,7 +114,7 @@ export function SalonDetailsPage() {
         "selectedSalonServices",
         JSON.stringify(salon?.services || []),
       );
-      sessionStorage.setItem("redirectAfterSignIn", `/salon/${id}`);
+      sessionStorage.setItem("redirectAfterSignIn", "/checkout");
       setPopup({
         open: true,
         title: "Sign in required",

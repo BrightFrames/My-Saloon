@@ -350,6 +350,19 @@ export function CheckoutPage() {
   };
 
   const submitBooking = async () => {
+    const isVerified = sessionStorage.getItem("isVerified") === "true";
+    if (!isVerified) {
+      sessionStorage.setItem("redirectAfterSignIn", "/checkout");
+      setPopup({
+        open: true,
+        title: "Sign in required",
+        message: "Please sign in to complete your booking.",
+        tone: "warning",
+      });
+      navigate("/signin");
+      return;
+    }
+
     setIsLoading(true);
     try {
       // Base Price

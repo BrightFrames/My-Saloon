@@ -86,20 +86,26 @@ export function CheckoutPage() {
     });
   }, [teamMembers, bookingData.hairstyle, selectedServicesArr]);
 
+  const getSalonIdFromStorage = () => {
+    try {
+      const raw = sessionStorage.getItem("selectedSalon");
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed?.id || parsed?.salon_id || parsed?.salonId || null;
+    } catch (e) {
+      console.error("Failed to parse selectedSalon", e);
+      return null;
+    }
+  };
+
   // Pre-fill user data and selections from sessionStorage
   useEffect(() => {
-    const getSalonIdFromStorage = () => {
+    const raw = sessionStorage.getItem("selectedSalon");
+    if (raw) {
       try {
-        const raw = sessionStorage.getItem("selectedSalon");
-        if (!raw) return null;
-        const parsed = JSON.parse(raw);
-        setSalonData(parsed);
-        return parsed?.id || parsed?.salon_id || parsed?.salonId || null;
-      } catch (e) {
-        console.error("Failed to parse selectedSalon", e);
-        return null;
-      }
-    };
+        setSalonData(JSON.parse(raw));
+      } catch (e) {}
+    }
 
     const isVerified = sessionStorage.getItem("isVerified") === "true";
     if (isVerified) {
@@ -370,19 +376,21 @@ export function CheckoutPage() {
       const tax = basePrice * 0.08;
       const finalPrice = basePrice + tax;
 
-      let salonId = undefined;
-      try {
-        const storedSalon = sessionStorage.getItem("selectedSalon");
-        if (storedSalon) {
-          salonId = JSON.parse(storedSalon).id;
-        }
-      } catch (e) {}
+      let salonId = getSalonIdFromStorage();
+      if (!salonId) {
+        try {
+          const storedSalon = sessionStorage.getItem("selectedSalon");
+          if (storedSalon) {
+            salonId = JSON.parse(storedSalon).id;
+          }
+        } catch (e) {}
+      }
 
       const payload = {
         ...bookingData,
         service_name: bookingData.serviceName || bookingData.hairstyle,
         total_price: finalPrice,
-        salon_id: salonId,
+        salon_id: salonId || undefined,
       };
 
       const res = await fetch(`${base}/bookings`, {

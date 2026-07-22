@@ -68,13 +68,17 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
       setIsUploadingImage(true);
       const res = await api.uploadFile(e.target.files[0]);
       if (res.success && res.data.url) {
-        setForm({ ...form, image: res.data.url });
+        setForm((prev) => ({ ...prev, image: res.data.url }));
       }
     } catch (err: any) {
       alert("Failed to upload image: " + err.message);
     } finally {
       setIsUploadingImage(false);
     }
+  };
+
+  const removeImage = () => {
+    setForm((prev) => ({ ...prev, image: "" }));
   };
 
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -169,38 +173,6 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
       fetchProfile();
       alert("Salon profile updated successfully!");
     } catch (err: any) {
-      if (
-        err.message?.includes("413") ||
-        err.message?.toLowerCase().includes("payload too large") ||
-        err.message?.toLowerCase().includes("file too large")
-      ) {
-        try {
-          // Retry profile save excluding excessive base64 video string so name, city, price, about & gallery save cleanly
-          await api.updateSalonProfile({
-            name: form.name,
-            city: form.city,
-            starting_price: parseFloat(form.starting_price),
-            rating: profile?.rating
-              ? parseFloat(String(profile.rating))
-              : undefined,
-            latitude: form.latitude ? parseFloat(form.latitude) : undefined,
-            longitude: form.longitude ? parseFloat(form.longitude) : undefined,
-            image: form.image || undefined,
-            video: undefined,
-            home_service_charge: parseFloat(form.home_service_charge) || 0,
-            about: form.about || undefined,
-            gallery: form.gallery,
-          });
-          setIsEditing(false);
-          alert(
-            "Salon profile updated successfully! (Video URL kept in session preview due to host payload limits)",
-          );
-          return;
-        } catch (retryErr: any) {
-          alert(retryErr.message || "Failed to update profile.");
-          return;
-        }
-      }
       alert(err.message || "Failed to update profile.");
     } finally {
       submitLockRef.current = false;
@@ -280,16 +252,29 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
                 </div>
                 <div className="form-group">
                   <label>Background Image</label>
+                  {form.image && (
+                    <div style={{ marginBottom: 10, display: "flex", alignItems: "center", gap: 12 }}>
+                      <img
+                        src={form.image}
+                        alt="Preview"
+                        style={{ maxWidth: "200px", maxHeight: "120px", borderRadius: "8px", objectFit: "cover" }}
+                      />
+                      <button
+                        type="button"
+                        onClick={removeImage}
+                        style={{ fontSize: 12, color: "#e74c3c", background: "none", border: "none", cursor: "pointer", padding: 0, fontWeight: 600 }}
+                      >
+                        ❌ Remove Image
+                      </button>
+                    </div>
+                  )}
                   <input
                     type="file"
                     accept="image/*"
                     onChange={handleImageUpload}
                     disabled={isUploadingImage}
                   />
-                  {isUploadingImage && <p style={{fontSize: 12, color: '#CA9A86', marginTop: 4}}>Uploading...</p>}
-                  {form.image && (
-                    <img src={form.image} alt="Preview" style={{ maxWidth: '200px', marginTop: '10px', borderRadius: '8px' }} />
-                  )}
+                  {isUploadingImage && <p style={{ fontSize: 12, color: "#CA9A86", marginTop: 4 }}>Uploading image...</p>}
                 </div>
                 <div className="form-group">
                   <label>Salon Video (MP4/WebM, max 200MB)</label>

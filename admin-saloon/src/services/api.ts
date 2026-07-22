@@ -131,14 +131,7 @@ export const api = {
 
   // Salon Profile
   getSalonProfile: async () => {
-    const res = await request("GET", "/admin/salon-profile");
-    if (res && res.data) {
-      const localVideo = localStorage.getItem("salon_local_video");
-      if (!res.data.video && localVideo) {
-        res.data.video = localVideo;
-      }
-    }
-    return res;
+    return request("GET", "/admin/salon-profile");
   },
 
   updateSalonProfile: async (data: {
@@ -154,20 +147,7 @@ export const api = {
     about?: string;
     gallery?: string[];
   }) => {
-    const payload = { ...data };
-
-    // Prevent Vercel 4.5MB FUNCTION_PAYLOAD_TOO_LARGE error by caching large base64 video string locally
-    if (payload.video && payload.video.length > 500000) {
-      try {
-        localStorage.setItem("salon_local_video", payload.video);
-      } catch (e) {
-        console.warn("Could not save video to localStorage:", e);
-      }
-      // Remove multi-megabyte base64 video string from HTTP payload so request body remains ~5KB
-      delete payload.video;
-    }
-
-    return request("PUT", "/admin/salon-profile", payload);
+    return request("PUT", "/admin/salon-profile", data);
   },
 
   createSalonProfile: (data: {

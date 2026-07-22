@@ -416,6 +416,24 @@ export const createBooking = asyncHandler(
         resolvedUserId = createdUser?.id ? Number(createdUser.id) : null;
       }
 
+      let finalSalonId = validatedData.salon_id ?? null;
+      if (!finalSalonId) {
+        if (validatedData.service_id) {
+          const sRes = await query("SELECT salon_id FROM public.services WHERE id = $1 LIMIT 1", [validatedData.service_id]);
+          if (sRes.rows[0]?.salon_id) finalSalonId = sRes.rows[0].salon_id;
+        } else if (validatedData.team_member_id) {
+          const tmRes = await query("SELECT salon_id FROM public.team_members WHERE id = $1 LIMIT 1", [validatedData.team_member_id]);
+          if (tmRes.rows[0]?.salon_id) finalSalonId = tmRes.rows[0].salon_id;
+        } else if (validatedData.stylist) {
+          const tmRes = await query("SELECT salon_id FROM public.team_members WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)) LIMIT 1", [validatedData.stylist]);
+          if (tmRes.rows[0]?.salon_id) finalSalonId = tmRes.rows[0].salon_id;
+        }
+        if (!finalSalonId) {
+          const firstSalon = await query("SELECT id FROM public.salons ORDER BY created_at ASC LIMIT 1");
+          if (firstSalon.rows[0]?.id) finalSalonId = firstSalon.rows[0].id;
+        }
+      }
+
       const q = `
         INSERT INTO public.bookings (
           customer_name, customer_email, phone, mobile, country_code,
@@ -446,7 +464,7 @@ export const createBooking = asyncHandler(
         validatedData.notes || "",
         validatedData.total_price,
 
-        validatedData.salon_id || null,
+        finalSalonId,
         resolvedUserId,
         validatedData.booking_type || "salon",
         validatedData.address || null,
@@ -747,7 +765,18 @@ export const getUserBookings = asyncHandler(
       return;
     }
     const result = await query(
-      "SELECT * FROM public.bookings WHERE customer_email = $1 ORDER BY created_at DESC",
+      `SELECT b.*, 
+              COALESCE(s.name, s_fallback.name, 'Salon') AS salon_name, 
+              COALESCE(s.address, s_fallback.address) AS salon_address, 
+              COALESCE(s.city, s_fallback.city) AS salon_city, 
+              COALESCE(s.phone, s_fallback.phone) AS salon_phone, 
+              COALESCE(s.image, s_fallback.image) AS salon_image, 
+              COALESCE(s.google_maps_link, s_fallback.google_maps_link) AS salon_google_maps_link
+       FROM public.bookings b
+       LEFT JOIN public.salons s ON b.salon_id::text = s.id::text
+       LEFT JOIN public.salons s_fallback ON s_fallback.id = (SELECT id FROM public.salons LIMIT 1)
+       WHERE b.customer_email = $1 
+       ORDER BY b.created_at DESC`,
       [email],
     );
     res.status(200).json({ success: true, data: result.rows });

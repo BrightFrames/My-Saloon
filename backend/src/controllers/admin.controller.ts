@@ -450,6 +450,13 @@ export const updateSalonProfile = asyncHandler(
       return;
     }
 
+    // Fetch current salon data to preserve video/image if undefined in request body
+    const existingSalonRes = await query("SELECT video, image FROM public.salons WHERE id = $1", [salon_id]);
+    const existingVideo = existingSalonRes.rows[0]?.video || null;
+    const existingImage = existingSalonRes.rows[0]?.image || null;
+    const finalVideo = video !== undefined ? (video || null) : existingVideo;
+    const finalImage = image !== undefined ? (image || null) : existingImage;
+
     const result = await query(
       "UPDATE public.salons SET name = $1, address = $2, city = $3, state = $4, country = $5, starting_price = $6, rating = $7, latitude = $8, longitude = $9, phone = $10, email = $11, google_maps_link = $12, image = $13, video = $14, home_service_charge = $15, about = $16, gallery = $17 WHERE id = $18 RETURNING *",
       [
@@ -465,8 +472,8 @@ export const updateSalonProfile = asyncHandler(
         phone || null,
         email || null,
         google_maps_link || null,
-        image || null,
-        video || null,
+        finalImage,
+        finalVideo,
         home_service_charge !== undefined ? home_service_charge : 0,
         about || null,
         gallery || null,

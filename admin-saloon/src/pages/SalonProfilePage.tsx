@@ -269,7 +269,7 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
                   />
                 </div>
                 <div className="form-group">
-                  <label>Home Service Charge (₹)</label>
+                  <label>Home Service Charge Starting From (₹)</label>
                   <input
                     type="number"
                     value={form.home_service_charge}
@@ -459,7 +459,7 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
                   <div className="field-value">₹{profile.starting_price}</div>
                 </div>
                 <div className="profile-field">
-                  <div className="field-label">Home Service Charge</div>
+                  <div className="field-label">Home Service Charge Starting From</div>
                   <div className="field-value">₹{profile.home_service_charge || 0}</div>
                 </div>
                 <div className="profile-field">

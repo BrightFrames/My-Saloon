@@ -188,6 +188,7 @@
   align-items: center;
   justify-content: center;
   z-index: 100;
+  padding: 20px;
   animation: fadeIn 0.2s ease;
 }
 
@@ -196,7 +197,9 @@
   border-radius: 16px;
   padding: 32px;
   width: 460px;
-  max-width: 90vw;
+  max-width: 100%;
+  max-height: 85vh;
+  overflow-y: auto;
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
   animation: slideUp 0.25s ease;
 }
@@ -274,6 +277,7 @@
 .services-checkbox-container {
   max-height: 180px;
   overflow-y: auto;
+  overscroll-behavior: contain;
   border: 1px solid var(--input-border);
   border-radius: 12px;
   padding: 6px;

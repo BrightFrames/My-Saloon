@@ -77,10 +77,12 @@ export default function ServicesPage({ user, onLogout }: Props) {
   const openEdit = (s: Service) => {
     setEditingService(s);
     const isKnownService = SERVICE_OPTIONS.includes(s.name);
+    const orig = s.originalPrice !== undefined ? s.originalPrice : ((s as any).original_price !== undefined ? (s as any).original_price : s.price);
+    const disc = s.discountedPrice !== undefined ? s.discountedPrice : ((s as any).discounted_price !== undefined ? (s as any).discounted_price : s.price);
     setForm({
       name: isKnownService ? s.name : CUSTOM_SERVICE_VALUE,
-      originalPrice: s.originalPrice !== undefined ? String(s.originalPrice) : String(s.price),
-      discountedPrice: s.discountedPrice !== undefined ? String(s.discountedPrice) : String(s.price),
+      originalPrice: orig !== undefined && orig !== null ? String(orig) : '',
+      discountedPrice: disc !== undefined && disc !== null ? String(disc) : '',
       duration: s.duration,
       homeServiceAvailable: !!s.homeServiceAvailable,
       homeServicePrice: s.homeServicePrice !== undefined && s.homeServicePrice !== null ? String(s.homeServicePrice) : '',
@@ -172,43 +174,60 @@ export default function ServicesPage({ user, onLogout }: Props) {
               <tr>
                 <th>Service Name</th>
                 <th>Price</th>
+                <th>Discount</th>
                 <th>Duration</th>
                 <th style={{ textAlign: 'right' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {services.map((s) => (
-                <tr key={s.id}>
-                  <td style={{ fontWeight: 600 }}>
-                    {s.name}
-                    {s.homeServiceAvailable && (
-                      <span title="Home Service Available" style={{ marginLeft: 8, fontSize: '1.1em' }}>🏠</span>
-                    )}
-                  </td>
-                  <td>
-                    {s.originalPrice && s.discountedPrice && s.originalPrice > s.discountedPrice ? (
-                      <div>
-                        <span style={{ textDecoration: 'line-through', color: '#888', marginRight: '8px', fontSize: '0.9em' }}>₹{s.originalPrice}</span>
-                        <span style={{ fontWeight: 'bold', color: '#2e7d32' }}>₹{s.discountedPrice}</span>
+              {services.map((s) => {
+                const orig = Number(s.originalPrice ?? (s as any).original_price ?? s.price ?? 0);
+                const disc = Number(s.discountedPrice ?? (s as any).discounted_price ?? s.price ?? 0);
+                const hasDiscount = orig > disc;
+                const discountPercent = hasDiscount ? Math.round(((orig - disc) / orig) * 100) : 0;
+                
+                return (
+                  <tr key={s.id}>
+                    <td style={{ fontWeight: 600 }}>
+                      {s.name}
+                      {s.homeServiceAvailable && (
+                        <span title="Home Service Available" style={{ marginLeft: 8, fontSize: '1.1em' }}>🏠</span>
+                      )}
+                    </td>
+                    <td>
+                      {hasDiscount ? (
+                        <div>
+                          <span style={{ textDecoration: 'line-through', color: '#888', marginRight: '8px', fontSize: '0.9em' }}>₹{orig}</span>
+                          <span style={{ fontWeight: 'bold', color: '#2e7d32' }}>₹{disc}</span>
+                        </div>
+                      ) : (
+                        <span style={{ fontWeight: '600' }}>₹{disc || s.price}</span>
+                      )}
+                      {s.homeServiceAvailable && s.homeServicePrice && (
+                        <div style={{ marginTop: '4px', fontSize: '0.85em', color: '#555' }}>
+                          <span style={{ fontWeight: '600' }}>Home:</span> ₹{s.homeServicePrice}
+                        </div>
+                      )}
+                    </td>
+                    <td>
+                      {hasDiscount ? (
+                        <span style={{ backgroundColor: '#fee2e2', color: '#ef4444', padding: '4px 10px', borderRadius: '6px', fontWeight: 'bold', fontSize: '0.85rem', display: 'inline-block' }}>
+                          {discountPercent}% OFF (₹{orig - disc} OFF)
+                        </span>
+                      ) : (
+                        <span style={{ color: '#999', fontSize: '0.85rem' }}>No discount</span>
+                      )}
+                    </td>
+                    <td>{s.duration}</td>
+                    <td>
+                      <div className="td-actions">
+                        <button className="btn-sm" onClick={() => openEdit(s)}>Edit</button>
+                        <button className="btn-sm danger" onClick={() => handleDelete(s.id)}>Delete</button>
                       </div>
-                    ) : (
-                      <span>₹{s.discountedPrice ?? s.price}</span>
-                    )}
-                    {s.homeServiceAvailable && s.homeServicePrice && (
-                      <div style={{ marginTop: '4px', fontSize: '0.85em', color: '#555' }}>
-                        <span style={{ fontWeight: '600' }}>Home:</span> ₹{s.homeServicePrice}
-                      </div>
-                    )}
-                  </td>
-                  <td>{s.duration}</td>
-                  <td>
-                    <div className="td-actions">
-                      <button className="btn-sm" onClick={() => openEdit(s)}>Edit</button>
-                      <button className="btn-sm danger" onClick={() => handleDelete(s.id)}>Delete</button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         )}

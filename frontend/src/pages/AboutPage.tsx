@@ -60,23 +60,23 @@ export default function AboutPage() {
             </div>
           </div>
 
-          <div className="relative aspect-[4/3] overflow-hidden rounded-4xl border border-stone-100 bg-white shadow-[0_10px_40px_rgba(0,0,0,0.08)] sm:aspect-[5/4] lg:aspect-[4/5]">
+          <div className="relative h-[420px] sm:h-[480px] lg:h-[540px] w-full overflow-hidden rounded-4xl border border-stone-100 bg-white shadow-[0_10px_40px_rgba(0,0,0,0.08)]">
             <img
               src={heroImage}
               alt="Salon interior"
-              className="h-full w-full object-cover scale-105"
+              className="h-full w-full object-cover object-center transition-transform duration-700 hover:scale-105"
             />
 
-            <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/20 to-transparent" />
-            <div className="absolute inset-0 bg-gradient-to-br from-[#FDFBF9]/10 via-transparent to-[#C49B89]/20 mix-blend-screen" />
+            <div className="absolute inset-0 bg-linear-to-t from-black/75 via-black/25 to-transparent" />
+            <div className="absolute inset-0 bg-linear-to-br from-[#FDFBF9]/10 via-transparent to-[#C49B89]/20 mix-blend-screen" />
             <div className="absolute -left-10 top-8 h-40 w-40 rounded-full bg-white/25 blur-3xl" />
             <div className="absolute right-8 bottom-10 h-44 w-44 rounded-full bg-[#C49B89]/25 blur-3xl" />
 
-            <div className="absolute bottom-0 left-0 right-0 p-6 text-white">
-              <p className="mb-2 text-xs uppercase tracking-[0.35em] text-white/70">
-                of a frustrating one
+            <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8 text-white">
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.3em] text-[#DEB5A4]">
+                A BEAUTIFUL SALON EXPERIENCE
               </p>
-              <p className="max-w-md text-sm leading-6 text-white/90">
+              <p className="max-w-md text-sm sm:text-base leading-relaxed text-white/90">
                 Designed for quick discovery, nearby salons, and a cleaner
                 booking journey.
               </p>

@@ -107,6 +107,35 @@ export function LandingPage({
   const [filterMaxPrice, setFilterMaxPrice] = useState<number | "">("");
   const [availableServiceNames, setAvailableServiceNames] = useState<string[]>([]);
 
+  // Favorites State & Persistence
+  const [favorites, setFavorites] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem("favorites");
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  const [filterFavoritesOnly, setFilterFavoritesOnly] = useState(false);
+
+  const toggleFavorite = (id: string) => {
+    setFavorites((prev) => {
+      const updated = prev.includes(id)
+        ? prev.filter((favId) => favId !== id)
+        : [...prev, id];
+      try {
+        localStorage.setItem("favorites", JSON.stringify(updated));
+      } catch (e) {
+        console.error("Failed to save favorites", e);
+      }
+      return updated;
+    });
+  };
+
+  const DEFAULT_SALON_IMAGE =
+    "https://images.unsplash.com/photo-1595476108010-b4d1f10d5e43?q=80&w=800&auto=format&fit=crop";
+
   // Fetch all unique services dynamically for the filter
   useEffect(() => {
     const fetchAllServices = async () => {
@@ -369,7 +398,7 @@ export function LandingPage({
             Find Your Perfect Experience
           </h2>
 
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
             {/* Salon Name search */}
             <div className="relative">
               <Search
@@ -454,6 +483,27 @@ export function LandingPage({
                 className="w-full rounded-xl border border-stone-200 bg-stone-50/50 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#C49B89]"
               />
             </div>
+
+            {/* Favorites Only Toggle */}
+            <button
+              type="button"
+              onClick={() => setFilterFavoritesOnly((prev) => !prev)}
+              className={`flex items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium transition-all cursor-pointer ${
+                filterFavoritesOnly
+                  ? "border-red-300 bg-red-50 text-red-600 dark:bg-red-950/30 dark:border-red-800 dark:text-red-400 font-semibold shadow-sm"
+                  : "border-stone-200 bg-stone-50/50 text-stone-600 hover:bg-stone-100 dark:border-white/10 dark:bg-stone-900 dark:text-stone-300"
+              }`}
+            >
+              <Heart
+                size={16}
+                className={
+                  filterFavoritesOnly
+                    ? "fill-red-500 text-red-500"
+                    : "text-stone-400"
+                }
+              />
+              <span>{filterFavoritesOnly ? "Favorites" : "Favorites"}</span>
+            </button>
           </div>
         </div>
 
@@ -471,7 +521,16 @@ export function LandingPage({
                   Loading Salons...
                 </h3>
               </div>
-            ) : salons.length === 0 ? (
+            ) : filterFavoritesOnly && favorites.length === 0 ? (
+              <div className="bg-white rounded-2xl p-12 border border-stone-100 text-center text-stone-500 shadow-sm">
+                <h3 className="font-serif text-lg font-medium text-stone-700 mb-1">
+                  No favorite salons yet
+                </h3>
+                <p className="text-stone-400 text-sm">
+                  Click the heart icon on any salon card to add it to your favorites.
+                </p>
+              </div>
+            ) : (filterFavoritesOnly ? salons.filter(s => favorites.includes(s.id)) : salons).length === 0 ? (
               <div className="bg-white rounded-2xl p-12 border border-stone-100 text-center text-stone-500 shadow-sm">
                 <h3 className="font-serif text-lg font-medium text-stone-700 mb-1">
                   {hasAreaSearch
@@ -485,8 +544,9 @@ export function LandingPage({
                 </p>
               </div>
             ) : (
-              salons.map((s) => {
+              (filterFavoritesOnly ? salons.filter(s => favorites.includes(s.id)) : salons).map((s) => {
                 const isActive = selectedSalonId === s.id;
+                const isFav = favorites.includes(s.id);
                 return (
                   <motion.div
                     key={s.id}
@@ -511,11 +571,11 @@ export function LandingPage({
                     {/* Salon Image */}
                     <div className="relative aspect-16/10 w-full shrink-0 overflow-hidden rounded-xl bg-stone-100 sm:h-27.5 sm:w-27.5">
                       <img
-                        src={
-                          s.image ||
-                          "https://images.unsplash.com/photo-1595476108010-b4d1f10d5e43?q=80&w=800&auto=format&fit=crop"
-                        }
+                        src={s.image || DEFAULT_SALON_IMAGE}
                         alt={s.name}
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).src = DEFAULT_SALON_IMAGE;
+                        }}
                         className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                       />
                       {s.rating >= 4.8 && (
@@ -539,8 +599,22 @@ export function LandingPage({
                               {s.city || "New York"}
                             </p>
                           </div>
-                          <button className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full p-2 text-stone-300 transition-colors hover:bg-stone-50 hover:text-red-400">
-                            <Heart size={18} />
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleFavorite(s.id);
+                            }}
+                            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full p-2 text-stone-300 transition-colors hover:bg-stone-50 hover:text-red-400 cursor-pointer"
+                            title={isFav ? "Remove from Favorites" : "Add to Favorites"}
+                          >
+                            <Heart
+                              size={18}
+                              className={
+                                isFav
+                                  ? "text-red-500 fill-red-500 transition-all scale-110"
+                                  : "text-stone-300 transition-all"
+                              }
+                            />
                           </button>
                         </div>
 
@@ -680,9 +754,28 @@ export function LandingPage({
                             className="h-24 w-full rounded-lg object-cover"
                           />
                           <div>
-                            <h4 className="mb-0.5 font-serif text-sm font-semibold text-stone-900">
-                              {s.name}
-                            </h4>
+                            <div className="flex items-start justify-between gap-2">
+                              <h4 className="mb-0.5 font-serif text-sm font-semibold text-stone-900">
+                                {s.name}
+                              </h4>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  toggleFavorite(s.id);
+                                }}
+                                className="text-stone-300 hover:text-red-400 p-0.5 cursor-pointer"
+                                title={favorites.includes(s.id) ? "Remove from Favorites" : "Add to Favorites"}
+                              >
+                                <Heart
+                                  size={14}
+                                  className={
+                                    favorites.includes(s.id)
+                                      ? "text-red-500 fill-red-500"
+                                      : "text-stone-300"
+                                  }
+                                />
+                              </button>
+                            </div>
                             <p className="mb-1 flex items-center gap-1 text-[10px] text-stone-500">
                               <span aria-hidden="true">📍</span>
                               {s.city || "New York"}

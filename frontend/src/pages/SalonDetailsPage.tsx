@@ -1,4 +1,4 @@
-import { Star, Clock, Plus, ArrowRight, Loader2, UserCircle2 } from "lucide-react";
+import { Star, Clock, Plus, ArrowRight, Loader2, UserCircle2, Heart } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { PopupDialog } from "../components/PopupDialog";
@@ -14,6 +14,32 @@ export function SalonDetailsPage() {
   const [loading, setLoading] = useState(true);
   const [selectedServices, setSelectedServices] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState("Services");
+
+  const [favorites, setFavorites] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem("favorites");
+      return stored ? JSON.parse(stored) : [];
+    } catch (e) {
+      return [];
+    }
+  });
+
+  const isFavorite = id ? favorites.includes(id) : false;
+
+  const toggleFavorite = () => {
+    if (!id) return;
+    setFavorites((prev) => {
+      const updated = prev.includes(id)
+        ? prev.filter((favId) => favId !== id)
+        : [...prev, id];
+      try {
+        localStorage.setItem("favorites", JSON.stringify(updated));
+      } catch (e) {
+        console.error("Failed to save favorites", e);
+      }
+      return updated;
+    });
+  };
   
   const [reviewForm, setReviewForm] = useState({
     user_name: "",
@@ -236,21 +262,38 @@ export function SalonDetailsPage() {
           <div className="absolute inset-0 bg-linear-to-t from-black/80 via-black/10 to-transparent"></div>
 
           {/* Content on Image */}
-          <div className="absolute bottom-6 left-6 z-10 text-white sm:bottom-8 sm:left-8">
-            <h1 className="mb-3 text-2xl font-serif font-medium sm:text-3xl">
-              {salon?.name || "Salon Details"}
-            </h1>
-            <div className="flex flex-wrap items-center gap-3 text-sm font-medium text-white/90 sm:gap-4">
-              <span className="flex items-center py-1 px-3 bg-black/20 backdrop-blur-md rounded-full gap-1.5">
-                <Star size={14} className="text-[#DEB5A4]" fill="#DEB5A4" />{" "}
-                {salon?.rating || "4.9"}{" "}
-                <span className="font-normal opacity-80">(120 reviews)</span>
-              </span>
-              <span className="opacity-60">•</span>
-              <span className="flex items-center py-1 px-3 bg-black/20 backdrop-blur-md rounded-full gap-1.5">
-                <Clock size={14} /> Open until 9 PM
-              </span>
+          <div className="absolute bottom-6 left-6 right-6 z-10 text-white sm:bottom-8 sm:left-8 sm:right-8 flex items-end justify-between">
+            <div>
+              <h1 className="mb-3 text-2xl font-serif font-medium sm:text-3xl">
+                {salon?.name || "Salon Details"}
+              </h1>
+              <div className="flex flex-wrap items-center gap-3 text-sm font-medium text-white/90 sm:gap-4">
+                <span className="flex items-center py-1 px-3 bg-black/20 backdrop-blur-md rounded-full gap-1.5">
+                  <Star size={14} className="text-[#DEB5A4]" fill="#DEB5A4" />{" "}
+                  {salon?.rating || "4.9"}{" "}
+                  <span className="font-normal opacity-80">(120 reviews)</span>
+                </span>
+                <span className="opacity-60">•</span>
+                <span className="flex items-center py-1 px-3 bg-black/20 backdrop-blur-md rounded-full gap-1.5">
+                  <Clock size={14} /> Open until 9 PM
+                </span>
+              </div>
             </div>
+
+            <button
+              onClick={toggleFavorite}
+              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full bg-black/30 backdrop-blur-md border border-white/20 p-2.5 text-white hover:bg-black/50 hover:text-red-400 transition-all cursor-pointer shadow-lg"
+              title={isFavorite ? "Remove from Favorites" : "Add to Favorites"}
+            >
+              <Heart
+                size={22}
+                className={
+                  isFavorite
+                    ? "text-red-500 fill-red-500 transition-all scale-110"
+                    : "text-white transition-all"
+                }
+              />
+            </button>
           </div>
         </div>
 

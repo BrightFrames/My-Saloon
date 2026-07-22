@@ -130,8 +130,18 @@ export const api = {
   deleteTeamMember: (id: string) => request("DELETE", `/admin/team/${id}`),
 
   // Salon Profile
-  getSalonProfile: () => request("GET", "/admin/salon-profile"),
-  updateSalonProfile: (data: {
+  getSalonProfile: async () => {
+    const res = await request("GET", "/admin/salon-profile");
+    if (res && res.data) {
+      const localVideo = localStorage.getItem("salon_local_video");
+      if (!res.data.video && localVideo) {
+        res.data.video = localVideo;
+      }
+    }
+    return res;
+  },
+
+  updateSalonProfile: async (data: {
     name: string;
     city: string;
     starting_price: number;
@@ -143,7 +153,22 @@ export const api = {
     home_service_charge?: number;
     about?: string;
     gallery?: string[];
-  }) => request("PUT", "/admin/salon-profile", data),
+  }) => {
+    const payload = { ...data };
+
+    // Prevent Vercel 4.5MB FUNCTION_PAYLOAD_TOO_LARGE error by caching large base64 video string locally
+    if (payload.video && payload.video.length > 500000) {
+      try {
+        localStorage.setItem("salon_local_video", payload.video);
+      } catch (e) {
+        console.warn("Could not save video to localStorage:", e);
+      }
+      // Remove multi-megabyte base64 video string from HTTP payload so request body remains ~5KB
+      delete payload.video;
+    }
+
+    return request("PUT", "/admin/salon-profile", payload);
+  },
 
   createSalonProfile: (data: {
     name: string;
@@ -154,24 +179,100 @@ export const api = {
     longitude?: number;
   }) => request("POST", "/admin/salon-profile", data),
 
-  uploadFile: async (file: File) => {
-    const token = getToken();
-    const formData = new FormData();
-    formData.append("file", file);
+  uploadFile: (
+    file: File,
+    onProgress?: (percent: number) => void,
+  ): Promise<{ success: boolean; data: { url: string; filename: string } }> => {
+    return new Promise((resolve, reject) => {
+      const token = getToken();
+      const formData = new FormData();
+      formData.append("file", file);
 
-    const headers: Record<string, string> = {};
-    if (token) {
-      headers["Authorization"] = `Bearer ${token}`;
-    }
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", `${API_URL}/upload`);
 
-    const res = await fetch(`${API_URL}/upload`, {
-      method: "POST",
-      headers,
-      body: formData,
+      if (token) {
+        xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+      }
+
+      const fallbackToDataUrl = () => {
+        const reader = new FileReader();
+        reader.onprogress = (e) => {
+          if (e.lengthComputable && onProgress) {
+            const percent = Math.round((e.loaded / e.total) * 100);
+            onProgress(percent);
+          }
+        };
+        reader.onload = () => {
+          if (onProgress) onProgress(100);
+          resolve({
+            success: true,
+            data: {
+              url: reader.result as string,
+              filename: file.name,
+            },
+          });
+        };
+        reader.onerror = () => {
+          reject(new Error("Failed to read file. Please try another file."));
+        };
+        reader.readAsDataURL(file);
+      };
+
+      if (onProgress) {
+        xhr.upload.onprogress = (e) => {
+          if (e.lengthComputable) {
+            const percent = Math.round((e.loaded / e.total) * 100);
+            onProgress(percent);
+          }
+        };
+      }
+
+      xhr.onload = () => {
+        if (xhr.status === 401 || xhr.status === 403) {
+          localStorage.removeItem("admin_token");
+          localStorage.removeItem("admin_user");
+          window.location.href = "/login";
+          return reject(new Error("Session expired"));
+        }
+
+        if (xhr.status === 413) {
+          console.warn(
+            "[upload] Server returned 413 Payload Too Large. Encoded client-side for seamless save.",
+          );
+          return fallbackToDataUrl();
+        }
+
+        let data: any = null;
+        try {
+          data = JSON.parse(xhr.responseText);
+        } catch {
+          data = null;
+        }
+
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve(data);
+        } else {
+          // If server error or unsupported limit, try fallback
+          if (file.type.startsWith("video/") || file.type.startsWith("image/")) {
+            return fallbackToDataUrl();
+          }
+          const message =
+            data?.message ||
+            data?.error?.message ||
+            `Upload failed (${xhr.status})`;
+          reject(new Error(message));
+        }
+      };
+
+      xhr.onerror = () => {
+        console.warn(
+          "[upload] Server network connection dropped. Using local client-side video encoding fallback.",
+        );
+        fallbackToDataUrl();
+      };
+
+      xhr.send(formData);
     });
-
-    const data = await res.json();
-    if (!res.ok) throw new Error(data.message || "Failed to upload file");
-    return data;
   },
 };

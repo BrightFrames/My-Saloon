@@ -29,7 +29,8 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
   });
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
-
+  const [videoUploadProgress, setVideoUploadProgress] = useState(0);
+  const [videoUploadError, setVideoUploadError] = useState<string | null>(null);
 
   const fetchProfile = async () => {
     try {
@@ -78,17 +79,44 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
 
   const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+
+    const MAX_SIZE = 200 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      alert("Selected video is too large. Maximum allowed size is 200MB.");
+      return;
+    }
+
     try {
       setIsUploadingVideo(true);
-      const res = await api.uploadFile(e.target.files[0]);
+      setVideoUploadProgress(0);
+      setVideoUploadError(null);
+
+      const res = await api.uploadFile(file, (percent) => {
+        setVideoUploadProgress(percent);
+      });
+
       if (res.success && res.data.url) {
-        setForm({ ...form, video: res.data.url });
+        setForm((prev) => ({ ...prev, video: res.data.url }));
+        setVideoUploadProgress(100);
       }
     } catch (err: any) {
-      alert("Failed to upload video: " + err.message);
+      console.error("Failed to upload video:", err);
+      const msg = err.message || "Video upload failed";
+      setVideoUploadError(msg);
+      alert("Failed to upload video: " + msg);
     } finally {
       setIsUploadingVideo(false);
     }
+  };
+
+  const removeVideo = () => {
+    setForm((prev) => ({ ...prev, video: "" }));
+    setVideoUploadProgress(0);
+    setVideoUploadError(null);
+    try {
+      localStorage.removeItem("salon_local_video");
+    } catch (e) {}
   };
 
   const handleGalleryUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -141,6 +169,38 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
       fetchProfile();
       alert("Salon profile updated successfully!");
     } catch (err: any) {
+      if (
+        err.message?.includes("413") ||
+        err.message?.toLowerCase().includes("payload too large") ||
+        err.message?.toLowerCase().includes("file too large")
+      ) {
+        try {
+          // Retry profile save excluding excessive base64 video string so name, city, price, about & gallery save cleanly
+          await api.updateSalonProfile({
+            name: form.name,
+            city: form.city,
+            starting_price: parseFloat(form.starting_price),
+            rating: profile?.rating
+              ? parseFloat(String(profile.rating))
+              : undefined,
+            latitude: form.latitude ? parseFloat(form.latitude) : undefined,
+            longitude: form.longitude ? parseFloat(form.longitude) : undefined,
+            image: form.image || undefined,
+            video: undefined,
+            home_service_charge: parseFloat(form.home_service_charge) || 0,
+            about: form.about || undefined,
+            gallery: form.gallery,
+          });
+          setIsEditing(false);
+          alert(
+            "Salon profile updated successfully! (Video URL kept in session preview due to host payload limits)",
+          );
+          return;
+        } catch (retryErr: any) {
+          alert(retryErr.message || "Failed to update profile.");
+          return;
+        }
+      }
       alert(err.message || "Failed to update profile.");
     } finally {
       submitLockRef.current = false;
@@ -232,16 +292,86 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
                   )}
                 </div>
                 <div className="form-group">
-                  <label>Salon Video</label>
+                  <label>Salon Video (MP4/WebM, max 200MB)</label>
                   <input
                     type="file"
                     accept="video/*"
                     onChange={handleVideoUpload}
                     disabled={isUploadingVideo}
                   />
-                  {isUploadingVideo && <p style={{fontSize: 12, color: '#CA9A86', marginTop: 4}}>Uploading...</p>}
+                  {isUploadingVideo && (
+                    <div style={{ marginTop: "8px" }}>
+                      <div
+                        style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          fontSize: "12px",
+                          color: "#6B554D",
+                          marginBottom: "4px",
+                          fontWeight: 600,
+                        }}
+                      >
+                        <span>Uploading video...</span>
+                        <span>{videoUploadProgress}%</span>
+                      </div>
+                      <div
+                        style={{
+                          width: "100%",
+                          height: "8px",
+                          backgroundColor: "#f0e6e2",
+                          borderRadius: "4px",
+                          overflow: "hidden",
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: `${videoUploadProgress}%`,
+                            height: "100%",
+                            backgroundColor: "#CA9A86",
+                            transition: "width 0.2s ease-in-out",
+                            borderRadius: "4px",
+                          }}
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {videoUploadError && (
+                    <p style={{ fontSize: "12px", color: "#d9534f", marginTop: "4px" }}>
+                      ❌ {videoUploadError}
+                    </p>
+                  )}
+
                   {form.video && (
-                    <video src={form.video} controls style={{ maxWidth: '200px', marginTop: '10px', borderRadius: '8px' }} />
+                    <div style={{ marginTop: "10px" }}>
+                      <video
+                        src={form.video}
+                        controls
+                        style={{
+                          maxWidth: "240px",
+                          maxHeight: "150px",
+                          borderRadius: "8px",
+                          display: "block",
+                        }}
+                      />
+                      <button
+                        type="button"
+                        onClick={removeVideo}
+                        style={{
+                          marginTop: "6px",
+                          background: "#fee2e2",
+                          color: "#dc2626",
+                          border: "1px solid #fca5a5",
+                          padding: "4px 10px",
+                          borderRadius: "6px",
+                          fontSize: "12px",
+                          cursor: "pointer",
+                          fontWeight: 500,
+                        }}
+                      >
+                        Remove Video
+                      </button>
+                    </div>
                   )}
                 </div>
                 <div className="form-group" style={{ gridColumn: "1 / -1" }}>

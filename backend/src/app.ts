@@ -41,11 +41,12 @@ app.use(
   }),
 );
 
-// Body Parsers
-app.use(express.json());
+// Body Parsers (Support large payloads such as videos and gallery images)
+app.use(express.json({ limit: "100mb" }));
 
 app.use(
   express.urlencoded({
+    limit: "100mb",
     extended: true,
   }),
 );

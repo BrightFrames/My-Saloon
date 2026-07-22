@@ -51,8 +51,15 @@ export default function NotificationBell({ salonId }: { salonId: string }) {
     // Connect to the socket server
     const socketUrl = API_BASE_URL.replace('/api/v1', '');
     const socket = io(socketUrl, {
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket'],
       withCredentials: true,
+      reconnectionAttempts: 2,
+      timeout: 5000,
+    });
+
+    socket.on('connect_error', () => {
+      // Quietly fall back to active HTTP polling when WebSockets are unsupported on serverless hosts
+      socket.disconnect();
     });
 
     socket.on('connect', () => {

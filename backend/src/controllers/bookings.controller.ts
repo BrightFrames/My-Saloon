@@ -766,6 +766,7 @@ export const getUserBookings = asyncHandler(
     }
     const result = await query(
       `SELECT b.*, 
+              COALESCE(b.salon_id, s.id, s_fallback.id) AS salon_id,
               COALESCE(s.name, s_fallback.name, 'Salon') AS salon_name, 
               COALESCE(s.address, s_fallback.address) AS salon_address, 
               COALESCE(s.city, s_fallback.city) AS salon_city, 

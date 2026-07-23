@@ -19,7 +19,8 @@ import {
   CheckCircle2,
   Clock,
   Building2,
-  X
+  X,
+  RotateCcw
 } from "lucide-react";
 import { PopupDialog } from "../components/PopupDialog";
 import { formatINR } from "../utils/currency";
@@ -55,6 +56,15 @@ export function MyBookingsPage() {
     booking?.serviceName ||
     booking?.hairstyle ||
     "Salon Service";
+
+  const handleRebook = (booking: any) => {
+    const salonId = booking?.salon_id || booking?.salonId;
+    if (salonId) {
+      navigate(`/salon/${salonId}`);
+    } else {
+      navigate("/treatments");
+    }
+  };
 
   const fetchBookings = async (background = false) => {
     if (!userEmail) {
@@ -402,6 +412,15 @@ export function MyBookingsPage() {
                           <FileText size={14} /> Full Details & Receipt
                         </button>
 
+                        {isCompleted && (
+                          <button
+                            onClick={() => handleRebook(booking)}
+                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-[#C49B89] hover:bg-[#B38775] px-3.5 py-1.5 rounded-lg transition-colors shadow-xs cursor-pointer"
+                          >
+                            <RotateCcw size={14} /> Rebook Services
+                          </button>
+                        )}
+
                         {booking.booking_status !== "cancelled" &&
                           booking.booking_status !== "rejected" &&
                           booking.booking_status !== "completed" && (
@@ -633,10 +652,23 @@ export function MyBookingsPage() {
             </div>
 
             {/* Modal Actions */}
-            <div className="mt-6 pt-4 border-t border-stone-100 flex justify-end">
+            <div className="mt-6 pt-4 border-t border-stone-100 flex flex-wrap items-center justify-between gap-3">
+              {selectedReceipt?.booking_status === "completed" ? (
+                <button
+                  onClick={() => {
+                    handleRebook(selectedReceipt);
+                    setSelectedReceipt(null);
+                  }}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#C49B89] hover:bg-[#B38775] text-white text-xs font-semibold rounded-xl transition-colors shadow-xs cursor-pointer"
+                >
+                  <RotateCcw size={14} /> Rebook from Same Salon
+                </button>
+              ) : (
+                <div />
+              )}
               <button
                 onClick={() => setSelectedReceipt(null)}
-                className="w-full sm:w-auto px-6 py-2.5 bg-[#CA9A86] hover:bg-[#B38775] text-white text-xs font-semibold rounded-xl transition-colors shadow-sm"
+                className="w-full sm:w-auto px-6 py-2.5 bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-semibold rounded-xl transition-colors"
               >
                 Close Receipt
               </button>

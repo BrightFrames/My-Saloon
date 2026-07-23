@@ -603,3 +603,62 @@ export const deleteSuperAdminSalon = asyncHandler(
     res.json({ success: true, message: "Salon deleted successfully" });
   },
 );
+
+import bcrypt from "bcryptjs";
+
+export const changePassword = asyncHandler(
+  async (req: Request, res: Response) => {
+    const userId = (req as any).user?.id;
+    const { oldPassword, newPassword } = req.body;
+
+    if (!userId) {
+      res.status(401).json({ message: "Unauthorized user." });
+      return;
+    }
+
+    if (!oldPassword || !newPassword) {
+      res.status(400).json({ message: "Old password and new password are required." });
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      res.status(400).json({ message: "New password must be at least 8 characters long." });
+      return;
+    }
+
+    if (oldPassword === newPassword) {
+      res.status(400).json({ message: "New password must be different from the old password." });
+      return;
+    }
+
+    // Fetch user from DB
+    const userResult = await query("SELECT id, password FROM public.users WHERE id = $1 LIMIT 1", [userId]);
+    if (userResult.rows.length === 0) {
+      res.status(404).json({ message: "User not found." });
+      return;
+    }
+
+    const user = userResult.rows[0];
+
+    // Check if old password matches
+    if (!user.password) {
+      res.status(400).json({ message: "No password set for this user." });
+      return;
+    }
+
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch) {
+      res.status(400).json({ message: "Old password does not match our records." });
+      return;
+    }
+
+    // Hash new password and save
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    await query("UPDATE public.users SET password = $1 WHERE id = $2", [hashedPassword, userId]);
+
+    res.json({ success: true, message: "Password updated successfully" });
+  },
+);
+

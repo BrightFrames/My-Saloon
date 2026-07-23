@@ -15,6 +15,7 @@ import {
   createSuperAdminSalon,
   updateSuperAdminSalon,
   deleteSuperAdminSalon,
+  changePassword,
 } from "../controllers/admin.controller";
 import {
   getAdminBookings,
@@ -57,6 +58,9 @@ router.delete("/team/:id", writeLimiter, deleteTeamMember);
 router.get("/salon-profile", getSalonProfile);
 router.post("/salon-profile", writeLimiter, createSalonProfile);
 router.put("/salon-profile", writeLimiter, updateSalonProfile);
+
+// Password Management
+router.post("/change-password", writeLimiter, changePassword);
 
 // SuperAdmin Salon Management
 import { requireSuperAdmin } from "../middlewares/auth";

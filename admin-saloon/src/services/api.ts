@@ -159,6 +159,9 @@ export const api = {
     longitude?: number;
   }) => request("POST", "/admin/salon-profile", data),
 
+  changePassword: (data: { oldPassword: string; newPassword: string }) =>
+    request("POST", "/admin/change-password", data),
+
   uploadFile: (
     file: File,
     onProgress?: (percent: number) => void,

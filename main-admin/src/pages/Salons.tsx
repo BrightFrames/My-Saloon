@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import { API_BASE_URL } from '../services/apiBase';
-import { Plus, Edit2, Key, MapPin, Phone, User, Store, X, Trash2 } from 'lucide-react';
+import { Plus, Edit2, Key, MapPin, Phone, User, Store, X, Trash2, Eye, EyeOff } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -26,6 +26,7 @@ export default function Salons() {
   // Admin form state
   const [selectedSalonId, setSelectedSalonId] = useState<string | null>(null);
   const [adminForm, setAdminForm] = useState({ email: '', password: '' });
+  const [showAdminPassword, setShowAdminPassword] = useState(false);
 
   const [isSubmittingSalon, setIsSubmittingSalon] = useState(false);
   const [isSubmittingAdmin, setIsSubmittingAdmin] = useState(false);
@@ -487,12 +488,22 @@ export default function Salons() {
                 
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">Password *</label>
-                  <Input 
-                    type="password"
-                    value={adminForm.password} 
-                    onChange={e => setAdminForm({...adminForm, password: e.target.value})} 
-                    placeholder="••••••••"
-                  />
+                  <div className="relative">
+                    <Input 
+                      type={showAdminPassword ? "text" : "password"}
+                      value={adminForm.password} 
+                      onChange={e => setAdminForm({...adminForm, password: e.target.value})} 
+                      placeholder="••••••••"
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowAdminPassword(!showAdminPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 dark:text-stone-400 dark:hover:text-stone-200 focus:outline-none"
+                    >
+                      {showAdminPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                    </button>
+                  </div>
                 </div>
 
                 <div className="flex gap-3 mt-4 pt-5 border-t border-stone-100">

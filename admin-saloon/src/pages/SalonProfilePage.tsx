@@ -28,6 +28,68 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
     gallery: [] as string[],
   });
   const [isUploadingImage, setIsUploadingImage] = useState(false);
+
+  // Change Password state
+  const [pwdForm, setPwdForm] = useState({
+    oldPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [showOldPwd, setShowOldPwd] = useState(false);
+  const [showNewPwd, setShowNewPwd] = useState(false);
+  const [showConfirmPwd, setShowConfirmPwd] = useState(false);
+  const [pwdErrors, setPwdErrors] = useState<{ old?: string; new?: string; confirm?: string; general?: string }>({});
+  const [pwdSuccess, setPwdSuccess] = useState<string | null>(null);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPwdErrors({});
+    setPwdSuccess(null);
+
+    const errors: typeof pwdErrors = {};
+    if (!pwdForm.oldPassword) errors.old = "Old Password is required";
+    if (!pwdForm.newPassword) {
+      errors.new = "New Password is required";
+    } else if (pwdForm.newPassword.length < 8) {
+      errors.new = "Password must be at least 8 characters long";
+    } else if (pwdForm.newPassword === pwdForm.oldPassword) {
+      errors.new = "New password must be different from old password";
+    }
+
+    if (!pwdForm.confirmPassword) {
+      errors.confirm = "Confirm Password is required";
+    } else if (pwdForm.confirmPassword !== pwdForm.newPassword) {
+      errors.confirm = "Passwords do not match";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setPwdErrors(errors);
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      const res = await api.changePassword({
+        oldPassword: pwdForm.oldPassword,
+        newPassword: pwdForm.newPassword,
+      });
+
+      if (res.success) {
+        setPwdSuccess("Password updated successfully! Logging out...");
+        setPwdForm({ oldPassword: "", newPassword: "", confirmPassword: "" });
+        setTimeout(() => {
+          onLogout();
+        }, 2000);
+      } else {
+        setPwdErrors({ general: res.message || "Failed to update password" });
+      }
+    } catch (err: any) {
+      setPwdErrors({ general: err.message || "Something went wrong while changing password" });
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
   const [videoUploadProgress, setVideoUploadProgress] = useState(0);
   const [videoUploadError, setVideoUploadError] = useState<string | null>(null);
@@ -509,6 +571,118 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
             )}
           </div>
         )}
+
+        {/* ─── Change Password Section ─── */}
+        <div className="profile-card" style={{ marginTop: "32px" }}>
+          <h2 style={{ fontSize: "18px", fontWeight: "600", marginBottom: "20px", color: "var(--heading)" }}>
+            Change Password
+          </h2>
+
+          {pwdSuccess && (
+            <div style={{ padding: "12px 16px", borderRadius: "8px", background: "#ecfdf5", color: "#047857", marginBottom: "16px", fontSize: "14px", border: "1px solid #a7f3d0" }}>
+              {pwdSuccess}
+            </div>
+          )}
+
+          {pwdErrors.general && (
+            <div style={{ padding: "12px 16px", borderRadius: "8px", background: "#fef2f2", color: "#b91c1c", marginBottom: "16px", fontSize: "14px", border: "1px solid #fecaca" }}>
+              {pwdErrors.general}
+            </div>
+          )}
+
+          <form onSubmit={handlePasswordSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div className="form-group">
+              <label style={{ display: "block", fontSize: "13px", fontWeight: "500", marginBottom: "6px", color: "var(--muted)" }}>
+                Old Password *
+              </label>
+              <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                <input
+                  type={showOldPwd ? "text" : "password"}
+                  value={pwdForm.oldPassword}
+                  onChange={(e) => setPwdForm({ ...pwdForm, oldPassword: e.target.value })}
+                  placeholder="Enter old password"
+                  style={{ width: "100%", paddingRight: "40px", padding: "10px 40px 10px 12px", borderRadius: "8px", border: "1px solid var(--border)", background: "var(--panel-bg)", color: "var(--text)" }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowOldPwd(!showOldPwd)}
+                  style={{ position: "absolute", right: "12px", background: "none", border: "none", cursor: "pointer", color: "var(--muted)", display: "flex", alignItems: "center" }}
+                >
+                  {showOldPwd ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                  )}
+                </button>
+              </div>
+              {pwdErrors.old && <span style={{ color: "#ef4444", fontSize: "12px", marginTop: "4px", display: "block" }}>{pwdErrors.old}</span>}
+            </div>
+
+            <div className="form-group">
+              <label style={{ display: "block", fontSize: "13px", fontWeight: "500", marginBottom: "6px", color: "var(--muted)" }}>
+                New Password *
+              </label>
+              <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                <input
+                  type={showNewPwd ? "text" : "password"}
+                  value={pwdForm.newPassword}
+                  onChange={(e) => setPwdForm({ ...pwdForm, newPassword: e.target.value })}
+                  placeholder="Min 8 characters"
+                  style={{ width: "100%", paddingRight: "40px", padding: "10px 40px 10px 12px", borderRadius: "8px", border: "1px solid var(--border)", background: "var(--panel-bg)", color: "var(--text)" }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowNewPwd(!showNewPwd)}
+                  style={{ position: "absolute", right: "12px", background: "none", border: "none", cursor: "pointer", color: "var(--muted)", display: "flex", alignItems: "center" }}
+                >
+                  {showNewPwd ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                  )}
+                </button>
+              </div>
+              {pwdErrors.new && <span style={{ color: "#ef4444", fontSize: "12px", marginTop: "4px", display: "block" }}>{pwdErrors.new}</span>}
+            </div>
+
+            <div className="form-group">
+              <label style={{ display: "block", fontSize: "13px", fontWeight: "500", marginBottom: "6px", color: "var(--muted)" }}>
+                Confirm New Password *
+              </label>
+              <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                <input
+                  type={showConfirmPwd ? "text" : "password"}
+                  value={pwdForm.confirmPassword}
+                  onChange={(e) => setPwdForm({ ...pwdForm, confirmPassword: e.target.value })}
+                  placeholder="Re-enter new password"
+                  style={{ width: "100%", paddingRight: "40px", padding: "10px 40px 10px 12px", borderRadius: "8px", border: "1px solid var(--border)", background: "var(--panel-bg)", color: "var(--text)" }}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPwd(!showConfirmPwd)}
+                  style={{ position: "absolute", right: "12px", background: "none", border: "none", cursor: "pointer", color: "var(--muted)", display: "flex", alignItems: "center" }}
+                >
+                  {showConfirmPwd ? (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>
+                  ) : (
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+                  )}
+                </button>
+              </div>
+              {pwdErrors.confirm && <span style={{ color: "#ef4444", fontSize: "12px", marginTop: "4px", display: "block" }}>{pwdErrors.confirm}</span>}
+            </div>
+
+            <div style={{ marginTop: "12px" }}>
+              <button
+                type="submit"
+                className="btn-add"
+                disabled={isChangingPassword}
+              >
+                {isChangingPassword ? "Updating Password..." : "Update Password"}
+              </button>
+            </div>
+          </form>
+        </div>
 
 
       </div>

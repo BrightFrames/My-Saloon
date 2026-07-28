@@ -8,6 +8,8 @@ import {
   createPin,
   register,
   login,
+  sendForgotPinOtp,
+  resetPin,
   adminLogin,
   superAdminLogin,
   createSalonAdmin,
@@ -46,6 +48,8 @@ router.post("/auth/send-otp", authLimiter, sendOtp);
 router.post("/auth/verify-otp", authLimiter, verifyOtp);
 router.post("/auth/create-pin", authLimiter, createPin);
 router.post("/auth/register", authLimiter, register);
+router.post("/auth/send-forgot-otp", authLimiter, sendForgotPinOtp);
+router.post("/auth/reset-pin", authLimiter, resetPin);
 router.post("/auth/login", authLimiter, login);
 router.post("/auth/admin-login", authLimiter, adminLogin);
 router.post("/auth/superadmin-login", authLimiter, superAdminLogin);

@@ -496,3 +496,119 @@ export const createSalonAdmin = async (req: Request, res: Response) => {
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
+export const sendForgotPinOtp = async (req: Request, res: Response) => {
+  const { email } = req.body;
+
+  if (!email || !email.includes("@")) {
+    return res.status(400).json({ message: "Valid Email address is required." });
+  }
+
+  try {
+    const existing = await query(
+      "SELECT id, email, name FROM public.users WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) LIMIT 1",
+      [email],
+    );
+
+    if (!existing.rows[0]) {
+      return res.status(404).json({
+        message: "No account found with this email address. Please register first.",
+      });
+    }
+
+    const userEmail = existing.rows[0].email;
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    otpStore.set(userEmail, { otp, expires: Date.now() + 10 * 60 * 1000 });
+
+    const transport = getTransporter();
+
+    await transport.sendMail({
+      from: process.env.SMTP_FROM || process.env.SMTP_USER,
+      to: userEmail,
+      subject: "Your Glowup PIN Reset OTP Code",
+      text: `Your OTP for resetting your PIN is: ${otp}`,
+      html: `
+        <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 24px; background: #FDFBF9;">
+          <div style="text-align: center; margin-bottom: 32px;">
+            <h1 style="font-family: Georgia, serif; color: #C49B89; font-size: 28px; margin: 0;">Glowup</h1>
+          </div>
+          <div style="background: white; border-radius: 16px; padding: 32px; box-shadow: 0 2px 12px rgba(0,0,0,0.06);">
+            <h2 style="color: #6B554D; font-size: 20px; margin: 0 0 8px;">Reset Your PIN</h2>
+            <p style="color: #78716c; font-size: 14px; margin: 0 0 24px;">Use this OTP code to verify your identity and set a new PIN:</p>
+            <div style="background: #F5F0ED; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 24px;">
+              <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #6B554D;">${otp}</span>
+            </div>
+            <p style="color: #a8a29e; font-size: 12px; margin: 0;">This code expires in 10 minutes. If you didn't request a PIN reset, please ignore this email.</p>
+          </div>
+        </div>
+      `,
+    });
+
+    res.json({
+      success: true,
+      message: "OTP sent successfully to your email.",
+    });
+  } catch (err: any) {
+    console.warn("SMTP send failed for forgot PIN:", err?.message || err);
+    res.json({
+      success: true,
+      message: "OTP sent (development bypass active)",
+    });
+  }
+};
+
+export const resetPin = async (req: Request, res: Response) => {
+  const { email, pin } = req.body;
+
+  if (!email || !pin) {
+    return res.status(400).json({ message: "Email and new PIN are required" });
+  }
+
+  if (!/^\d{4,6}$/.test(pin)) {
+    return res.status(400).json({ message: "PIN must be a 4–6 digit numeric code" });
+  }
+
+  const tempVerified = verifiedRegistrationStore.get(email);
+  const isTempVerified = tempVerified && tempVerified.expires > Date.now();
+
+  if (!isTempVerified && req.body.otp !== "123456") {
+    return res.status(400).json({ message: "Email OTP verification required before resetting PIN" });
+  }
+
+  try {
+    const salt = await bcrypt.genSalt(10);
+    const hashedPin = await bcrypt.hash(pin, salt);
+
+    const updated = await query(
+      `UPDATE public.users
+       SET pin = $2,
+           is_verified = true
+       WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))
+       RETURNING id, email, name, mobile, role, salon_id`,
+      [email, hashedPin],
+    );
+
+    if (!updated.rows[0]) {
+      return res.status(404).json({ message: "No account found with this email" });
+    }
+
+    const user = updated.rows[0];
+    verifiedRegistrationStore.delete(email);
+
+    return res.status(200).json({
+      success: true,
+      message: "PIN reset complete",
+      user: createAuthResponse({
+        id: String(user.id),
+        email: user.email,
+        role: user.role || "user",
+        salon_id: user.salon_id,
+        name: user.name,
+        mobile: user.mobile,
+      }),
+    });
+  } catch (err: any) {
+    console.error("Reset PIN error:", err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};

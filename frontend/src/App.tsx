@@ -17,6 +17,7 @@ import { SalonDetailsPage } from "./pages/SalonDetailsPage";
 import { CheckoutPage } from "./pages/CheckoutPage";
 import SignInPage from "./pages/SignInPage";
 import RegisterPage from "./pages/RegisterPage";
+import ForgotPinPage from "./pages/ForgotPinPage";
 import { BookingConfirmationPage } from "./pages/BookingConfirmationPage";
 import { MyBookingsPage } from "./pages/MyBookingsPage";
 import { PopupDialog } from "./components/PopupDialog";
@@ -161,6 +162,7 @@ function AppRoutes() {
         <Route path="/signin" element={<SignInPage />} />
         <Route path="/login" element={<SignInPage />} />
         <Route path="/register" element={<RegisterPage />} />
+        <Route path="/forgot-pin" element={<ForgotPinPage />} />
         <Route path="/memberships" element={<MembershipsPage />} />
         <Route path="/concierge" element={<ConciergePage />} />
         <Route path="/about" element={<AboutPage />} />

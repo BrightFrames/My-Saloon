@@ -165,6 +165,14 @@ const SignInPage: React.FC = () => {
               className="w-full rounded-lg border border-[#c9ada7] px-4 py-3 tracking-widest outline-none focus:border-[#6B554D] focus:ring-1 focus:ring-[#6B554D]"
               required
             />
+            <div className="flex justify-end mt-0.5">
+              <Link
+                to="/forgot-pin"
+                className="text-xs text-[#6B554D] hover:underline font-medium cursor-pointer"
+              >
+                Forgot PIN?
+              </Link>
+            </div>
           </div>
 
           <button

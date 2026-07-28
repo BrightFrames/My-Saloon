@@ -36,6 +36,10 @@ async function alter() {
       );
     `);
     
+    // User authentication migration columns
+    await client.query("ALTER TABLE public.users ADD COLUMN IF NOT EXISTS pin TEXT;");
+    await client.query("ALTER TABLE public.users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT false;");
+
     console.log("Columns added and initialized");
   } catch(e) {
     console.error(e);

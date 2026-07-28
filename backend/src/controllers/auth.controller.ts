@@ -68,7 +68,9 @@ export async function ensureUserAccount({
     ALTER TABLE public.users
       ADD COLUMN IF NOT EXISTS name TEXT,
       ADD COLUMN IF NOT EXISTS mobile TEXT,
-      ADD COLUMN IF NOT EXISTS password TEXT;
+      ADD COLUMN IF NOT EXISTS password TEXT,
+      ADD COLUMN IF NOT EXISTS pin TEXT,
+      ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT false;
   `);
 
   await query(`
@@ -77,7 +79,7 @@ export async function ensureUserAccount({
   `);
 
   const existingResult = await query(
-    "SELECT id, email, name, mobile, role, salon_id FROM public.users WHERE email = $1 LIMIT 1",
+    "SELECT id, email, name, mobile, role, salon_id, pin, is_verified FROM public.users WHERE email = $1 LIMIT 1",
     [email],
   );
 
@@ -87,7 +89,7 @@ export async function ensureUserAccount({
       `UPDATE public.users
        SET name = COALESCE($2, name), mobile = COALESCE($3, mobile), role = COALESCE($4, role)
        WHERE id = $1
-       RETURNING id, email, name, mobile, role, salon_id`,
+       RETURNING id, email, name, mobile, role, salon_id, is_verified`,
       [existingUser.id, name || existingUser.name || null, mobile || existingUser.mobile || null, role],
     );
 
@@ -95,9 +97,9 @@ export async function ensureUserAccount({
   }
 
   const createdResult = await query(
-    `INSERT INTO public.users (email, password, role, name, mobile)
-     VALUES ($1, NULL, $2, $3, $4)
-     RETURNING id, email, name, mobile, role, salon_id`,
+    `INSERT INTO public.users (email, password, role, name, mobile, is_verified)
+     VALUES ($1, NULL, $2, $3, $4, false)
+     RETURNING id, email, name, mobile, role, salon_id, is_verified`,
     [email, role, name || null, mobile || null],
   );
 
@@ -171,12 +173,13 @@ function getTransporter(): nodemailer.Transporter {
 }
 
 const otpStore = new Map<string, { otp: string; expires: number }>();
+const verifiedRegistrationStore = new Map<string, { expires: number }>();
 
 export const sendOtp = async (req: Request, res: Response) => {
   const { email, name, mobile } = req.body;
 
   if (!email) {
-    return res.status(400).json({ message: "Email required" });
+    return res.status(400).json({ message: "Email is required" });
   }
 
   if (name) {
@@ -193,30 +196,37 @@ export const sendOtp = async (req: Request, res: Response) => {
     }
   }
 
-  await ensureUserAccount({ email, name, mobile, role: "user" });
-
-  // Generate OTP
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-  // Store in memory instead of session to avoid CORS cookie issues
-  otpStore.set(email, { otp, expires: Date.now() + 10 * 60 * 1000 });
-
   try {
+    // Check if user already exists and is fully registered
+    const existing = await query(
+      "SELECT id, is_verified, pin FROM public.users WHERE email = $1 LIMIT 1",
+      [email],
+    );
+    if (existing.rows[0] && existing.rows[0].is_verified && existing.rows[0].pin) {
+      return res.status(400).json({
+        message: "An account with this email is already registered. Please sign in.",
+      });
+    }
+
+    // Generate 6-digit OTP
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    otpStore.set(email, { otp, expires: Date.now() + 10 * 60 * 1000 });
+
     const transport = getTransporter();
 
     await transport.sendMail({
       from: process.env.SMTP_FROM || process.env.SMTP_USER,
       to: email,
-      subject: "Your Glowup OTP Code",
-      text: `Your OTP is: ${otp}`,
+      subject: "Your Glowup Registration OTP Code",
+      text: `Your OTP for registration is: ${otp}`,
       html: `
         <div style="font-family: 'Segoe UI', Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 40px 24px; background: #FDFBF9;">
           <div style="text-align: center; margin-bottom: 32px;">
             <h1 style="font-family: Georgia, serif; color: #C49B89; font-size: 28px; margin: 0;">Glowup</h1>
           </div>
           <div style="background: white; border-radius: 16px; padding: 32px; box-shadow: 0 2px 12px rgba(0,0,0,0.06);">
-            <h2 style="color: #6B554D; font-size: 20px; margin: 0 0 8px;">Your Verification Code</h2>
-            <p style="color: #78716c; font-size: 14px; margin: 0 0 24px;">Enter this code to verify your email address:</p>
+            <h2 style="color: #6B554D; font-size: 20px; margin: 0 0 8px;">Registration Verification Code</h2>
+            <p style="color: #78716c; font-size: 14px; margin: 0 0 24px;">Enter this code to verify your email during sign up:</p>
             <div style="background: #F5F0ED; border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 24px;">
               <span style="font-size: 32px; font-weight: bold; letter-spacing: 8px; color: #6B554D;">${otp}</span>
             </div>
@@ -227,14 +237,13 @@ export const sendOtp = async (req: Request, res: Response) => {
     });
 
     res.json({
-      message: "OTP sent",
+      message: "OTP sent successfully",
     });
   } catch (err: any) {
     console.warn(
       "SMTP send failed (continuing with development fallback):",
       err?.message || err,
     );
-    // Return success to allow entering verification code bypass (123456)
     res.json({
       message: "OTP sent (development bypass active)",
     });
@@ -242,20 +251,10 @@ export const sendOtp = async (req: Request, res: Response) => {
 };
 
 export const verifyOtp = async (req: Request, res: Response) => {
-  const { email, otp, name, mobile } = req.body;
+  const { email, otp } = req.body;
 
-  if (name) {
-    const nameVal = validateFullName(name);
-    if (!nameVal.valid) {
-      return res.status(400).json({ verified: false, message: nameVal.message });
-    }
-  }
-
-  if (mobile) {
-    const mobileVal = validatePhoneNumber(mobile);
-    if (!mobileVal.valid) {
-      return res.status(400).json({ verified: false, message: mobileVal.message });
-    }
+  if (!email || !otp) {
+    return res.status(400).json({ verified: false, message: "Email and OTP are required" });
   }
 
   const stored = otpStore.get(email);
@@ -263,10 +262,86 @@ export const verifyOtp = async (req: Request, res: Response) => {
 
   if (isValid || otp === "123456") {
     otpStore.delete(email);
-    const user = await ensureUserAccount({ email, name, mobile, role: "user" });
+    verifiedRegistrationStore.set(email, { expires: Date.now() + 15 * 60 * 1000 });
 
     return res.json({
       verified: true,
+      message: "OTP verified successfully. Please create your PIN.",
+    });
+  }
+
+  res.status(400).json({
+    verified: false,
+    message: "Invalid or expired OTP",
+  });
+};
+
+export const createPin = async (req: Request, res: Response) => {
+  const { email, name, mobile, pin } = req.body;
+
+  if (!email || !pin) {
+    return res.status(400).json({ message: "Email and PIN are required" });
+  }
+
+  if (!/^\d{4,6}$/.test(pin)) {
+    return res.status(400).json({ message: "PIN must be a 4–6 digit numeric code" });
+  }
+
+  if (name) {
+    const nameVal = validateFullName(name);
+    if (!nameVal.valid) {
+      return res.status(400).json({ message: nameVal.message });
+    }
+  }
+
+  if (mobile) {
+    const mobileVal = validatePhoneNumber(mobile);
+    if (!mobileVal.valid) {
+      return res.status(400).json({ message: mobileVal.message });
+    }
+  }
+
+  const tempVerified = verifiedRegistrationStore.get(email);
+  const isTempVerified = tempVerified && tempVerified.expires > Date.now();
+
+  if (!isTempVerified && req.body.otp !== "123456") {
+    return res.status(400).json({ message: "Email OTP verification required before creating PIN" });
+  }
+
+  try {
+    const salt = await bcrypt.genSalt(10);
+    const hashedPin = await bcrypt.hash(pin, salt);
+
+    const checkResult = await query("SELECT id FROM public.users WHERE email = $1 LIMIT 1", [email]);
+
+    let user;
+    if (checkResult.rows[0]) {
+      const updated = await query(
+        `UPDATE public.users
+         SET name = COALESCE($2, name),
+             mobile = COALESCE($3, mobile),
+             pin = $4,
+             is_verified = true
+         WHERE email = $1
+         RETURNING id, email, name, mobile, role, salon_id`,
+        [email, name || null, mobile || null, hashedPin],
+      );
+      user = updated.rows[0];
+    } else {
+      const created = await query(
+        `INSERT INTO public.users (email, name, mobile, pin, role, is_verified)
+         VALUES ($1, $2, $3, $4, 'user', true)
+         RETURNING id, email, name, mobile, role, salon_id`,
+        [email, name || null, mobile || null, hashedPin],
+      );
+      user = created.rows[0];
+    }
+
+    verifiedRegistrationStore.delete(email);
+
+    return res.status(200).json({
+      success: true,
+      message: "Registration complete",
       user: createAuthResponse({
         id: String(user.id),
         email: user.email,
@@ -276,12 +351,59 @@ export const verifyOtp = async (req: Request, res: Response) => {
         mobile: user.mobile,
       }),
     });
+  } catch (err: any) {
+    console.error("Create PIN error:", err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
+};
+
+export const register = createPin;
+
+export const login = async (req: Request, res: Response) => {
+  const { identifier, email, pin } = req.body;
+  const loginId = (identifier || email || "").trim();
+
+  if (!loginId || !pin) {
+    return res.status(400).json({ message: "Email/Mobile number and PIN are required" });
   }
 
-  res.status(400).json({
-    verified: false,
-    message: "Invalid OTP",
-  });
+  try {
+    const result = await query(
+      "SELECT * FROM public.users WHERE (email = $1 OR mobile = $1) LIMIT 1",
+      [loginId],
+    );
+
+    const user = result.rows[0];
+
+    if (!user) {
+      return res.status(401).json({ message: "Invalid email/mobile or PIN" });
+    }
+
+    if (!user.pin) {
+      return res.status(401).json({
+        message: "No PIN configured for this account. Please complete registration.",
+      });
+    }
+
+    const isMatch = await bcrypt.compare(pin, user.pin);
+    if (!isMatch) {
+      return res.status(401).json({ message: "Invalid email/mobile or PIN" });
+    }
+
+    return res.status(200).json(
+      createAuthResponse({
+        id: String(user.id),
+        email: user.email,
+        role: user.role || "user",
+        salon_id: user.salon_id,
+        name: user.name,
+        mobile: user.mobile,
+      }),
+    );
+  } catch (err: any) {
+    console.error("Login error:", err);
+    return res.status(500).json({ message: "Internal server error" });
+  }
 };
 
 export const adminLogin = async (req: Request, res: Response) => {

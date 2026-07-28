@@ -5,6 +5,9 @@ import { getPublicTeam } from "../controllers/team.controller";
 import {
   sendOtp,
   verifyOtp,
+  createPin,
+  register,
+  login,
   adminLogin,
   superAdminLogin,
   createSalonAdmin,
@@ -41,6 +44,9 @@ router.use("/notifications", notificationsRoutes);
 // Auth routes
 router.post("/auth/send-otp", authLimiter, sendOtp);
 router.post("/auth/verify-otp", authLimiter, verifyOtp);
+router.post("/auth/create-pin", authLimiter, createPin);
+router.post("/auth/register", authLimiter, register);
+router.post("/auth/login", authLimiter, login);
 router.post("/auth/admin-login", authLimiter, adminLogin);
 router.post("/auth/superadmin-login", authLimiter, superAdminLogin);
 // Admin creation route (SuperAdmin only)

@@ -51,7 +51,7 @@ const Navbar: React.FC = () => {
     { label: "DISCOVER", path: "/" },
     { label: "ABOUT", path: "/about" },
     { label: "MEMBERSHIPS", path: "/memberships" },
-    { label: "CONCIERGE", path: "/concierge" },
+    { label: "FEEDBACK", path: "/concierge" },
   ];
 
   return (
@@ -111,22 +111,20 @@ const Navbar: React.FC = () => {
 
           {/* Conditional rendering: logged in vs logged out */}
           {!isVerified ? (
-            // NOT LOGGED IN: Show "Sign In" on home, "Home" on other pages
-            isHome ? (
+            <div className="hidden md:flex items-center gap-3">
               <button
-                className="hidden min-h-11 items-center justify-center rounded-lg bg-[#6B554D] px-4 py-2.5 text-sm font-medium text-white transition-all hover:bg-[#5C4841] hover:shadow-lg hover:shadow-[#6B554D]/20 md:inline-flex md:px-6"
+                className="flex min-h-11 items-center justify-center rounded-lg bg-[#6B554D] px-4 py-2.5 text-sm font-medium text-white transition-all hover:bg-[#5C4841] cursor-pointer"
                 onClick={() => navigate("/signin")}
               >
                 Sign In
               </button>
-            ) : (
               <button
-                className="hidden min-h-11 items-center justify-center rounded-lg bg-[#6B554D] px-4 py-2.5 text-sm font-medium text-white transition-all hover:bg-[#5C4841] hover:shadow-lg hover:shadow-[#6B554D]/20 md:inline-flex md:px-6"
-                onClick={() => navigate("/")}
+                className="flex min-h-11 items-center justify-center rounded-lg bg-[#6B554D] px-4 py-2.5 text-sm font-medium text-white transition-all hover:bg-[#5C4841] hover:shadow-lg hover:shadow-[#6B554D]/20 cursor-pointer"
+                onClick={() => navigate("/register")}
               >
-                Home
+                Register
               </button>
-            )
+            </div>
           ) : (
             // LOGGED IN: Show avatar (email first letter) + name + logout
             <div className="hidden md:flex items-center gap-3">
@@ -184,15 +182,26 @@ const Navbar: React.FC = () => {
             ))}
 
             {!isVerified ? (
-              <button
-                className="mt-2 flex min-h-11 w-full items-center justify-center rounded-lg bg-[#6B554D] px-6 py-3 text-sm font-medium text-white transition-colors hover:bg-[#5C4841]"
-                onClick={() => {
-                  navigate(isHome ? "/signin" : "/");
-                  setMobileMenuOpen(false);
-                }}
-              >
-                {isHome ? "Sign In" : "Home"}
-              </button>
+              <div className="flex flex-col gap-2 mt-2">
+                <button
+                  className="flex min-h-11 w-full items-center justify-center rounded-lg bg-[#6B554D] px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#5C4841]"
+                  onClick={() => {
+                    navigate("/signin");
+                    setMobileMenuOpen(false);
+                  }}
+                >
+                  Sign In
+                </button>
+                <button
+                  className="flex min-h-11 w-full items-center justify-center rounded-lg bg-[#6B554D] px-6 py-2.5 text-sm font-medium text-white transition-colors hover:bg-[#5C4841]"
+                  onClick={() => {
+                    navigate("/register");
+                    setMobileMenuOpen(false);
+                  }}
+                >
+                  Register
+                </button>
+              </div>
             ) : (
               <div className="flex flex-col gap-3">
                 <button

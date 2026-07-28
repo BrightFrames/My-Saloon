@@ -81,12 +81,14 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
   const [videoUploadProgress, setVideoUploadProgress] = useState(0);
   const [videoUploadError, setVideoUploadError] = useState<string | null>(null);
+  const [detectingLocation, setDetectingLocation] = useState(false);
   const [form, setForm] = useState({
     name: "",
     city: "",
     starting_price: "",
     latitude: "",
     longitude: "",
+    google_maps_link: "",
     image: "",
     video: "",
     home_service_charge: "",
@@ -96,6 +98,56 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
     slot_interval: "30",
     gallery: [] as string[],
   });
+
+  const extractCoordsFromUrl = (url: string) => {
+    if (!url) return null;
+    const match =
+      url.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) ||
+      url.match(/q=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
+      url.match(/destination=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
+      url.match(/ll=(-?\d+\.\d+),(-?\d+\.\d+)/) ||
+      url.match(/loc:(-?\d+\.\d+)\+(-?\d+\.\d+)/);
+    if (match && match[1] && match[2]) {
+      return { lat: match[1], lon: match[2] };
+    }
+    return null;
+  };
+
+  const handleGoogleMapsUrlChange = (urlVal: string) => {
+    setForm((prev) => {
+      const updated = { ...prev, google_maps_link: urlVal };
+      const coords = extractCoordsFromUrl(urlVal);
+      if (coords) {
+        updated.latitude = coords.lat;
+        updated.longitude = coords.lon;
+      }
+      return updated;
+    });
+  };
+
+  const handleAutoDetectLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser.");
+      return;
+    }
+    setDetectingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setForm((prev) => ({
+          ...prev,
+          latitude: position.coords.latitude.toFixed(6),
+          longitude: position.coords.longitude.toFixed(6),
+        }));
+        setDetectingLocation(false);
+        alert("Location coordinates auto-detected successfully!");
+      },
+      (error) => {
+        setDetectingLocation(false);
+        alert("Failed to detect location: " + error.message);
+      },
+      { enableHighAccuracy: true, timeout: 10000 }
+    );
+  };
 
   const fetchProfile = async () => {
     try {
@@ -113,6 +165,7 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
           starting_price: String(res.data.starting_price || 0),
           latitude: String(res.data.latitude || ""),
           longitude: String(res.data.longitude || ""),
+          google_maps_link: res.data.google_maps_link || "",
           image: res.data.image || "",
           video: res.data.video || "",
           home_service_charge: String(res.data.home_service_charge || 0),
@@ -235,6 +288,7 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
           : undefined,
         latitude: form.latitude ? parseFloat(form.latitude) : undefined,
         longitude: form.longitude ? parseFloat(form.longitude) : undefined,
+        google_maps_link: form.google_maps_link || undefined,
         image: form.image || undefined,
         video: form.video || undefined,
         home_service_charge: parseFloat(form.home_service_charge) || 0,
@@ -376,6 +430,68 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
                     <option value="60">60 Minutes (1 Hour)</option>
                   </select>
                 </div>
+
+                {/* Salon Location Section */}
+                <div style={{ background: "#fdfbf9", padding: "16px", borderRadius: "12px", border: "1px solid #e8dcc9", marginBottom: "20px" }}>
+                  <h4 style={{ margin: "0 0 12px 0", color: "#6B554D", fontSize: "15px" }}>📍 Salon Location & Coordinates</h4>
+                  
+                  <div className="form-group" style={{ marginBottom: "16px" }}>
+                    <label>Google Maps Link / Location URL</label>
+                    <input
+                      type="url"
+                      placeholder="https://maps.google.com/?q=28.6139,77.2090"
+                      value={form.google_maps_link}
+                      onChange={(e) => handleGoogleMapsUrlChange(e.target.value)}
+                    />
+                    <small style={{ color: "#718096", fontSize: "12px", marginTop: "4px", display: "block" }}>
+                      Paste your salon's Google Maps link here (coordinates will auto-extract if present).
+                    </small>
+                  </div>
+
+                  <div className="form-group" style={{ marginBottom: "0" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                      <label style={{ margin: 0 }}>Location Coordinates (Latitude & Longitude)</label>
+                      <button
+                        type="button"
+                        onClick={handleAutoDetectLocation}
+                        disabled={detectingLocation}
+                        style={{
+                          background: "#6B554D",
+                          color: "#fff",
+                          border: "none",
+                          padding: "6px 12px",
+                          borderRadius: "6px",
+                          fontSize: "12px",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "6px",
+                        }}
+                      >
+                        📍 {detectingLocation ? "Detecting Location..." : "Auto Detect My Location"}
+                      </button>
+                    </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+                      <div>
+                        <input
+                          type="text"
+                          placeholder="Latitude e.g. 28.6139"
+                          value={form.latitude}
+                          onChange={(e) => setForm({ ...form, latitude: e.target.value })}
+                        />
+                      </div>
+                      <div>
+                        <input
+                          type="text"
+                          placeholder="Longitude e.g. 77.2090"
+                          value={form.longitude}
+                          onChange={(e) => setForm({ ...form, longitude: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
                 <div className="form-group">
                   <label>Background Image</label>
                   {form.image && (
@@ -510,28 +626,6 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
                     </div>
                   )}
                 </div>
-                <div className="form-group">
-                  <label>Latitude (Optional)</label>
-                  <input
-                    type="number"
-                    step="any"
-                    value={form.latitude}
-                    onChange={(e) =>
-                      setForm({ ...form, latitude: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Longitude (Optional)</label>
-                  <input
-                    type="number"
-                    step="any"
-                    value={form.longitude}
-                    onChange={(e) =>
-                      setForm({ ...form, longitude: e.target.value })
-                    }
-                  />
-                </div>
                 <div className="form-group" style={{ gridColumn: "1 / -1" }}>
                   <label>About Salon</label>
                   <textarea
@@ -566,6 +660,10 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
                   <div className="field-value">{profile.city}</div>
                 </div>
                 <div className="profile-field">
+                  <div className="field-label">Rating</div>
+                  <div className="field-value">⭐ {profile.rating ? Number(profile.rating).toFixed(1) : "5.0"}</div>
+                </div>
+                <div className="profile-field">
                   <div className="field-label">Starting Price</div>
                   <div className="field-value">₹{profile.starting_price}</div>
                 </div>
@@ -586,63 +684,73 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
                   <div className="field-value">⏱️ {profile.slot_interval || profile.working_hours?.slot_interval || form.slot_interval || 30} minutes</div>
                 </div>
                 <div className="profile-field">
-                  <div className="field-label">About Salon</div>
-                  <div className="field-value" style={{ whiteSpace: "pre-line" }}>{profile.about || "Not set"}</div>
-                </div>
-                <div className="profile-field" style={{ gridColumn: "1 / -1" }}>
-                  <div className="field-label">Gallery</div>
+                  <div className="field-label">Location Coordinates</div>
                   <div className="field-value">
+                    📍 {profile.latitude && profile.longitude ? `${profile.latitude}, ${profile.longitude}` : "Not set"}
+                  </div>
+                </div>
+                <div className="profile-field">
+                  <div className="field-label">Google Maps Link</div>
+                  <div className="field-value">
+                    {profile.google_maps_link ? (
+                      <a href={profile.google_maps_link} target="_blank" rel="noreferrer" style={{ color: "#6B554D", fontWeight: 600, textDecoration: "underline" }}>
+                        🔗 Open Google Maps Link
+                      </a>
+                    ) : (
+                      "Not set"
+                    )}
+                  </div>
+                </div>
+
+                {/* About Salon Block */}
+                <div className="profile-field block-field">
+                  <div className="field-label">About Salon</div>
+                  <div className="field-value" style={{ whiteSpace: "pre-line" }}>
+                    {profile.about || "No description set yet."}
+                  </div>
+                </div>
+
+                {/* Gallery Block */}
+                <div className="profile-field block-field">
+                  <div className="field-label">Gallery ({profile.gallery?.length || 0})</div>
+                  <div className="field-value" style={{ background: "transparent", border: "none", padding: 0 }}>
                     {profile.gallery && profile.gallery.length > 0 ? (
-                      <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "8px" }}>
+                      <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginTop: "4px" }}>
                         {profile.gallery.map((url: string, idx: number) => (
-                          <img key={idx} src={url} alt={`Gallery ${idx}`} style={{ width: "100px", height: "100px", objectFit: "cover", borderRadius: "8px" }} />
+                          <img key={idx} src={url} alt={`Gallery ${idx}`} style={{ width: "110px", height: "100px", objectFit: "cover", borderRadius: "10px", border: "1px solid #e8dcc9" }} />
                         ))}
                       </div>
                     ) : (
-                      "No gallery images uploaded"
+                      <span style={{ color: "#888", fontStyle: "italic" }}>No gallery images uploaded</span>
                     )}
                   </div>
                 </div>
-                <div className="profile-field">
-                  <div className="field-label">Rating</div>
-                  <div className="field-value">{profile.rating} ⭐</div>
-                </div>
-                <div className="profile-field">
-                  <div className="field-label">Location Coordinates</div>
-                  <div className="field-value">
-                    {profile.latitude && profile.longitude
-                      ? `${profile.latitude}, ${profile.longitude}`
-                      : "Not set"}
-                  </div>
-                </div>
-                <div className="profile-field">
-                  <div className="field-label">Salon Image</div>
-                  <div className="field-value">
-                    {profile.image ? (
+
+                {/* Background Image & Video Block */}
+                {profile.image && (
+                  <div className="profile-field block-field">
+                    <div className="field-label">Salon Background Image</div>
+                    <div className="field-value" style={{ background: "transparent", border: "none", padding: 0 }}>
                       <img
                         src={profile.image}
                         alt="Salon"
-                        style={{ maxWidth: "100%", height: "auto", borderRadius: "8px", marginTop: "8px" }}
+                        style={{ maxWidth: "100%", maxHeight: "240px", borderRadius: "12px", objectFit: "cover" }}
                       />
-                    ) : (
-                      "Not set"
-                    )}
+                    </div>
                   </div>
-                </div>
-                <div className="profile-field">
-                  <div className="field-label">Salon Video</div>
-                  <div className="field-value">
-                    {profile.video ? (
+                )}
+                {profile.video && (
+                  <div className="profile-field block-field">
+                    <div className="field-label">Salon Video</div>
+                    <div className="field-value" style={{ background: "transparent", border: "none", padding: 0 }}>
                       <video
                         src={profile.video}
                         controls
-                        style={{ maxWidth: "100%", height: "auto", borderRadius: "8px", marginTop: "8px" }}
+                        style={{ maxWidth: "100%", maxHeight: "300px", borderRadius: "12px" }}
                       />
-                    ) : (
-                      "Not set"
-                    )}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             )}
           </div>

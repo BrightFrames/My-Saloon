@@ -141,6 +141,7 @@ export const api = {
     rating?: number;
     latitude?: number;
     longitude?: number;
+    google_maps_link?: string;
     image?: string;
     video?: string;
     home_service_charge?: number;

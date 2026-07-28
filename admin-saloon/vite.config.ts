@@ -8,3 +8,7 @@ export default defineConfig({
     include: ['chart.js', 'react-chartjs-2'],
   },
 })
+  optimizeDeps: {
+    include: ['chart.js', 'react-chartjs-2'],
+  },
+})

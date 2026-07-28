@@ -18,6 +18,7 @@ import { PopupDialog } from "../components/PopupDialog";
 import { formatINR } from "../utils/currency";
 import { API_BASE_URL } from "../services/apiBase";
 import { validateFullName, validatePhoneNumber } from "../utils/validation";
+import { GetDirectionsButton } from "../components/GetDirectionsButton";
 
 function parseDurationInMinutes(durationVal: any): number {
   if (typeof durationVal === "number" && !isNaN(durationVal) && durationVal > 0) {
@@ -1189,13 +1190,22 @@ export function CheckoutPage() {
                   <div className="absolute inset-0 bg-linear-to-t from-black/80 to-transparent"></div>
                 </>
               )}
-              <div className={salonData?.image ? "absolute bottom-4 left-5 text-white" : "text-stone-800"}>
-                <h3 className={`font-serif text-xl font-medium mb-1 ${!salonData?.image && "text-stone-800"}`}>
-                  {salonData?.name || "Salon"}
-                </h3>
-                <div className={`${salonData?.image ? "text-white/80" : "text-stone-500"} text-xs flex items-center gap-1.5`}>
-                  {salonData?.city ? `${salonData.city}${salonData?.state ? `, ${salonData.state}` : ''}` : "Premium Salon"}
+              <div className={salonData?.image ? "absolute bottom-3 left-5 right-5 text-white flex items-end justify-between gap-2" : "text-stone-800 flex items-end justify-between gap-2"}>
+                <div>
+                  <h3 className={`font-serif text-xl font-medium mb-0.5 ${!salonData?.image && "text-stone-800"}`}>
+                    {salonData?.name || "Salon"}
+                  </h3>
+                  <div className={`${salonData?.image ? "text-white/80" : "text-stone-500"} text-xs flex items-center gap-1.5`}>
+                    {salonData?.address || salonData?.city ? `${salonData?.address || salonData?.city}` : "Premium Salon"}
+                  </div>
                 </div>
+                <GetDirectionsButton
+                  latitude={salonData?.latitude}
+                  longitude={salonData?.longitude}
+                  variant={salonData?.image ? "dark" : "secondary"}
+                  size="sm"
+                  label="Directions"
+                />
               </div>
             </div>
 

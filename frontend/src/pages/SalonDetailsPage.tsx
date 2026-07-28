@@ -5,6 +5,8 @@ import { PopupDialog } from "../components/PopupDialog";
 import { API_BASE_URL } from "../services/apiBase";
 
 import { formatINR } from "../utils/currency";
+import { GetDirectionsButton } from "../components/GetDirectionsButton";
+import { SalonMap } from "../components/SalonMap";
 
 export function SalonDetailsPage() {
   const navigate = useNavigate();
@@ -282,20 +284,29 @@ export function SalonDetailsPage() {
               </div>
             </div>
 
-            <button
-              onClick={toggleFavorite}
-              className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full bg-black/30 backdrop-blur-md border border-white/20 p-2.5 text-white hover:bg-black/50 hover:text-red-400 transition-all cursor-pointer shadow-lg"
-              title={isFavorite ? "Remove from Favorites" : "Add to Favorites"}
-            >
-              <Heart
-                size={22}
-                className={
-                  isFavorite
-                    ? "text-red-500 fill-red-500 transition-all scale-110"
-                    : "text-white transition-all"
-                }
+            <div className="flex items-center gap-3">
+              <GetDirectionsButton
+                latitude={salon?.latitude}
+                longitude={salon?.longitude}
+                variant="dark"
+                size="md"
+                label="Get Directions"
               />
-            </button>
+              <button
+                onClick={toggleFavorite}
+                className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-full bg-black/30 backdrop-blur-md border border-white/20 p-2.5 text-white hover:bg-black/50 hover:text-red-400 transition-all cursor-pointer shadow-lg"
+                title={isFavorite ? "Remove from Favorites" : "Add to Favorites"}
+              >
+                <Heart
+                  size={22}
+                  className={
+                    isFavorite
+                      ? "text-red-500 fill-red-500 transition-all scale-110"
+                      : "text-white transition-all"
+                  }
+                />
+              </button>
+            </div>
           </div>
         </div>
 
@@ -472,14 +483,37 @@ export function SalonDetailsPage() {
             )}
 
             {activeTab === "About" && (
-              <div className="mb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                <h3 className="font-serif text-lg font-medium text-stone-800 mb-6">About {salon?.name}</h3>
-                <div className="bg-white rounded-2xl p-6 border border-stone-100 shadow-sm">
-                  {salon?.about ? (
-                    <p className="text-stone-600 leading-relaxed whitespace-pre-line">{salon.about}</p>
-                  ) : (
-                    <p className="text-stone-500 italic">No description provided by the salon.</p>
-                  )}
+              <div className="mb-10 animate-in fade-in slide-in-from-bottom-4 duration-500 flex flex-col gap-6">
+                <div>
+                  <h3 className="font-serif text-lg font-medium text-stone-800 mb-4">About {salon?.name}</h3>
+                  <div className="bg-white rounded-2xl p-6 border border-stone-100 shadow-sm">
+                    {salon?.about ? (
+                      <p className="text-stone-600 leading-relaxed whitespace-pre-line">{salon.about}</p>
+                    ) : (
+                      <p className="text-stone-500 italic">No description provided by the salon.</p>
+                    )}
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-serif text-lg font-medium text-stone-800 flex items-center gap-2">
+                      <span role="img" aria-label="location">📍</span> Salon Location & Directions
+                    </h3>
+                    <GetDirectionsButton
+                      latitude={salon?.latitude}
+                      longitude={salon?.longitude}
+                      variant="primary"
+                      size="sm"
+                    />
+                  </div>
+
+                  {/* Interactive Salon Map with Marker & Popup */}
+                  <SalonMap
+                    salons={salon ? [salon] : []}
+                    height="h-80"
+                    zoom={14}
+                  />
                 </div>
               </div>
             )}

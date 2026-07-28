@@ -21,6 +21,9 @@ import { API_BASE_URL } from "../services/apiBase";
 import heroImage from "../assets/sign.jpg";
 import { motion } from "framer-motion";
 import { useTheme } from "../context/ThemeContext";
+import { openGoogleMapsDirections } from "../utils/navigation";
+import { GetDirectionsButton } from "../components/GetDirectionsButton";
+import { SalonMapPopup } from "../components/SalonMapPopup";
 
 interface LandingPageProps {
   location: string;
@@ -246,11 +249,8 @@ export function LandingPage({
     cardEl?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   };
 
-  const getGoogleMapsDirections = (lat: number, lon: number) => {
-    window.open(
-      `https://www.google.com/maps/dir/?api=1&destination=${lat},${lon}`,
-      "_blank",
-    );
+  const getGoogleMapsDirections = (lat: number | string | null, lon: number | string | null) => {
+    openGoogleMapsDirections(lat, lon);
   };
 
   const handleSearchSubmit = (event: React.FormEvent) => {
@@ -648,19 +648,14 @@ export function LandingPage({
                           </p>
                         </div>
                         <div className="flex flex-wrap gap-2 sm:justify-end">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              getGoogleMapsDirections(
-                                Number(s.latitude),
-                                Number(s.longitude),
-                              );
-                            }}
-                            className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-xl bg-stone-100 p-3 text-stone-600 transition-colors hover:bg-stone-200 cursor-pointer"
-                            title="Get Directions"
-                          >
-                            <Navigation size={15} />
-                          </button>
+                          <GetDirectionsButton
+                            latitude={s.latitude}
+                            longitude={s.longitude}
+                            variant="secondary"
+                            size="sm"
+                            label=""
+                            className="min-h-11 min-w-11 px-3"
+                          />
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -743,78 +738,12 @@ export function LandingPage({
                         },
                       }}
                     >
-                      <Popup maxWidth={280}>
-                        <div className="flex flex-col gap-2 p-1.5 font-sans text-stone-800">
-                          <img
-                            src={
-                              s.image ||
-                              "https://images.unsplash.com/photo-1595476108010-b4d1f10d5e43?q=80&w=800&auto=format&fit=crop"
-                            }
-                            alt={s.name}
-                            className="h-24 w-full rounded-lg object-cover"
-                          />
-                          <div>
-                            <div className="flex items-start justify-between gap-2">
-                              <h4 className="mb-0.5 font-serif text-sm font-semibold text-stone-900">
-                                {s.name}
-                              </h4>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toggleFavorite(s.id);
-                                }}
-                                className="text-stone-300 hover:text-red-400 p-0.5 cursor-pointer"
-                                title={favorites.includes(s.id) ? "Remove from Favorites" : "Add to Favorites"}
-                              >
-                                <Heart
-                                  size={14}
-                                  className={
-                                    favorites.includes(s.id)
-                                      ? "text-red-500 fill-red-500"
-                                      : "text-stone-300"
-                                  }
-                                />
-                              </button>
-                            </div>
-                            <p className="mb-1 flex items-center gap-1 text-[10px] text-stone-500">
-                              <span aria-hidden="true">📍</span>
-                              {s.city || "New York"}
-                            </p>
-
-                            <div className="mb-2 flex items-center gap-2 text-xs font-semibold">
-                              <span className="flex items-center gap-0.5 text-[#C49B89]">
-                                <Star size={10} fill="#C49B89" />{" "}
-                                {s.rating && Number(s.rating) > 0 ? Number(s.rating).toFixed(1) : "5.0"}
-                              </span>
-                              <span className="text-stone-400 font-normal">
-                                •
-                              </span>
-                              <span className="text-stone-700">
-                                Starts from {formatINR(s.starting_price)}
-                              </span>
-                            </div>
-
-                            <div className="mt-2 flex gap-2">
-                              <button
-                                onClick={() =>
-                                  getGoogleMapsDirections(lat, lon)
-                                }
-                                className="flex-1 rounded-lg bg-stone-100 py-1.5 text-[10px] font-semibold text-stone-600 transition-colors hover:bg-stone-200"
-                              >
-                                <Navigation size={10} /> Directions
-                              </button>
-                              <button
-                                onClick={() => {
-                                  if (onSelectSalon) onSelectSalon(s.id);
-                                }}
-                                className="flex-1 rounded-lg bg-[#6B554D] py-1.5 text-[10px] font-semibold text-white shadow-sm shadow-[#6B554D]/10 transition-all hover:bg-[#5C4841]"
-                              >
-                                Book Now <ExternalLink size={10} />
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </Popup>
+                      <SalonMapPopup
+                        salon={s}
+                        onBookNow={(salonId) => {
+                          if (onSelectSalon && salonId) onSelectSalon(salonId);
+                        }}
+                      />
                     </Marker>
                   );
                 })}

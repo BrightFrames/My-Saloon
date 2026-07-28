@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { PopupDialog } from "../components/PopupDialog";
 import { ServiceRatingCard } from "../components/ServiceRatingCard";
+import { GetDirectionsButton } from "../components/GetDirectionsButton";
 import { formatINR } from "../utils/currency";
 import { API_BASE_URL } from "../services/apiBase";
 
@@ -364,15 +365,16 @@ export function MyBookingsPage() {
                               : salonAddressStr || "At Salon Premises"}
                           </span>
                         </div>
-                        {booking.salon_google_maps_link && (
-                          <a
-                            href={booking.salon_google_maps_link}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-flex items-center gap-1 text-[11px] text-[#CA9A86] hover:underline font-semibold mt-1"
-                          >
-                            <ExternalLink size={11} /> Open in Google Maps
-                          </a>
+                        {!isHomeService && (
+                          <div className="mt-2">
+                            <GetDirectionsButton
+                              latitude={booking.salon_latitude || booking.latitude}
+                              longitude={booking.salon_longitude || booking.longitude}
+                              variant="secondary"
+                              size="sm"
+                              label="Get Directions"
+                            />
+                          </div>
                         )}
                       </div>
                     </div>

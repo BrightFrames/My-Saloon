@@ -19,6 +19,23 @@ import { formatINR } from "../utils/currency";
 import { API_BASE_URL } from "../services/apiBase";
 import { validateFullName, validatePhoneNumber } from "../utils/validation";
 
+function parseDurationInMinutes(durationVal: any): number {
+  if (typeof durationVal === "number" && !isNaN(durationVal) && durationVal > 0) {
+    return durationVal;
+  }
+  if (!durationVal) return 30;
+  const str = String(durationVal).trim().toLowerCase();
+  const hourMatch = str.match(/^([\d.]+)\s*(?:hour|hours|hr|hrs)/);
+  if (hourMatch) {
+    return Math.round(parseFloat(hourMatch[1]) * 60);
+  }
+  const minMatch = str.match(/^([\d.]+)/);
+  if (minMatch) {
+    return Math.round(parseFloat(minMatch[1]));
+  }
+  return 30;
+}
+
 export function CheckoutPage() {
   const navigate = useNavigate();
   const base = API_BASE_URL;
@@ -27,6 +44,7 @@ export function CheckoutPage() {
   const [nameError, setNameError] = useState<string | null>(null);
   const [mobileError, setMobileError] = useState<string | null>(null);
   const [availableSlots, setAvailableSlots] = useState<string[]>([]);
+  const [allSlots, setAllSlots] = useState<string[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
 
@@ -67,6 +85,22 @@ export function CheckoutPage() {
     message: "",
     tone: "info",
   });
+
+  const totalDuration = useMemo(() => {
+    if (selectedServicesArr && selectedServicesArr.length > 0) {
+      return selectedServicesArr.reduce(
+        (sum: number, s: any) => sum + parseDurationInMinutes(s.duration),
+        0
+      );
+    }
+    if (bookingData.hairstyle && salonServices.length > 0) {
+      const found = salonServices.find(
+        (s) => String(s.id) === String(bookingData.hairstyle)
+      );
+      if (found) return parseDurationInMinutes(found.duration);
+    }
+    return 30;
+  }, [selectedServicesArr, bookingData.hairstyle, salonServices]);
 
   const filteredTeamMembers = useMemo(() => {
     if (selectedServicesArr.length === 0 && !bookingData.hairstyle) return teamMembers;
@@ -257,6 +291,7 @@ export function CheckoutPage() {
     ) {
       setBookingData((prev) => ({ ...prev, stylist: "", booking_time: "" }));
       setAvailableSlots([]);
+      setAllSlots([]);
     }
   }, [filteredTeamMembers, bookingData.stylist]);
 
@@ -265,13 +300,32 @@ export function CheckoutPage() {
     if (bookingData.booking_date && bookingData.stylist) {
       const fetchSlots = async () => {
         setLoadingSlots(true);
+        setAvailableSlots([]);
+        setAllSlots([]);
         try {
-          const res = await fetch(
-            `${base}/bookings/slots?date=${bookingData.booking_date}&stylist=${bookingData.stylist}`,
-          );
+          const serviceIds = selectedServicesArr.map((s) => s.id).join(",");
+          const serviceNames = selectedServicesArr.map((s) => s.name).join(",");
+          const queryParams = new URLSearchParams({
+            date: bookingData.booking_date,
+            stylist: bookingData.stylist,
+            duration: String(totalDuration),
+            ...(serviceIds ? { service_id: serviceIds } : {}),
+            ...(serviceNames ? { service_name: serviceNames } : {}),
+          });
+
+          const res = await fetch(`${base}/bookings/slots?${queryParams.toString()}`);
           const data = await res.json();
           if (data.success) {
-            setAvailableSlots(data.availableSlots);
+            const available: string[] = data.availableSlots || [];
+            setAvailableSlots(available);
+
+            // Backend returns allSlots as SlotStatus[] ({time, available, reason})
+            // Extract the .time string from each object
+            const rawAll = data.allSlots || [];
+            const allTimes: string[] = rawAll.map((s: any) =>
+              typeof s === "string" ? s : s.time
+            );
+            setAllSlots(allTimes.length > 0 ? allTimes : available);
           }
         } catch (error) {
           console.error("Failed to fetch slots", error);
@@ -281,7 +335,7 @@ export function CheckoutPage() {
       };
       fetchSlots();
     }
-  }, [bookingData.booking_date, bookingData.stylist]);
+  }, [bookingData.booking_date, bookingData.stylist, totalDuration, selectedServicesArr]);
 
   const handleUpdate = (field: string, value: any) => {
     setBookingData((prev) => {
@@ -389,6 +443,8 @@ export function CheckoutPage() {
       const payload = {
         ...bookingData,
         service_name: bookingData.serviceName || bookingData.hairstyle,
+        duration_minutes: totalDuration,
+        total_duration: totalDuration,
         total_price: finalPrice,
         salon_id: salonId || undefined,
       };
@@ -662,29 +718,51 @@ export function CheckoutPage() {
                     />
                   </div>
 
-                  {/* Time Selection */}
+                    {/* Time Selection */}
                   {bookingData.booking_date && bookingData.stylist && (
                     <div className="animate-in fade-in">
-                      <h3 className="text-sm font-bold text-stone-400 uppercase tracking-wider mb-4 flex items-center gap-2">
-                        5. Available Slots
-                        {loadingSlots && (
-                          <Loader2
-                            size={14}
-                            className="animate-spin text-[#CA9A86]"
-                          />
-                        )}
+                      <h3 className="text-sm font-bold text-stone-400 uppercase tracking-wider mb-4 flex items-center justify-between">
+                        <span className="flex items-center gap-2">
+                          5. Available Slots
+                          {loadingSlots && (
+                            <Loader2
+                              size={14}
+                              className="animate-spin text-[#CA9A86]"
+                            />
+                          )}
+                        </span>
+                        <span className="text-xs font-medium text-[#CA9A86] bg-[#F9F4F2] px-2.5 py-1 rounded-md border border-[#DEB5A4]/40 normal-case">
+                          ⏱️ Service Duration: {totalDuration} mins
+                        </span>
                       </h3>
-                      {availableSlots.length > 0 ? (
+                      {allSlots.length > 0 ? (
                         <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                          {availableSlots.map((slot) => (
-                            <button
-                              key={slot}
-                              onClick={() => handleUpdate("booking_time", slot)}
-                              className={`py-3 rounded-lg text-sm font-medium border-2 transition-colors ${bookingData.booking_time === slot ? "border-[#CA9A86] bg-[#CA9A86] text-white" : "border-stone-100 bg-white text-stone-600 hover:border-stone-300"}`}
-                            >
-                              {slot}
-                            </button>
-                          ))}
+                          {allSlots.map((slot) => {
+                            const isBooked = !availableSlots.includes(slot);
+                            const isSelected = bookingData.booking_time === slot;
+                            return (
+                              <button
+                                key={slot}
+                                disabled={isBooked}
+                                onClick={() => !isBooked && handleUpdate("booking_time", slot)}
+                                title={isBooked ? "Already booked" : slot}
+                                className={`py-3 rounded-lg text-sm font-medium border-2 transition-colors relative ${
+                                  isSelected
+                                    ? "border-[#CA9A86] bg-[#CA9A86] text-white"
+                                    : isBooked
+                                    ? "border-stone-100 bg-stone-50 text-stone-300 cursor-not-allowed line-through"
+                                    : "border-stone-100 bg-white text-stone-600 hover:border-stone-300 cursor-pointer"
+                                }`}
+                              >
+                                {slot}
+                                {isBooked && (
+                                  <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-400 text-[8px] text-white font-bold">
+                                    ✕
+                                  </span>
+                                )}
+                              </button>
+                            );
+                          })}
                         </div>
                       ) : (
                         !loadingSlots && (

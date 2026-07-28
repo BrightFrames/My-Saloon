@@ -258,6 +258,7 @@ const bookingSchema = z.object({
   service_id: z.string().optional().nullable(),
   team_member_id: z.string().optional().nullable(),
   duration_minutes: z.number().optional(),
+  total_duration: z.number().optional(),
   hairstyle: z.string().optional(),
   stylist: z.string().min(1, "Stylist is required"),
   appointment_date: z.string().optional(),
@@ -344,23 +345,40 @@ export const createBooking = asyncHandler(
         return;
       }
 
-      // Determine requested service duration in minutes
-      let durationMins = parseDurationInMinutes(validatedData.duration_minutes);
-      if (validatedData.service_id) {
-        const sRes = await query("SELECT duration FROM public.services WHERE id = $1 LIMIT 1", [
-          validatedData.service_id,
-        ]);
-        if (sRes.rows[0]?.duration) {
-          durationMins = parseDurationInMinutes(sRes.rows[0].duration);
+      // Determine requested total service duration in minutes
+      let durationMins = parseDurationInMinutes(
+        validatedData.duration_minutes || validatedData.total_duration || (req.body as any)?.total_duration
+      );
+
+      if (!durationMins || durationMins <= 0) {
+        if (validatedData.service_id) {
+          const ids = String(validatedData.service_id).split(",").map((s) => s.trim()).filter(Boolean);
+          if (ids.length > 0) {
+            try {
+              const sRes = await query("SELECT duration FROM public.services WHERE id = ANY($1::uuid[])", [ids]);
+              if (sRes.rows.length > 0) {
+                durationMins = sRes.rows.reduce((sum, row) => sum + parseDurationInMinutes(row.duration), 0);
+              }
+            } catch (e) {}
+          }
+        } else if (service_name) {
+          const names = String(service_name).split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+          if (names.length > 0) {
+            try {
+              const sRes = await query(
+                "SELECT duration FROM public.services WHERE LOWER(TRIM(name)) = ANY($1)",
+                [names]
+              );
+              if (sRes.rows.length > 0) {
+                durationMins = sRes.rows.reduce((sum, row) => sum + parseDurationInMinutes(row.duration), 0);
+              }
+            } catch (e) {}
+          }
         }
-      } else if (service_name) {
-        const sRes = await query(
-          "SELECT duration FROM public.services WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)) LIMIT 1",
-          [service_name],
-        );
-        if (sRes.rows[0]?.duration) {
-          durationMins = parseDurationInMinutes(sRes.rows[0].duration);
-        }
+      }
+
+      if (!durationMins || durationMins <= 0) {
+        durationMins = 30;
       }
 
       const reqStartMins = timeToMinutes(booking_time);
@@ -368,7 +386,7 @@ export const createBooking = asyncHandler(
       const startTimeStr = minutesToTimeString(reqStartMins);
       const endTimeStr = minutesToTimeString(reqEndMins);
 
-      // Fetch active (non-cancelled) bookings for this barber & date
+      // Fetch active (non-cancelled, non-rejected) bookings for this barber & date
       const dateVariants = normalizeDateVariants(appointment_date);
       const activeCheck = await query(
         `SELECT id, booking_time, appointment_time, start_time, end_time, duration_minutes, booking_status
@@ -392,13 +410,19 @@ export const createBooking = asyncHandler(
         const exStart = timeToMinutes(
           exBooking.start_time || exBooking.booking_time || exBooking.appointment_time,
         );
-        const exDuration = Number(exBooking.duration_minutes) || 30;
+        let exDuration = parseDurationInMinutes(exBooking.duration_minutes);
+        if (exBooking.end_time) {
+          const exEndMins = timeToMinutes(exBooking.end_time);
+          if (exEndMins > exStart) {
+            exDuration = exEndMins - exStart;
+          }
+        }
         const exEnd = exStart + exDuration;
 
         if (hasOverlap(reqStartMins, reqEndMins, exStart, exEnd)) {
           res.status(400).json({
             success: false,
-            message: "This barber is unavailable during the selected time. Please select another available slot.",
+            message: "This barber is unavailable during the selected time window. Please select another time slot.",
           });
           return;
         }
@@ -636,7 +660,6 @@ export const getAvailableSlots = asyncHandler(
       const stylist = (req.query.stylist || req.query.barber || req.query.team_member_id) as string;
       const service_id = req.query.service_id as string;
       const service_name = req.query.service_name as string;
-      const queryDuration = req.query.duration ? parseInt(req.query.duration as string, 10) : NaN;
       const salon_id = req.query.salon_id as string;
 
       if (!date || !stylist) {
@@ -648,27 +671,37 @@ export const getAvailableSlots = asyncHandler(
       }
 
       // Determine requested service duration in minutes
+      const rawDur = req.query.duration || req.query.total_duration;
+      const queryDuration = rawDur ? parseInt(rawDur as string, 10) : NaN;
       let requestedDuration = 30; // Default 30 minutes
 
       if (!isNaN(queryDuration) && queryDuration > 0) {
         requestedDuration = queryDuration;
       } else if (service_id) {
         try {
-          const sRes = await query("SELECT duration FROM public.services WHERE id = $1 LIMIT 1", [
-            service_id,
+          const ids = String(service_id).split(",").map((s) => s.trim()).filter(Boolean);
+          const sRes = await query("SELECT duration FROM public.services WHERE id = ANY($1::uuid[])", [
+            ids,
           ]);
-          if (sRes.rows[0]?.duration) {
-            requestedDuration = parseDurationInMinutes(sRes.rows[0].duration);
+          if (sRes.rows.length > 0) {
+            requestedDuration = sRes.rows.reduce(
+              (sum, row) => sum + parseDurationInMinutes(row.duration),
+              0
+            );
           }
         } catch (e) {}
       } else if (service_name) {
         try {
+          const names = String(service_name).split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
           const sRes = await query(
-            "SELECT duration FROM public.services WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)) LIMIT 1",
-            [service_name],
+            "SELECT duration FROM public.services WHERE LOWER(TRIM(name)) = ANY($1)",
+            [names],
           );
-          if (sRes.rows[0]?.duration) {
-            requestedDuration = parseDurationInMinutes(sRes.rows[0].duration);
+          if (sRes.rows.length > 0) {
+            requestedDuration = sRes.rows.reduce(
+              (sum, row) => sum + parseDurationInMinutes(row.duration),
+              0
+            );
           }
         } catch (e) {}
       }

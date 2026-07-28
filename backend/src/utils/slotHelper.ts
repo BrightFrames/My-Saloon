@@ -162,11 +162,22 @@ export function calculateAvailableSlots({
 
   // Convert existing active bookings into minute intervals [startMins, endMins)
   const bookedIntervals = existingBookings
-    .filter((b) => b.booking_status !== "cancelled")
+    .filter(
+      (b) =>
+        b.booking_status !== "cancelled" &&
+        b.booking_status !== "rejected" &&
+        b.booking_status !== "completed"
+    )
     .map((b) => {
       const timeStr = b.booking_time || b.appointment_time || b.start_time || "09:00 AM";
       const start = timeToMinutes(timeStr);
-      const duration = parseDurationInMinutes(b.duration_minutes);
+      let duration = parseDurationInMinutes(b.duration_minutes);
+      if (b.end_time) {
+        const endFromStr = timeToMinutes(b.end_time);
+        if (endFromStr > start) {
+          duration = endFromStr - start;
+        }
+      }
       const end = start + duration;
       return { start, end, booking: b };
     });

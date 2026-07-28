@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Store, LogOut, Scissors } from 'lucide-react';
+import { LayoutDashboard, Store, LogOut, Scissors, ReceiptText } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 export default function Sidebar() {
@@ -11,6 +11,7 @@ export default function Sidebar() {
 
   const navItems = [
     { name: 'Dashboard', to: '/', icon: LayoutDashboard, end: true },
+    { name: 'Transactions', to: '/transactions', icon: ReceiptText, end: false },
     { name: 'Manage Salons', to: '/salons', icon: Store, end: false },
   ];
 

@@ -441,6 +441,10 @@ export const updateSalonProfile = asyncHandler(
       home_service_charge,
       about,
       gallery,
+      working_hours,
+      opening_time,
+      closing_time,
+      slot_interval,
     } = req.body;
 
     if (!salon_id) {
@@ -448,6 +452,25 @@ export const updateSalonProfile = asyncHandler(
         .status(403)
         .json({ message: "Salon ID missing from authenticated user." });
       return;
+    }
+
+    await query(`
+      ALTER TABLE public.salons
+        ADD COLUMN IF NOT EXISTS working_hours JSONB,
+        ADD COLUMN IF NOT EXISTS slot_interval INT DEFAULT 30;
+    `);
+
+    const parsedInterval = parseInt(String(slot_interval || 30), 10) || 30;
+
+    let finalWorkingHours = working_hours;
+    if (!finalWorkingHours && (opening_time || closing_time)) {
+      finalWorkingHours = {
+        open: opening_time || "09:00 AM",
+        close: closing_time || "08:00 PM",
+        slot_interval: parsedInterval,
+      };
+    } else if (finalWorkingHours && typeof finalWorkingHours === "object") {
+      finalWorkingHours.slot_interval = parsedInterval;
     }
 
     // Fetch current salon data to preserve video/image if undefined in request body
@@ -458,7 +481,7 @@ export const updateSalonProfile = asyncHandler(
     const finalImage = image !== undefined ? (image || null) : existingImage;
 
     const result = await query(
-      "UPDATE public.salons SET name = $1, address = $2, city = $3, state = $4, country = $5, starting_price = $6, rating = $7, latitude = $8, longitude = $9, phone = $10, email = $11, google_maps_link = $12, image = $13, video = $14, home_service_charge = $15, about = $16, gallery = $17 WHERE id = $18 RETURNING *",
+      "UPDATE public.salons SET name = $1, address = $2, city = $3, state = $4, country = $5, starting_price = $6, rating = $7, latitude = $8, longitude = $9, phone = $10, email = $11, google_maps_link = $12, image = $13, video = $14, home_service_charge = $15, about = $16, gallery = $17, working_hours = COALESCE($18::jsonb, working_hours), slot_interval = $19 WHERE id = $20 RETURNING *",
       [
         name,
         address || null,
@@ -477,6 +500,8 @@ export const updateSalonProfile = asyncHandler(
         home_service_charge !== undefined ? home_service_charge : 0,
         about || null,
         gallery || null,
+        finalWorkingHours ? JSON.stringify(finalWorkingHours) : null,
+        parsedInterval,
         salon_id,
       ],
     );

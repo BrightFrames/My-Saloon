@@ -625,7 +625,7 @@ export function LandingPage({
                               fill="#C49B89"
                               className="text-[#C49B89]"
                             />
-                            {s.rating || "5.0"}
+                            {s.rating && Number(s.rating) > 0 ? Number(s.rating).toFixed(1) : "5.0"}
                           </span>
                           {s.distance_km && (
                             <span className="font-medium text-stone-400">
@@ -784,7 +784,7 @@ export function LandingPage({
                             <div className="mb-2 flex items-center gap-2 text-xs font-semibold">
                               <span className="flex items-center gap-0.5 text-[#C49B89]">
                                 <Star size={10} fill="#C49B89" />{" "}
-                                {s.rating || "5.0"}
+                                {s.rating && Number(s.rating) > 0 ? Number(s.rating).toFixed(1) : "5.0"}
                               </span>
                               <span className="text-stone-400 font-normal">
                                 •

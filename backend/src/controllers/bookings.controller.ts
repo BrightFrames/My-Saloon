@@ -706,21 +706,50 @@ export const getAvailableSlots = asyncHandler(
         } catch (e) {}
       }
 
-      // Fetch working hours of salon if salon_id provided
+      // Fetch working hours & slot interval of salon
       let salonOpeningTime = "09:00 AM";
       let salonClosingTime = "08:00 PM";
-      if (salon_id) {
+      let slotInterval = 30;
+      
+      let effectiveSalonId = salon_id;
+      if (!effectiveSalonId && stylist) {
         try {
-          const salonRes = await query("SELECT working_hours FROM public.salons WHERE id = $1 LIMIT 1", [
-            salon_id,
+          const tmRes = await query(
+            "SELECT salon_id FROM public.team_members WHERE LOWER(TRIM(name)) = LOWER(TRIM($1)) OR id::text = $1 LIMIT 1",
+            [stylist]
+          );
+          if (tmRes.rows[0]?.salon_id) {
+            effectiveSalonId = tmRes.rows[0].salon_id;
+          }
+        } catch (e) {}
+      }
+
+      if (!effectiveSalonId) {
+        try {
+          const firstSalon = await query("SELECT id FROM public.salons ORDER BY id ASC LIMIT 1");
+          if (firstSalon.rows[0]?.id) {
+            effectiveSalonId = firstSalon.rows[0].id;
+          }
+        } catch (e) {}
+      }
+
+      if (effectiveSalonId) {
+        try {
+          const salonRes = await query("SELECT working_hours, slot_interval FROM public.salons WHERE id = $1 LIMIT 1", [
+            effectiveSalonId,
           ]);
-          const hours = salonRes.rows[0]?.working_hours;
+          const row = salonRes.rows[0];
+          const hours = row?.working_hours;
           if (hours && typeof hours === "object") {
             if (hours.open) salonOpeningTime = hours.open;
             if (hours.close) salonClosingTime = hours.close;
+            if (hours.slot_interval) slotInterval = parseInt(hours.slot_interval) || 30;
+          }
+          if (row?.slot_interval) {
+            slotInterval = parseInt(row.slot_interval) || slotInterval;
           }
         } catch (err) {
-          // Column working_hours might not exist yet, fallback gracefully
+          // Column working_hours / slot_interval might not exist yet, fallback gracefully
         }
       }
 
@@ -757,7 +786,7 @@ export const getAvailableSlots = asyncHandler(
         requestedDuration,
         salonOpeningTime,
         salonClosingTime,
-        slotInterval: 30,
+        slotInterval,
         existingBookings,
       });
 

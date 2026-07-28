@@ -191,8 +191,8 @@ export function calculateAvailableSlots({
     const candidateStart = current;
     const candidateEnd = candidateStart + safeReqDuration;
 
-    // Check 1: Does requested service exceed salon closing time?
-    if (candidateEnd > closingMins) {
+    // Check 1: Does requested service start time + slot interval exceed salon closing time?
+    if (candidateStart + Math.min(safeReqDuration, slotInterval) > closingMins) {
       allSlots.push({
         time: slotTimeStr,
         available: false,

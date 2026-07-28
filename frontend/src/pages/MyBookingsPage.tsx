@@ -23,6 +23,7 @@ import {
   RotateCcw
 } from "lucide-react";
 import { PopupDialog } from "../components/PopupDialog";
+import { ServiceRatingCard } from "../components/ServiceRatingCard";
 import { formatINR } from "../utils/currency";
 import { API_BASE_URL } from "../services/apiBase";
 
@@ -32,6 +33,7 @@ export function MyBookingsPage() {
   const [loading, setLoading] = useState(true);
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [selectedReceipt, setSelectedReceipt] = useState<any | null>(null);
+  const [ratingBooking, setRatingBooking] = useState<any | null>(null);
   const [popup, setPopup] = useState<{
     open: boolean;
     title: string;
@@ -413,12 +415,21 @@ export function MyBookingsPage() {
                         </button>
 
                         {isCompleted && (
-                          <button
-                            onClick={() => handleRebook(booking)}
-                            className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-[#C49B89] hover:bg-[#B38775] px-3.5 py-1.5 rounded-lg transition-colors shadow-xs cursor-pointer"
-                          >
-                            <RotateCcw size={14} /> Rebook Services
-                          </button>
+                          <>
+                            <button
+                              onClick={() => setRatingBooking(booking)}
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#8C6454] bg-[#FAF4F0] hover:bg-[#F2E8E4] px-3.5 py-1.5 rounded-lg transition-colors border border-[#DEB5A4]/50 cursor-pointer"
+                            >
+                              ⭐ Rate & Review
+                            </button>
+
+                            <button
+                              onClick={() => handleRebook(booking)}
+                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-[#C49B89] hover:bg-[#B38775] px-3.5 py-1.5 rounded-lg transition-colors shadow-xs cursor-pointer"
+                            >
+                              <RotateCcw size={14} /> Rebook Services
+                            </button>
+                          </>
                         )}
 
                         {booking.booking_status !== "cancelled" &&
@@ -673,6 +684,30 @@ export function MyBookingsPage() {
                 Close Receipt
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Service Rating Modal */}
+      {ratingBooking && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+          <div className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-3xl">
+            <button
+              onClick={() => setRatingBooking(null)}
+              className="absolute top-4 right-4 z-10 w-9 h-9 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-full flex items-center justify-center cursor-pointer transition-colors shadow-sm"
+            >
+              <X size={18} />
+            </button>
+            <ServiceRatingCard
+              salonId={ratingBooking.salon_id || ratingBooking.salonId || "default"}
+              bookingId={ratingBooking.id}
+              customerName={ratingBooking.customer_name || ratingBooking.customerName || sessionStorage.getItem("userName") || ""}
+              customerEmail={ratingBooking.customer_email || ratingBooking.customerEmail || sessionStorage.getItem("userEmail") || ""}
+              onSuccess={() => {
+                fetchBookings(true);
+                setTimeout(() => setRatingBooking(null), 2500);
+              }}
+            />
           </div>
         </div>
       )}

@@ -265,6 +265,7 @@ const RegisterPage: React.FC = () => {
         sessionStorage.setItem("isVerified", "true");
         sessionStorage.setItem("userName", userObj.name || form.name);
         sessionStorage.setItem("userEmail", userObj.email || form.email);
+        sessionStorage.setItem("userMobile", userObj.mobile || form.mobile || "");
         if (data.user?.token) {
           sessionStorage.setItem("authToken", data.user.token);
         }

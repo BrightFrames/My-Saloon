@@ -10,6 +10,7 @@ import {
   login,
   sendForgotPinOtp,
   resetPin,
+  getProfile,
   adminLogin,
   superAdminLogin,
   createSalonAdmin,
@@ -44,6 +45,7 @@ router.use("/upload", uploadRoutes);
 router.use("/notifications", notificationsRoutes);
 
 // Auth routes
+router.get("/auth/me", getProfile);
 router.post("/auth/send-otp", authLimiter, sendOtp);
 router.post("/auth/verify-otp", authLimiter, verifyOtp);
 router.post("/auth/create-pin", authLimiter, createPin);

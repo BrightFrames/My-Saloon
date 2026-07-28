@@ -15,18 +15,6 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
   const [isEditing, setIsEditing] = useState(false);
   const submitLockRef = useRef(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
-  const [form, setForm] = useState({
-    name: "",
-    city: "",
-    starting_price: "",
-    latitude: "",
-    longitude: "",
-    image: "",
-    video: "",
-    home_service_charge: "",
-    about: "",
-    gallery: [] as string[],
-  });
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
   // Change Password state
@@ -93,6 +81,21 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
   const [videoUploadProgress, setVideoUploadProgress] = useState(0);
   const [videoUploadError, setVideoUploadError] = useState<string | null>(null);
+  const [form, setForm] = useState({
+    name: "",
+    city: "",
+    starting_price: "",
+    latitude: "",
+    longitude: "",
+    image: "",
+    video: "",
+    home_service_charge: "",
+    about: "",
+    opening_time: "09:00 AM",
+    closing_time: "08:00 PM",
+    slot_interval: "30",
+    gallery: [] as string[],
+  });
 
   const fetchProfile = async () => {
     try {
@@ -100,6 +103,10 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
       const res = await api.getSalonProfile();
       if (res.data) {
         setProfile(res.data);
+        const hours = res.data.working_hours || {};
+        const intervalVal = String(
+          res.data.slot_interval || hours.slot_interval || 30
+        );
         setForm({
           name: res.data.name || "",
           city: res.data.city || "",
@@ -110,6 +117,9 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
           video: res.data.video || "",
           home_service_charge: String(res.data.home_service_charge || 0),
           about: res.data.about || "",
+          opening_time: hours.open || "09:00 AM",
+          closing_time: hours.close || "08:00 PM",
+          slot_interval: intervalVal,
           gallery: res.data.gallery || [],
         });
       }
@@ -230,6 +240,14 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
         home_service_charge: parseFloat(form.home_service_charge) || 0,
         about: form.about || undefined,
         gallery: form.gallery,
+        opening_time: form.opening_time,
+        closing_time: form.closing_time,
+        slot_interval: parseInt(form.slot_interval, 10) || 30,
+        working_hours: {
+          open: form.opening_time || "09:00 AM",
+          close: form.closing_time || "08:00 PM",
+          slot_interval: parseInt(form.slot_interval, 10) || 30,
+        },
       });
       setIsEditing(false);
       fetchProfile();
@@ -311,6 +329,52 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
                       setForm({ ...form, home_service_charge: e.target.value })
                     }
                   />
+                </div>
+                <div className="form-group">
+                  <label>Salon Opening Time</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 09:00 AM"
+                    value={form.opening_time}
+                    onChange={(e) =>
+                      setForm({ ...form, opening_time: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Salon Closing Time</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 08:00 PM"
+                    value={form.closing_time}
+                    onChange={(e) =>
+                      setForm({ ...form, closing_time: e.target.value })
+                    }
+                  />
+                </div>
+                <div className="form-group">
+                  <label>Slot Duration / Interval (Minutes)</label>
+                  <select
+                    value={form.slot_interval}
+                    onChange={(e) =>
+                      setForm({ ...form, slot_interval: e.target.value })
+                    }
+                    style={{
+                      width: "100%",
+                      padding: "10px 14px",
+                      borderRadius: "8px",
+                      border: "1px solid #e2e8f0",
+                      outline: "none",
+                      fontSize: "14px",
+                      background: "#fff",
+                    }}
+                  >
+                    <option value="15">15 Minutes</option>
+                    <option value="20">20 Minutes</option>
+                    <option value="30">30 Minutes (Default)</option>
+                    <option value="45">45 Minutes</option>
+                    <option value="60">60 Minutes (1 Hour)</option>
+                  </select>
                 </div>
                 <div className="form-group">
                   <label>Background Image</label>
@@ -508,6 +572,18 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
                 <div className="profile-field">
                   <div className="field-label">Home Service Charge Starting From</div>
                   <div className="field-value">₹{profile.home_service_charge || 0}</div>
+                </div>
+                <div className="profile-field">
+                  <div className="field-label">Salon Opening Time</div>
+                  <div className="field-value">⏰ {profile.working_hours?.open || form.opening_time || "09:00 AM"}</div>
+                </div>
+                <div className="profile-field">
+                  <div className="field-label">Salon Closing Time</div>
+                  <div className="field-value">🌙 {profile.working_hours?.close || form.closing_time || "08:00 PM"}</div>
+                </div>
+                <div className="profile-field">
+                  <div className="field-label">Slot Duration / Interval</div>
+                  <div className="field-value">⏱️ {profile.slot_interval || profile.working_hours?.slot_interval || form.slot_interval || 30} minutes</div>
                 </div>
                 <div className="profile-field">
                   <div className="field-label">About Salon</div>

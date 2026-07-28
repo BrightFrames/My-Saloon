@@ -146,6 +146,10 @@ export const api = {
     home_service_charge?: number;
     about?: string;
     gallery?: string[];
+    opening_time?: string;
+    closing_time?: string;
+    slot_interval?: number;
+    working_hours?: { open: string; close: string; slot_interval?: number };
   }) => {
     return request("PUT", "/admin/salon-profile", data);
   },

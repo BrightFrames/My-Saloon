@@ -141,14 +141,37 @@ export function CheckoutPage() {
       } catch (e) {}
     }
 
-    const isVerified = sessionStorage.getItem("isVerified") === "true";
-    if (isVerified) {
-      setBookingData((prev) => ({
-        ...prev,
-        customer_name: sessionStorage.getItem("userName") || "",
-        customer_email: sessionStorage.getItem("userEmail") || "",
-      }));
-    }
+    const savedName = sessionStorage.getItem("userName") || "";
+    const savedEmail = sessionStorage.getItem("userEmail") || "";
+    const savedMobile = sessionStorage.getItem("userMobile") || "";
+
+    // Pre-fill from sessionStorage immediately
+    setBookingData((prev) => ({
+      ...prev,
+      customer_name: savedName || prev.customer_name,
+      customer_email: savedEmail || prev.customer_email,
+      mobile: savedMobile || prev.mobile,
+    }));
+
+    // Unconditionally fetch profile from backend to fill all fields (name, email, mobile)
+    const identifierToFetch = savedEmail || savedMobile || "";
+    fetch(`${base}/auth/me?email=${encodeURIComponent(identifierToFetch)}`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.user) {
+          const u = data.user;
+          setBookingData((prev) => ({
+            ...prev,
+            customer_name: u.name || prev.customer_name,
+            customer_email: u.email || prev.customer_email,
+            mobile: u.mobile || prev.mobile,
+          }));
+          if (u.name) sessionStorage.setItem("userName", u.name);
+          if (u.email) sessionStorage.setItem("userEmail", u.email);
+          if (u.mobile) sessionStorage.setItem("userMobile", u.mobile);
+        }
+      })
+      .catch((err) => console.error("Failed to fetch user profile for checkout", err));
 
     // Load available salon services from details page if present
     const savedServicesList = sessionStorage.getItem("selectedSalonServices");
@@ -303,12 +326,14 @@ export function CheckoutPage() {
         setAvailableSlots([]);
         setAllSlots([]);
         try {
+          const salonId = getSalonIdFromStorage() || salonData?.id || salonData?.salon_id || salonData?.salonId;
           const serviceIds = selectedServicesArr.map((s) => s.id).join(",");
           const serviceNames = selectedServicesArr.map((s) => s.name).join(",");
           const queryParams = new URLSearchParams({
             date: bookingData.booking_date,
             stylist: bookingData.stylist,
             duration: String(totalDuration),
+            ...(salonId ? { salon_id: String(salonId) } : {}),
             ...(serviceIds ? { service_id: serviceIds } : {}),
             ...(serviceNames ? { service_name: serviceNames } : {}),
           });
@@ -335,7 +360,7 @@ export function CheckoutPage() {
       };
       fetchSlots();
     }
-  }, [bookingData.booking_date, bookingData.stylist, totalDuration, selectedServicesArr]);
+  }, [bookingData.booking_date, bookingData.stylist, totalDuration, selectedServicesArr, salonData]);
 
   const handleUpdate = (field: string, value: any) => {
     setBookingData((prev) => {

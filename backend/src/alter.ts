@@ -40,6 +40,16 @@ async function alter() {
     await client.query("ALTER TABLE public.users ADD COLUMN IF NOT EXISTS pin TEXT;");
     await client.query("ALTER TABLE public.users ADD COLUMN IF NOT EXISTS is_verified BOOLEAN DEFAULT false;");
 
+    // Service rating columns
+    await client.query("ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS is_reviewed BOOLEAN DEFAULT false;");
+    await client.query("ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS overall_experience INTEGER DEFAULT 5;");
+    await client.query("ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS stylist_skill INTEGER DEFAULT 5;");
+    await client.query("ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS staff_behaviour INTEGER DEFAULT 5;");
+    await client.query("ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS cleanliness_hygiene INTEGER DEFAULT 5;");
+    await client.query("ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS value_for_money INTEGER DEFAULT 5;");
+    await client.query("ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS booking_id UUID;");
+    await client.query("ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS customer_email TEXT;");
+
     console.log("Columns added and initialized");
   } catch(e) {
     console.error(e);

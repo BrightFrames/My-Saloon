@@ -20,8 +20,12 @@ export class SalonsService {
       const queryParams: any[] = [];
       let paramIndex = 1;
 
-      let selectFields = "s.*";
-      const fromClause = "salons s";
+      let selectFields = "s.*, COALESCE(NULLIF(r.avg_rating, 0), NULLIF(s.rating, 0), 5.0) as rating, COALESCE(r.reviews_count, 0) as reviews_count";
+      const fromClause = `salons s LEFT JOIN (
+        SELECT salon_id, ROUND(AVG(rating)::numeric, 1) as avg_rating, COUNT(*)::int as reviews_count
+        FROM public.reviews
+        GROUP BY salon_id
+      ) r ON r.salon_id = s.id`;
       const whereClauses: string[] = [];
       let orderBy = "s.rating DESC NULLS LAST, s.starting_price ASC";
 
@@ -125,14 +129,24 @@ export class SalonsService {
         [id],
       ).catch(() => ({ rows: [] }));
       const reviewsRes = await query(
-        "SELECT * FROM public.reviews WHERE salon_id = $1",
+        "SELECT * FROM public.reviews WHERE salon_id = $1 ORDER BY created_at DESC",
         [id],
       ).catch(() => ({ rows: [] }));
 
+      const reviewsList = reviewsRes.rows || [];
+      const totalReviews = reviewsList.length;
+      let computedRating = salon.rating && Number(salon.rating) > 0 ? parseFloat(String(salon.rating)) : 5.0;
+      if (totalReviews > 0) {
+        const sum = reviewsList.reduce((acc: number, r: any) => acc + (Number(r.rating) || 5), 0);
+        computedRating = Math.round((sum / totalReviews) * 10) / 10;
+      }
+
       return {
         ...salon,
+        rating: computedRating > 0 ? computedRating : 5.0,
+        reviews_count: totalReviews,
         services: servicesRes.rows || [],
-        reviews: reviewsRes.rows || [],
+        reviews: reviewsList,
       };
     } catch (err: any) {
       if (err instanceof ApiError) throw err;

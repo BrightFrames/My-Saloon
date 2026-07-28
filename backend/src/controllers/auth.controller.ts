@@ -612,3 +612,32 @@ export const resetPin = async (req: Request, res: Response) => {
     return res.status(500).json({ message: "Internal server error" });
   }
 };
+
+export const getProfile = async (req: Request, res: Response) => {
+  const email = (req.query.email || req.query.identifier || "").toString().trim();
+
+  try {
+    let result;
+    if (email) {
+      result = await query(
+        "SELECT id, name, email, mobile, role, is_verified FROM public.users WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) OR mobile = $1 LIMIT 1",
+        [email]
+      );
+    } else {
+      result = await query(
+        "SELECT id, name, email, mobile, role, is_verified FROM public.users WHERE is_verified = true ORDER BY id DESC LIMIT 1"
+      );
+    }
+
+    if (result.rows[0]) {
+      return res.json({
+        success: true,
+        user: result.rows[0],
+      });
+    }
+    return res.status(404).json({ success: false, message: "User not found" });
+  } catch (err: any) {
+    console.error("getProfile error:", err);
+    return res.status(500).json({ success: false, message: "Internal server error" });
+  }
+};

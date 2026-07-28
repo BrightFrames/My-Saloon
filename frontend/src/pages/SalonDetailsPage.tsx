@@ -270,12 +270,14 @@ export function SalonDetailsPage() {
               <div className="flex flex-wrap items-center gap-3 text-sm font-medium text-white/90 sm:gap-4">
                 <span className="flex items-center py-1 px-3 bg-black/20 backdrop-blur-md rounded-full gap-1.5">
                   <Star size={14} className="text-[#DEB5A4]" fill="#DEB5A4" />{" "}
-                  {salon?.rating || "4.9"}{" "}
-                  <span className="font-normal opacity-80">(120 reviews)</span>
+                  {salon?.rating && Number(salon.rating) > 0 ? Number(salon.rating).toFixed(1) : "5.0"}{" "}
+                  <span className="font-normal opacity-80">
+                    ({salon?.reviews?.length ?? salon?.reviews_count ?? 0} reviews)
+                  </span>
                 </span>
                 <span className="opacity-60">•</span>
                 <span className="flex items-center py-1 px-3 bg-black/20 backdrop-blur-md rounded-full gap-1.5">
-                  <Clock size={14} /> Open until 9 PM
+                  <Clock size={14} /> Open until {salon?.working_hours?.close || "9 PM"}
                 </span>
               </div>
             </div>
@@ -421,61 +423,45 @@ export function SalonDetailsPage() {
             {activeTab === "Reviews" && (
               <div className="mb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <h3 className="font-serif text-lg font-medium text-stone-800 mb-6">Customer Reviews</h3>
-                
-                {/* Write Review Form */}
-                <div className="bg-[#FDFBF9] rounded-2xl p-6 border border-[#E8DCC9] mb-8">
-                  <h4 className="text-stone-800 font-medium mb-4">Write a Review</h4>
-                  <form onSubmit={handleReviewSubmit} className="flex flex-col gap-4">
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-sm text-stone-600">Your Name</label>
-                      <input type="text" value={reviewForm.user_name} onChange={e => setReviewForm({...reviewForm, user_name: e.target.value})} className="border border-stone-200 rounded-lg px-3 py-2 text-sm" placeholder="John Doe" required />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-sm text-stone-600">Email</label>
-                      <input type="email" value={reviewForm.customer_email} onChange={e => setReviewForm({...reviewForm, customer_email: e.target.value})} className="border border-stone-200 rounded-lg px-3 py-2 text-sm" placeholder="you@example.com" required />
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-sm text-stone-600">Rating (1-5)</label>
-                      <select value={reviewForm.rating} onChange={e => setReviewForm({...reviewForm, rating: Number(e.target.value)})} className="border border-stone-200 rounded-lg px-3 py-2 text-sm bg-white">
-                        <option value={5}>5 Stars</option>
-                        <option value={4}>4 Stars</option>
-                        <option value={3}>3 Stars</option>
-                        <option value={2}>2 Stars</option>
-                        <option value={1}>1 Star</option>
-                      </select>
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      <label className="text-sm text-stone-600">Comment (Optional)</label>
-                      <textarea value={reviewForm.comment} onChange={e => setReviewForm({...reviewForm, comment: e.target.value})} className="border border-stone-200 rounded-lg px-3 py-2 text-sm resize-none h-20" placeholder="Share your experience..."></textarea>
-                    </div>
-                    <button type="submit" disabled={isSubmittingReview} className="mt-2 bg-[#C49B89] hover:bg-[#B38775] text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors w-max disabled:opacity-70">
-                      {isSubmittingReview ? "Submitting..." : "Submit Review"}
-                    </button>
-                  </form>
-                </div>
 
                 <div className="flex flex-col gap-4">
                   {salon?.reviews && salon.reviews.length > 0 ? (
                     salon.reviews.map((r: any) => (
-                      <div key={r.id} className="border border-stone-100 rounded-xl p-5 bg-white shadow-sm">
-                        <div className="flex items-center justify-between mb-2">
+                      <div key={r.id || Math.random()} className="border border-stone-100 rounded-xl p-5 bg-white shadow-sm flex flex-col gap-3">
+                        <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F5E8E0] text-[#B67B63]">
                               <UserCircle2 size={22} />
                             </div>
                             <div>
-                              <span className="font-medium text-stone-800 block">{r.user_name}</span>
-                              <span className="text-xs text-stone-400">{new Date(r.created_at).toLocaleDateString()}</span>
+                              <span className="font-semibold text-stone-800 block text-sm">
+                                {r.user_name || r.userName || "Verified Customer"}
+                              </span>
+                              <span className="text-[11px] text-stone-400">
+                                {r.created_at ? new Date(r.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "Recent review"}
+                              </span>
                             </div>
                           </div>
-                          <span className="text-xs text-stone-400">{new Date(r.created_at).toLocaleDateString()}</span>
+                          <div className="flex items-center gap-1 bg-[#FAF6F3] px-3 py-1 rounded-full border border-[#DEB5A4]/30">
+                            {[...Array(5)].map((_, i) => (
+                              <Star key={i} size={13} className={i < (r.rating || 5) ? "text-amber-400 fill-amber-400" : "text-stone-200"} />
+                            ))}
+                            <span className="text-xs font-bold text-stone-700 ml-1">{r.rating || 5}</span>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-1 mb-3">
-                          {[...Array(5)].map((_, i) => (
-                            <Star key={i} size={14} className={i < r.rating ? "text-[#DEB5A4] fill-[#DEB5A4]" : "text-stone-200"} />
-                          ))}
-                        </div>
-                        {r.comment && <p className="text-stone-600 text-sm leading-relaxed">{r.comment}</p>}
+
+                        {/* Category breakdown tags */}
+                        {(r.overall_experience || r.stylist_skill || r.staff_behaviour) && (
+                          <div className="flex flex-wrap gap-2 text-[11px] font-medium text-stone-600 bg-stone-50 p-2.5 rounded-lg border border-stone-100">
+                            {r.overall_experience && <span>Overall: ⭐{r.overall_experience}/5</span>}
+                            {r.stylist_skill && <span>• Stylist: ⭐{r.stylist_skill}/5</span>}
+                            {r.staff_behaviour && <span>• Staff: ⭐{r.staff_behaviour}/5</span>}
+                            {r.cleanliness_hygiene && <span>• Hygiene: ⭐{r.cleanliness_hygiene}/5</span>}
+                            {r.value_for_money && <span>• Value: ⭐{r.value_for_money}/5</span>}
+                          </div>
+                        )}
+
+                        {r.comment && <p className="text-stone-700 text-sm leading-relaxed">{r.comment}</p>}
                       </div>
                     ))
                   ) : (

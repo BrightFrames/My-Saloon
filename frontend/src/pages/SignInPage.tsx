@@ -69,6 +69,7 @@ const SignInPage: React.FC = () => {
         sessionStorage.setItem("isVerified", "true");
         sessionStorage.setItem("userName", userObj.name || userObj.email || "User");
         sessionStorage.setItem("userEmail", userObj.email || "");
+        sessionStorage.setItem("userMobile", userObj.mobile || userObj.phone || "");
         if (data.token) {
           sessionStorage.setItem("authToken", data.token);
         }

@@ -8,49 +8,118 @@ export const getDashboardStats = asyncHandler(
     const { salon_id } = (req as any).user;
 
     if (!salon_id) {
-      res
-        .status(403)
-        .json({ message: "Salon ID missing from authenticated user." });
+      res.status(403).json({ message: "Salon ID missing from authenticated user." });
       return;
     }
 
-    const bookingsResult = await query(
-      `SELECT COUNT(*) as total_bookings, 
-            COALESCE(SUM(total_price) FILTER (WHERE booking_status != 'cancelled'), 0) as total_revenue 
-     FROM public.bookings 
-     WHERE salon_id = $1 OR salon_id IS NULL`,
+    // Total bookings & revenue (all time)
+    const totalResult = await query(
+      `SELECT 
+        COUNT(*) as total_bookings, 
+        COALESCE(SUM(total_price) FILTER (WHERE booking_status != 'cancelled'), 0) as total_revenue 
+       FROM public.bookings 
+       WHERE salon_id = $1`,
       [salon_id],
     );
 
+    // Today's stats
     const todayResult = await query(
-      `SELECT COUNT(*) as today_appointments 
-     FROM public.bookings 
-     WHERE (salon_id = $1 OR salon_id IS NULL) AND appointment_date = CURRENT_DATE`,
+      `SELECT 
+        COUNT(*) as today_bookings,
+        COALESCE(SUM(total_price) FILTER (WHERE booking_status != 'cancelled'), 0) as today_revenue
+       FROM public.bookings 
+       WHERE salon_id = $1 AND (appointment_date = CURRENT_DATE OR booking_date = CURRENT_DATE)`,
       [salon_id],
     );
 
+    // Monthly revenue (current month)
+    const monthlyResult = await query(
+      `SELECT COALESCE(SUM(total_price) FILTER (WHERE booking_status != 'cancelled'), 0) as monthly_revenue
+       FROM public.bookings 
+       WHERE salon_id = $1 
+         AND DATE_TRUNC('month', COALESCE(booking_date, appointment_date)) = DATE_TRUNC('month', CURRENT_DATE)`,
+      [salon_id],
+    );
+
+    // Pending appointments (confirmed, future date)
     const pendingResult = await query(
       `SELECT COUNT(*) as pending_bookings 
-     FROM public.bookings 
-     WHERE (salon_id = $1 OR salon_id IS NULL) AND booking_status = 'confirmed' AND appointment_date >= CURRENT_DATE`,
+       FROM public.bookings 
+       WHERE salon_id = $1 AND booking_status = 'confirmed' 
+         AND COALESCE(appointment_date, booking_date) >= CURRENT_DATE`,
       [salon_id],
     );
 
-    const stats = bookingsResult.rows[0];
+    // Unique customer count
+    const customerResult = await query(
+      `SELECT COUNT(DISTINCT customer_email) as customer_count 
+       FROM public.bookings WHERE salon_id = $1`,
+      [salon_id],
+    );
+
+    // Average rating
+    const ratingResult = await query(
+      `SELECT COALESCE(ROUND(AVG(rating)::numeric, 1), 0) as avg_rating, COUNT(*) as review_count
+       FROM public.reviews WHERE salon_id = $1`,
+      [salon_id],
+    );
+
+    // Monthly revenue trend (last 6 months)
+    const trendResult = await query(
+      `SELECT 
+        TO_CHAR(DATE_TRUNC('month', COALESCE(booking_date, appointment_date)), 'Mon YY') as month,
+        COALESCE(SUM(total_price) FILTER (WHERE booking_status != 'cancelled'), 0) as revenue,
+        COUNT(*) as bookings
+       FROM public.bookings 
+       WHERE salon_id = $1 
+         AND COALESCE(booking_date, appointment_date) >= CURRENT_DATE - INTERVAL '6 months'
+       GROUP BY DATE_TRUNC('month', COALESCE(booking_date, appointment_date))
+       ORDER BY DATE_TRUNC('month', COALESCE(booking_date, appointment_date)) ASC`,
+      [salon_id],
+    );
+
+    // Recent bookings (last 10)
+    const recentResult = await query(
+      `SELECT id, customer_name, customer_email, hairstyle, booking_status, 
+              total_price, booking_date, appointment_date, booking_time, appointment_time, stylist
+       FROM public.bookings 
+       WHERE salon_id = $1 
+       ORDER BY created_at DESC LIMIT 10`,
+      [salon_id],
+    );
+
+    const stats = totalResult.rows[0];
     const today = todayResult.rows[0];
+    const monthly = monthlyResult.rows[0];
     const pending = pendingResult.rows[0];
+    const customers = customerResult.rows[0];
+    const rating = ratingResult.rows[0];
 
     res.json({
       success: true,
       data: {
         total_bookings: parseInt(stats.total_bookings, 10),
         total_revenue: parseFloat(stats.total_revenue),
-        today_appointments: parseInt(today.today_appointments, 10),
+        today_bookings: parseInt(today.today_bookings, 10),
+        today_revenue: parseFloat(today.today_revenue),
+        monthly_revenue: parseFloat(monthly.monthly_revenue),
         pending_bookings: parseInt(pending.pending_bookings, 10),
+        customer_count: parseInt(customers.customer_count, 10),
+        avg_rating: parseFloat(rating.avg_rating),
+        review_count: parseInt(rating.review_count, 10),
+        // Keep old key for backward compat
+        today_appointments: parseInt(today.today_bookings, 10),
+        monthly_trend: trendResult.rows.map(r => ({
+          month: r.month,
+          revenue: parseFloat(r.revenue),
+          bookings: parseInt(r.bookings, 10),
+        })),
+        recent_bookings: recentResult.rows,
       },
     });
   },
 );
+
 
 // ─── Services ────────────────────────────────────────────────
 export const getServices = asyncHandler(async (req: Request, res: Response) => {

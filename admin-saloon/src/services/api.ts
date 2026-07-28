@@ -241,7 +241,6 @@ export const api = {
         if (xhr.status >= 200 && xhr.status < 300) {
           resolve(data);
         } else {
-          // If server error or unsupported limit, try fallback
           if (file.type.startsWith("video/") || file.type.startsWith("image/")) {
             return fallbackToDataUrl();
           }
@@ -263,4 +262,56 @@ export const api = {
       xhr.send(formData);
     });
   },
+
+  // ── Customers ─────────────────────────────────────
+  getCustomers: () => request("GET", "/admin/customers"),
+  getCustomerBookings: (email: string) =>
+    request("GET", `/admin/customers/${encodeURIComponent(email)}/bookings`),
+  updateCustomerNote: (email: string, notes: string) =>
+    request("PUT", `/admin/customers/${encodeURIComponent(email)}/notes`, { notes }),
+  toggleLoyalCustomer: (email: string, is_loyal: boolean) =>
+    request("PUT", `/admin/customers/${encodeURIComponent(email)}/loyalty`, { is_loyal }),
+
+  // ── Reviews ───────────────────────────────────────
+  getReviews: () => request("GET", "/admin/reviews"),
+  replyToReview: (id: string, reply: string) =>
+    request("POST", `/admin/reviews/${id}/reply`, { reply }),
+
+  // ── Earnings ──────────────────────────────────────
+  getEarnings: () => request("GET", "/admin/earnings"),
+  requestWithdrawal: (amount: number) =>
+    request("POST", "/admin/withdrawal-request", { amount }),
+
+  // ── Reports ───────────────────────────────────────
+  getReport: (type: string, date?: string) => {
+    const params = new URLSearchParams({ type });
+    if (date) params.append("date", date);
+    return request("GET", `/admin/reports?${params.toString()}`);
+  },
+
+  // ── Coupons ───────────────────────────────────────
+  getCoupons: () => request("GET", "/admin/coupons"),
+  createCoupon: (data: any) => request("POST", "/admin/coupons", data),
+  deactivateCoupon: (id: string) => request("PUT", `/admin/coupons/${id}`, { active: false }),
+
+  // ── Memberships ───────────────────────────────────
+  getMemberships: () => request("GET", "/admin/memberships"),
+  createMembership: (data: any) => request("POST", "/admin/memberships", data),
+  deleteMembership: (id: string) => request("DELETE", `/admin/memberships/${id}`),
+
+  // ── Notifications ─────────────────────────────────
+  getNotifications: () => request("GET", "/admin/notifications"),
+  markNotificationRead: (id: string) => request("PUT", `/admin/notifications/${id}/read`),
+  markAllNotificationsRead: () => request("PUT", "/admin/notifications/read-all"),
+
+  // ── Settings ──────────────────────────────────────
+  getBankDetails:  () => request("GET", "/admin/settings/bank"),
+  saveBankDetails: (data: any) => request("PUT", "/admin/settings/bank", data),
+  getGstDetails:   () => request("GET", "/admin/settings/gst"),
+  saveGstDetails:  (data: any) => request("PUT", "/admin/settings/gst", data),
+  getNotifSettings:  () => request("GET", "/admin/settings/notifications"),
+  saveNotifSettings: (data: any) => request("PUT", "/admin/settings/notifications", data),
+  getBizPrefs:   () => request("GET", "/admin/settings/preferences"),
+  saveBizPrefs:  (data: any) => request("PUT", "/admin/settings/preferences", data),
 };
+

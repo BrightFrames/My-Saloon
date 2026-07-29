@@ -43,13 +43,8 @@ export function SalonDetailsPage() {
     });
   };
   
-  const [reviewForm, setReviewForm] = useState({
-    user_name: "",
-    customer_email: "",
-    rating: 5,
-    comment: "",
-  });
-  const [isSubmittingReview, setIsSubmittingReview] = useState(false);
+
+
 
   const [popup, setPopup] = useState<{
     open: boolean;
@@ -167,53 +162,6 @@ export function SalonDetailsPage() {
     navigate("/checkout");
   };
 
-  const handleReviewSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!reviewForm.user_name || !reviewForm.customer_email || !reviewForm.rating) {
-      setPopup({
-        open: true,
-        title: "Incomplete Review",
-        message: "Please provide your name, email, and a rating.",
-        tone: "warning",
-      });
-      return;
-    }
-    try {
-      setIsSubmittingReview(true);
-      const res = await fetch(`${API_BASE_URL}/salons/${id}/reviews`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(reviewForm),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setPopup({
-          open: true,
-          title: "Review Submitted",
-          message: "Thank you for your review!",
-          tone: "success",
-        });
-        setReviewForm({ user_name: "", customer_email: "", rating: 5, comment: "" });
-        // Refresh salon details to get the new review
-        const updatedRes = await fetch(`${API_BASE_URL}/salons/${id}`);
-        const updatedBody = await updatedRes.json();
-        if (updatedBody && updatedBody.success) {
-          setSalon((prev: any) => ({ ...prev, reviews: updatedBody.data.reviews }));
-        }
-      } else {
-        throw new Error(data.message || "Failed to submit review");
-      }
-    } catch (err: any) {
-      setPopup({
-        open: true,
-        title: "Error",
-        message: err.message,
-        tone: "error",
-      });
-    } finally {
-      setIsSubmittingReview(false);
-    }
-  };
 
   // Calculations
   const subtotal = selectedServices.reduce(

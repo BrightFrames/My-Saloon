@@ -1,5 +1,5 @@
 import React from "react";
-import { MapPin, Navigation } from "lucide-react";
+import { MapPin } from "lucide-react";
 import { openGoogleMapsDirections, isValidLocation } from "../utils/navigation";
 
 export interface GetDirectionsButtonProps {

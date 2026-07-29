@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Star, CheckCircle, Sparkles } from "lucide-react";
+import { Star, Sparkles } from "lucide-react";
 import { API_BASE_URL } from "../services/apiBase";
 
 interface ServiceRatingCardProps {

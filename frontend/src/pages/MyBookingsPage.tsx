@@ -15,7 +15,6 @@ import {
   Phone,
   Home,
   FileText,
-  ExternalLink,
   CheckCircle2,
   Clock,
   Building2,

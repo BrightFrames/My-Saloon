@@ -6,8 +6,6 @@ import {
   Calendar,
   Heart,
   Loader2,
-  Navigation,
-  ExternalLink,
   Search,
   Filter,
   IndianRupee,
@@ -21,7 +19,6 @@ import { API_BASE_URL } from "../services/apiBase";
 import heroImage from "../assets/sign.jpg";
 import { motion } from "framer-motion";
 import { useTheme } from "../context/ThemeContext";
-import { openGoogleMapsDirections } from "../utils/navigation";
 import { GetDirectionsButton } from "../components/GetDirectionsButton";
 import { SalonMapPopup } from "../components/SalonMapPopup";
 
@@ -249,9 +246,6 @@ export function LandingPage({
     cardEl?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   };
 
-  const getGoogleMapsDirections = (lat: number | string | null, lon: number | string | null) => {
-    openGoogleMapsDirections(lat, lon);
-  };
 
   const handleSearchSubmit = (event: React.FormEvent) => {
     event.preventDefault();

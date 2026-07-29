@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { API_BASE_URL } from '../services/apiBase';
-import { TrendingUp, Users, Store, DollarSign, Calendar, ChevronRight, Activity, RefreshCcw, XCircle, Star, Clock } from 'lucide-react';
+import { Users, Store, DollarSign, Calendar, ChevronRight, Activity, RefreshCcw, XCircle, Star, Clock } from 'lucide-react';
 import { motion, useSpring, useTransform } from 'framer-motion';
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, PieChart, Pie, Cell, CartesianGrid } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';

@@ -50,8 +50,8 @@ export default function Dashboard({ user, onLogout }: Props) {
 
   const fetchData = async () => {
     try {
-      const res = await api.getDashboardStats().catch(() => ({ data: stats }));
-      if (res?.data) setStats(res.data);
+      const res = await api.getDashboardStats().catch(() => ({ data: null }));
+      if (res?.data) setStats((prev: any) => ({ ...prev, ...res.data, recent_bookings: res.data.recent_bookings ?? [], monthly_trend: res.data.monthly_trend ?? [] }));
     } catch (err) {
       console.error("Dashboard fetch failed", err);
     } finally {
@@ -223,7 +223,7 @@ export default function Dashboard({ user, onLogout }: Props) {
                 ) : stats.recent_bookings?.length === 0 ? (
                   <tr><td colSpan={7} style={{ textAlign: "center", padding: 24, color: "var(--muted)" }}>No recent bookings found.</td></tr>
                 ) : (
-                  stats.recent_bookings.map((b: any) => (
+                  (stats.recent_bookings ?? []).map((b: any) => (
                     <tr key={b.id}>
                       <td>
                         <div style={{ fontWeight: 600 }}>{b.customer_name}</div>

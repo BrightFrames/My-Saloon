@@ -27,7 +27,8 @@ async function request(method: string, path: string, body?: any) {
       console.warn("Session expired or invalid token. Auto logging out...");
       localStorage.removeItem("admin_token");
       localStorage.removeItem("admin_user");
-      window.location.href = "/login";
+      // Dispatch event so App.tsx can redirect via React Router (no blank page)
+      window.dispatchEvent(new CustomEvent("admin-session-expired"));
       throw new Error("Session expired");
     }
 
@@ -220,7 +221,7 @@ export const api = {
         if (xhr.status === 401 || xhr.status === 403) {
           localStorage.removeItem("admin_token");
           localStorage.removeItem("admin_user");
-          window.location.href = "/login";
+          window.dispatchEvent(new CustomEvent("admin-session-expired"));
           return reject(new Error("Session expired"));
         }
 

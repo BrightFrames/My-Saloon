@@ -19,11 +19,17 @@ import { auth } from './services/auth'
 import ProtectedRoute from './routes/ProtectedRoute'
 
 function App() {
-  const [user, setUser] = useState<any | null>(null)
+  // Initialize synchronously — prevents 3-second blank flash
+  const [user, setUser] = useState<any | null>(() => auth.getCurrent())
 
   useEffect(() => {
-    const existing = auth.getCurrent()
-    if (existing) setUser(existing)
+    // Listen for 401/403 from any API call — redirect via React state (no hard reload = no blank page)
+    const handleSessionExpired = () => {
+      auth.logout()
+      setUser(null)
+    }
+    window.addEventListener('admin-session-expired', handleSessionExpired)
+    return () => window.removeEventListener('admin-session-expired', handleSessionExpired)
   }, [])
 
   function handleLogout() {
@@ -35,7 +41,7 @@ function App() {
 
   return (
     <ThemeProvider>
-      <BrowserRouter>
+      <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <Routes>
           <Route path="/login" element={<LoginPage onLogin={() => setUser(auth.getCurrent())} />} />
 

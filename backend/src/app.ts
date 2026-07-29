@@ -23,15 +23,21 @@ app.use(
   cors({
     origin: (origin, callback) => {
       if (!origin) return callback(null, true);
-      // Check if origin is localhost or 127.0.0.1 on any port
-      const isLocal = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
-      const isVercelPreview = /^https:\/\/.+\.vercel\.app$/.test(origin);
-      const allowedFrontend = process.env.FRONTEND_URL;
+      // Normalize origin by removing trailing slash
+      const cleanOrigin = origin.trim().replace(/\/$/, "");
+      
+      const isLocal = /^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(cleanOrigin);
+      const isVercel = cleanOrigin.endsWith(".vercel.app") || cleanOrigin.includes(".vercel.app");
+      
+      const allowedFrontend = process.env.FRONTEND_URL 
+        ? process.env.FRONTEND_URL.trim().replace(/\/$/, "") 
+        : null;
 
-      if (isLocal || isVercelPreview || origin === allowedFrontend) {
+      if (isLocal || isVercel || cleanOrigin === allowedFrontend) {
         callback(null, true);
       } else {
-        callback(new Error("Not allowed by CORS"));
+        console.warn(`CORS blocked origin: ${origin}`);
+        callback(new Error(`Not allowed by CORS: ${origin}`));
       }
     },
 

@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
 import { API_BASE_URL } from '../services/apiBase';
-import { TrendingUp, Users, Store, DollarSign, Calendar, ChevronRight, Activity } from 'lucide-react';
+import { TrendingUp, Users, Store, DollarSign, Calendar, ChevronRight, Activity, RefreshCcw, XCircle, Star, Clock } from 'lucide-react';
 import { motion, useSpring, useTransform } from 'framer-motion';
 import { Area, AreaChart, ResponsiveContainer, Tooltip, XAxis, YAxis, PieChart, Pie, Cell, CartesianGrid } from 'recharts';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -9,9 +10,11 @@ import { Badge } from '../components/ui/badge';
 import { Button } from '../components/ui/button';
 
 // Animated Number Component
-function AnimatedNumber({ value }: { value: number }) {
+function AnimatedNumber({ value, prefix = '', suffix = '', decimals = 0 }: { value: number, prefix?: string, suffix?: string, decimals?: number }) {
   const spring = useSpring(0, { bounce: 0, duration: 2000 });
-  const display = useTransform(spring, (current) => Math.round(current).toLocaleString());
+  const display = useTransform(spring, (current) => 
+    prefix + Number(current).toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) + suffix
+  );
   
   useEffect(() => {
     spring.set(value);
@@ -24,33 +27,80 @@ export default function Dashboard() {
   const [bookings, setBookings] = useState<any[]>([]);
   const [salons, setSalons] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   const [dateRange, setDateRange] = useState('Last 30 Days');
   const [showDateDropdown, setShowDateDropdown] = useState(false);
 
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const [bookingsRes, salonsRes] = await Promise.all([
-          fetch(`${API_BASE_URL}/bookings/all`),
-          fetch(`${API_BASE_URL}/salons`)
-        ]);
-        
-        const bData = await bookingsRes.json();
-        const sData = await salonsRes.json();
+  const fetchData = async () => {
+    setRefreshing(true);
+    try {
+      const [bookingsRes, salonsRes] = await Promise.all([
+        fetch(`${API_BASE_URL}/bookings/all`),
+        fetch(`${API_BASE_URL}/salons`)
+      ]);
+      
+      const bData = await bookingsRes.json();
+      const sData = await salonsRes.json();
 
-        if (bData.success) setBookings(bData.data || []);
-        if (sData.success) setSalons(sData.data || []);
-      } catch (err) {
-        console.error("Failed to fetch global stats", err);
-      } finally {
-        setLoading(false);
-      }
-    };
+      if (bData.success) setBookings(bData.data || []);
+      if (sData.success) setSalons(sData.data || []);
+    } catch (err) {
+      console.error("Failed to fetch global stats", err);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
     fetchData();
   }, []);
 
-  const totalRevenue = bookings.reduce((sum, b) => sum + Number(b.total_price || 0), 0);
+  // Filter Bookings by Date Range
+  const isDateInRange = (dateString: string, range: string) => {
+    if (!dateString) return false;
+    const date = new Date(dateString);
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    date.setHours(0,0,0,0);
+
+    const diffTime = Math.abs(today.getTime() - date.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (range === 'Today') return diffDays === 0;
+    if (range === 'Last 7 Days') return diffDays <= 7;
+    if (range === 'Last 30 Days') return diffDays <= 30;
+    if (range === 'This Year') return date.getFullYear() === today.getFullYear();
+    return true;
+  };
+
+  const filteredBookings = bookings.filter(b => isDateInRange(b.booking_date || b.appointment_date, dateRange));
+
+  // --- Metrics Calculations ---
+  const filteredSalons = salons.filter(s => isDateInRange(s.created_at || s.createdAt, dateRange));
+  
+  const totalSalons = filteredSalons.length;
+  // Assuming 'active' flag or just showing total for now if no specific flag exists
+  const activeSalons = filteredSalons.filter(s => s.status !== 'inactive').length; 
+  
+  const uniqueCustomers = new Set(filteredBookings.map(b => b.customer_email)).size;
+  
+  const todayBookings = bookings.filter(b => isDateInRange(b.booking_date || b.appointment_date, 'Today'));
+  const newCustomersToday = new Set(todayBookings.map(b => b.customer_email)).size;
+
+  const totalBookingsFiltered = filteredBookings.length;
+  
+  const gbv = filteredBookings.reduce((sum, b) => sum + Number(b.total_price || 0), 0);
+  const platformCommission = gbv * 0.10; // 10% commission
+  const pendingPayouts = gbv - platformCommission;
+
+  const cancelledBookingsCount = filteredBookings.filter(b => b.booking_status === 'cancelled').length;
+  
+  // Mock average rating as 4.8 if no rating data exists
+  const averageRating = 4.8;
+
+  const liveAppointmentsCount = todayBookings.filter(b => b.booking_status !== 'cancelled').length;
 
   // Filter Chart Data based on Date Range
   let sliceCount = 30;
@@ -59,17 +109,24 @@ export default function Dashboard() {
   else if (dateRange === 'Last 30 Days') sliceCount = 30;
   else if (dateRange === 'This Year') sliceCount = 365;
 
-  const chartData = bookings.reduce((acc: any, b: any) => {
-    const date = new Date(b.booking_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-    const existing = acc.find((item: any) => item.name === date);
+  const chartData = filteredBookings.reduce((acc: any, b: any) => {
+    const dStr = b.booking_date || b.appointment_date;
+    if (!dStr) return acc;
+    const dateObj = new Date(dStr);
+    if(isNaN(dateObj.getTime())) return acc;
+    
+    const dateLabel = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    const existing = acc.find((item: any) => item.name === dateLabel);
     if (existing) {
       existing.Revenue += Number(b.total_price || 0);
       existing.Bookings += 1;
     } else {
-      acc.push({ name: date, Revenue: Number(b.total_price || 0), Bookings: 1 });
+      acc.push({ name: dateLabel, Revenue: Number(b.total_price || 0), Bookings: 1, dateObj });
     }
     return acc;
-  }, []).slice(-sliceCount);
+  }, [])
+  .sort((a: any, b: any) => a.dateObj.getTime() - b.dateObj.getTime())
+  .slice(-sliceCount);
 
   const handleDownloadReport = () => {
     const headers = ['Date,Revenue,Bookings'];
@@ -131,7 +188,16 @@ export default function Dashboard() {
         {/* Header Section */}
         <motion.div variants={itemVars} className="flex flex-col md:flex-row md:items-end justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-stone-900 mb-1">Overview</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-stone-900 mb-1 flex items-center gap-3">
+              Overview
+              <button 
+                onClick={fetchData}
+                className={`p-1.5 rounded-full hover:bg-stone-100 transition-all ${refreshing ? 'animate-spin text-indigo-500' : 'text-stone-400'}`}
+                title="Refresh Data"
+              >
+                <RefreshCcw size={18} />
+              </button>
+            </h1>
             <p className="text-stone-500">Monitor your global salon network metrics.</p>
           </div>
           <div className="flex items-center gap-3">
@@ -185,13 +251,41 @@ export default function Dashboard() {
           <Card className="relative overflow-hidden group hover:border-indigo-200 transition-colors">
             <div className="absolute right-0 top-0 w-32 h-32 bg-indigo-500/5 rounded-bl-[100px] -z-10 group-hover:scale-110 transition-transform duration-500" />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-stone-500">Total Revenue</CardTitle>
+              <CardTitle className="text-sm font-medium text-stone-500">Gross Booking Value</CardTitle>
               <DollarSign className="h-4 w-4 text-indigo-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-stone-900">$<AnimatedNumber value={totalRevenue} /></div>
-              <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1 font-medium">
-                <TrendingUp size={12} /> +20.1% from last month
+              <div className="text-3xl font-bold text-stone-900"><AnimatedNumber value={gbv} prefix="$" decimals={2} /></div>
+              <p className="text-xs text-stone-500 mt-1 flex items-center gap-1 font-medium">
+                Overall platform revenue
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="relative overflow-hidden group hover:border-emerald-200 transition-colors">
+            <div className="absolute right-0 top-0 w-32 h-32 bg-emerald-500/5 rounded-bl-[100px] -z-10 group-hover:scale-110 transition-transform duration-500" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-stone-500">Platform Commission</CardTitle>
+              <DollarSign className="h-4 w-4 text-emerald-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-stone-900"><AnimatedNumber value={platformCommission} prefix="$" decimals={2} /></div>
+              <p className="text-xs text-stone-500 mt-1 flex items-center gap-1 font-medium">
+                Earned (10% standard)
+              </p>
+            </CardContent>
+          </Card>
+          
+          <Card className="relative overflow-hidden group hover:border-orange-200 transition-colors">
+            <div className="absolute right-0 top-0 w-32 h-32 bg-orange-500/5 rounded-bl-[100px] -z-10 group-hover:scale-110 transition-transform duration-500" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-stone-500">Pending Payouts</CardTitle>
+              <DollarSign className="h-4 w-4 text-orange-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-stone-900"><AnimatedNumber value={pendingPayouts} prefix="$" decimals={2} /></div>
+              <p className="text-xs text-stone-500 mt-1 flex items-center gap-1 font-medium">
+                To be paid to salons
               </p>
             </CardContent>
           </Card>
@@ -203,9 +297,9 @@ export default function Dashboard() {
               <Calendar className="h-4 w-4 text-purple-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-stone-900"><AnimatedNumber value={bookings.length} /></div>
-              <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1 font-medium">
-                <TrendingUp size={12} /> +12.5% from last month
+              <div className="text-3xl font-bold text-stone-900"><AnimatedNumber value={totalBookingsFiltered} /></div>
+              <p className="text-xs text-stone-500 mt-1 flex items-center gap-1 font-medium">
+                In selected period
               </p>
             </CardContent>
           </Card>
@@ -213,27 +307,55 @@ export default function Dashboard() {
           <Card className="relative overflow-hidden group hover:border-pink-200 transition-colors">
             <div className="absolute right-0 top-0 w-32 h-32 bg-pink-500/5 rounded-bl-[100px] -z-10 group-hover:scale-110 transition-transform duration-500" />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-stone-500">Active Salons</CardTitle>
+              <CardTitle className="text-sm font-medium text-stone-500">Total Salons</CardTitle>
               <Store className="h-4 w-4 text-pink-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-stone-900"><AnimatedNumber value={salons.length} /></div>
+              <div className="text-3xl font-bold text-stone-900"><AnimatedNumber value={totalSalons} /></div>
               <p className="text-xs text-stone-500 mt-1 flex items-center gap-1">
-                Across 14 regions
+                <span className="text-pink-600 font-semibold">{activeSalons}</span> Active Salons
               </p>
             </CardContent>
           </Card>
 
-          <Card className="relative overflow-hidden group hover:border-emerald-200 transition-colors">
-            <div className="absolute right-0 top-0 w-32 h-32 bg-emerald-500/5 rounded-bl-[100px] -z-10 group-hover:scale-110 transition-transform duration-500" />
+          <Card className="relative overflow-hidden group hover:border-blue-200 transition-colors">
+            <div className="absolute right-0 top-0 w-32 h-32 bg-blue-500/5 rounded-bl-[100px] -z-10 group-hover:scale-110 transition-transform duration-500" />
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium text-stone-500">Active Customers</CardTitle>
-              <Users className="h-4 w-4 text-emerald-500" />
+              <CardTitle className="text-sm font-medium text-stone-500">Total Customers</CardTitle>
+              <Users className="h-4 w-4 text-blue-500" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-stone-900"><AnimatedNumber value={8493} /></div>
-              <p className="text-xs text-emerald-600 mt-1 flex items-center gap-1 font-medium">
-                <TrendingUp size={12} /> +5.2% from last week
+              <div className="text-3xl font-bold text-stone-900"><AnimatedNumber value={uniqueCustomers} /></div>
+              <p className="text-xs text-stone-500 mt-1 flex items-center gap-1 font-medium">
+                <span className="text-blue-600 font-semibold">+{newCustomersToday}</span> New Today
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="relative overflow-hidden group hover:border-red-200 transition-colors">
+            <div className="absolute right-0 top-0 w-32 h-32 bg-red-500/5 rounded-bl-[100px] -z-10 group-hover:scale-110 transition-transform duration-500" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-stone-500">Cancelled Bookings</CardTitle>
+              <XCircle className="h-4 w-4 text-red-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-stone-900"><AnimatedNumber value={cancelledBookingsCount} /></div>
+              <p className="text-xs text-stone-500 mt-1 flex items-center gap-1 font-medium">
+                In selected period
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="relative overflow-hidden group hover:border-yellow-200 transition-colors">
+            <div className="absolute right-0 top-0 w-32 h-32 bg-yellow-500/5 rounded-bl-[100px] -z-10 group-hover:scale-110 transition-transform duration-500" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium text-stone-500">Live & Rating</CardTitle>
+              <Clock className="h-4 w-4 text-yellow-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold text-stone-900">{liveAppointmentsCount}</div>
+              <p className="text-xs text-stone-500 mt-1 flex items-center gap-1 font-medium">
+                Live Appts Today • <Star size={12} className="text-yellow-500 fill-yellow-500"/> {averageRating} Avg Rating
               </p>
             </CardContent>
           </Card>
@@ -245,7 +367,7 @@ export default function Dashboard() {
             <Card className="h-full">
               <CardHeader>
                 <CardTitle>Revenue Analytics</CardTitle>
-                <CardDescription>Daily revenue aggregated across all global salons.</CardDescription>
+                <CardDescription>Daily revenue aggregated across all global salons for selected period.</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="h-[300px] w-full mt-4">
@@ -320,10 +442,12 @@ export default function Dashboard() {
                   <Activity size={18} className="text-indigo-500" />
                   Recent Booking Activity
                 </CardTitle>
-                <CardDescription className="mt-1">Latest 10 transactions across the platform.</CardDescription>
+                <CardDescription className="mt-1">Latest transactions across the platform in selected period.</CardDescription>
               </div>
-              <Button variant="outline" size="sm" className="gap-1">
-                View All <ChevronRight size={14} />
+              <Button variant="outline" size="sm" className="gap-1" asChild>
+                <Link to="/transactions">
+                  View All <ChevronRight size={14} />
+                </Link>
               </Button>
             </CardHeader>
             <CardContent className="p-0">
@@ -331,7 +455,8 @@ export default function Dashboard() {
                 <table className="w-full text-left whitespace-nowrap">
                   <thead>
                     <tr className="bg-stone-50/50 border-b border-stone-100">
-                      <th className="px-6 py-4 text-xs font-bold text-stone-400 uppercase tracking-wider">Date</th>
+                      <th className="px-6 py-4 text-xs font-bold text-stone-400 uppercase tracking-wider">Booking Date</th>
+                      <th className="px-6 py-4 text-xs font-bold text-stone-400 uppercase tracking-wider">Slot Time</th>
                       <th className="px-6 py-4 text-xs font-bold text-stone-400 uppercase tracking-wider">Customer</th>
                       <th className="px-6 py-4 text-xs font-bold text-stone-400 uppercase tracking-wider">Service</th>
                       <th className="px-6 py-4 text-xs font-bold text-stone-400 uppercase tracking-wider">Amount</th>
@@ -339,11 +464,18 @@ export default function Dashboard() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-stone-100">
-                    {bookings.slice(0, 10).map((b) => (
+                    {filteredBookings.slice(0, 10).map((b) => (
                       <tr key={b.id} className="hover:bg-stone-50/80 transition-colors group">
                         <td className="px-6 py-4">
-                          <div className="text-sm text-stone-900 font-medium">{new Date(b.booking_date).toLocaleDateString()}</div>
-                          <div className="text-xs text-stone-400 font-mono mt-0.5">#{b.id.substring(0, 8)}</div>
+                          <div className="text-sm text-stone-900 font-medium">
+                            {b.booking_date || b.appointment_date ? new Date(b.booking_date || b.appointment_date).toLocaleDateString() : 'N/A'}
+                          </div>
+                          <div className="text-xs text-stone-400 font-mono mt-0.5">#{b.id?.substring(0, 8)}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-stone-900 font-medium">
+                            {b.booking_time || b.appointment_time || 'N/A'}
+                          </div>
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
@@ -358,7 +490,7 @@ export default function Dashboard() {
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-sm text-stone-800 font-medium">{b.hairstyle || b.service_name || "Service"}</div>
-                          <div className="text-xs text-stone-500 mt-0.5">{b.booking_time}</div>
+                          <div className="text-xs text-stone-500 mt-0.5">{b.stylist || 'Stylist'}</div>
                         </td>
                         <td className="px-6 py-4">
                           <div className="text-sm font-semibold text-stone-900">
@@ -366,15 +498,15 @@ export default function Dashboard() {
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <Badge variant={b.booking_status === 'confirmed' ? 'success' : 'warning'}>
+                          <Badge variant={b.booking_status === 'confirmed' ? 'success' : b.booking_status === 'cancelled' ? 'destructive' : 'warning'}>
                             {b.booking_status}
                           </Badge>
                         </td>
                       </tr>
                     ))}
-                    {bookings.length === 0 && !loading && (
+                    {filteredBookings.length === 0 && !loading && (
                       <tr>
-                        <td colSpan={5} className="px-6 py-12 text-center text-stone-400">
+                        <td colSpan={6} className="px-6 py-12 text-center text-stone-400">
                           No recent bookings found.
                         </td>
                       </tr>

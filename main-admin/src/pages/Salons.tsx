@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import { API_BASE_URL } from '../services/apiBase';
-import { Plus, Edit2, Key, MapPin, Phone, User, Store, X, Trash2, Eye, EyeOff } from 'lucide-react';
+import { Plus, Edit2, Key, MapPin, Phone, User, Store, X, Trash2, Eye, EyeOff, RefreshCcw } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -10,6 +10,7 @@ import { Input } from '../components/ui/input';
 export default function Salons() {
   const [salons, setSalons] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
 
   // Modals state
   const [showSalonModal, setShowSalonModal] = useState(false);
@@ -37,6 +38,7 @@ export default function Salons() {
   }, []);
 
   const fetchSalons = async () => {
+    setRefreshing(true);
     try {
       const res = await fetch(`${API_BASE_URL}/salons`);
       const data = await res.json();
@@ -47,6 +49,7 @@ export default function Salons() {
       console.error(err);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   };
 
@@ -210,7 +213,16 @@ export default function Salons() {
           className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
         >
           <div>
-            <h1 className="text-3xl font-bold tracking-tight text-stone-900 mb-1">Manage Salons</h1>
+            <h1 className="text-3xl font-bold tracking-tight text-stone-900 mb-1 flex items-center gap-3">
+              Manage Salons
+              <button 
+                onClick={fetchSalons}
+                className={`p-1.5 rounded-full hover:bg-stone-100 transition-all ${refreshing ? 'animate-spin text-indigo-500' : 'text-stone-400'}`}
+                title="Refresh Data"
+              >
+                <RefreshCcw size={18} />
+              </button>
+            </h1>
             <p className="text-stone-500">Add, edit, or configure administrators for your global network.</p>
           </div>
           <Button onClick={openAddSalon} className="gap-2 shrink-0 bg-indigo-600 hover:bg-indigo-700">

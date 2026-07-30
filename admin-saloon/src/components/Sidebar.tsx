@@ -7,7 +7,7 @@ const navGroups = [
     items: [
       { to: '/',         label: 'Dashboard',    icon: '🏠', end: true },
       { to: '/bookings', label: 'Appointments',  icon: '📅' },
-      { to: '/customers',label: 'Customers',     icon: '👥' },
+      { to: '/customers',label: 'Feedback & Queries', icon: '💬' },
       { to: '/reviews',  label: 'Reviews',       icon: '⭐' },
     ],
   },

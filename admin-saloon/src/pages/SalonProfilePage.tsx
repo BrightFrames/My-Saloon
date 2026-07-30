@@ -3,10 +3,30 @@ import Layout from "../components/Layout";
 import { api } from "../services/api";
 import "./pages.css";
 import CircularProgress from '@mui/material/CircularProgress';
+import { motion, type Variants } from 'framer-motion';
+import {
+  Award,
+  MapPin,
+  Clock,
+  RefreshCw,
+  Edit2,
+  ExternalLink,
+  Building2
+} from 'lucide-react';
 
 type Props = {
   user: any;
   onLogout: () => void;
+};
+
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.05 } }
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.3 } }
 };
 
 export default function SalonProfilePage({ user, onLogout }: Props) {
@@ -17,67 +37,6 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
 
-  // Change Password state
-  const [pwdForm, setPwdForm] = useState({
-    oldPassword: "",
-    newPassword: "",
-    confirmPassword: "",
-  });
-  const [showOldPwd, setShowOldPwd] = useState(false);
-  const [showNewPwd, setShowNewPwd] = useState(false);
-  const [showConfirmPwd, setShowConfirmPwd] = useState(false);
-  const [pwdErrors, setPwdErrors] = useState<{ old?: string; new?: string; confirm?: string; general?: string }>({});
-  const [pwdSuccess, setPwdSuccess] = useState<string | null>(null);
-  const [isChangingPassword, setIsChangingPassword] = useState(false);
-
-  const handlePasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setPwdErrors({});
-    setPwdSuccess(null);
-
-    const errors: typeof pwdErrors = {};
-    if (!pwdForm.oldPassword) errors.old = "Old Password is required";
-    if (!pwdForm.newPassword) {
-      errors.new = "New Password is required";
-    } else if (pwdForm.newPassword.length < 8) {
-      errors.new = "Password must be at least 8 characters long";
-    } else if (pwdForm.newPassword === pwdForm.oldPassword) {
-      errors.new = "New password must be different from old password";
-    }
-
-    if (!pwdForm.confirmPassword) {
-      errors.confirm = "Confirm Password is required";
-    } else if (pwdForm.confirmPassword !== pwdForm.newPassword) {
-      errors.confirm = "Passwords do not match";
-    }
-
-    if (Object.keys(errors).length > 0) {
-      setPwdErrors(errors);
-      return;
-    }
-
-    setIsChangingPassword(true);
-    try {
-      const res = await api.changePassword({
-        oldPassword: pwdForm.oldPassword,
-        newPassword: pwdForm.newPassword,
-      });
-
-      if (res.success) {
-        setPwdSuccess("Password updated successfully! Logging out...");
-        setPwdForm({ oldPassword: "", newPassword: "", confirmPassword: "" });
-        setTimeout(() => {
-          onLogout();
-        }, 2000);
-      } else {
-        setPwdErrors({ general: res.message || "Failed to update password" });
-      }
-    } catch (err: any) {
-      setPwdErrors({ general: err.message || "Something went wrong while changing password" });
-    } finally {
-      setIsChangingPassword(false);
-    }
-  };
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
   const [videoUploadProgress, setVideoUploadProgress] = useState(0);
   const [videoUploadError, setVideoUploadError] = useState<string | null>(null);
@@ -243,9 +202,6 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
     setForm((prev) => ({ ...prev, video: "" }));
     setVideoUploadProgress(0);
     setVideoUploadError(null);
-    try {
-      localStorage.removeItem("salon_local_video");
-    } catch (e) {}
   };
 
   const handleGalleryUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -254,7 +210,7 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
       setIsUploadingImage(true);
       const res = await api.uploadFile(e.target.files[0]);
       if (res.success && res.data.url) {
-        setForm({ ...form, gallery: [...form.gallery, res.data.url] });
+        setForm((prev) => ({ ...prev, gallery: [...prev.gallery, res.data.url] }));
       }
     } catch (err: any) {
       alert("Failed to upload gallery image: " + err.message);
@@ -264,9 +220,11 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
   };
 
   const removeGalleryImage = (index: number) => {
-    const newGallery = [...form.gallery];
-    newGallery.splice(index, 1);
-    setForm({ ...form, gallery: newGallery });
+    setForm((prev) => {
+      const newGallery = [...prev.gallery];
+      newGallery.splice(index, 1);
+      return { ...prev, gallery: newGallery };
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -314,310 +272,215 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
     }
   };
 
-
-
   return (
     <Layout user={user?.email || "Admin"} onLogout={onLogout}>
-      <div className="page-root container">
-        <div className="page-header">
+      <motion.div
+        className="page-root"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        <motion.div className="page-header" variants={itemVariants}>
           <div>
-            <h1>Salon Profile</h1>
-            <div className="subtitle">
-              Manage your salon's public information
-            </div>
+            <h1 className="page-title">
+              <Award size={26} style={{ color: "#F59E0B" }} />
+              Salon Profile
+            </h1>
+            <p className="page-sub">Manage public business details, location, hours, & media.</p>
           </div>
-          {!isEditing && (
-            <div style={{ display: "flex", gap: "10px" }}>
+          <div className="header-actions">
+            <button className="btn-outline" onClick={fetchProfile}>
+              <RefreshCw size={15} /> Refresh
+            </button>
+            {!isEditing && (
               <button className="btn-add" onClick={() => setIsEditing(true)}>
-                Edit Profile
+                <Edit2 size={16} /> Edit Profile
               </button>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        </motion.div>
 
         {loading ? (
-          <div className="empty-state" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-            <CircularProgress sx={{ color: '#CA9A86' }} size={40} />
-            <p style={{ color: '#7f6f69', fontWeight: 500 }}>Loading profile...</p>
+          <div className="empty-state" style={{ padding: 48 }}>
+            <CircularProgress sx={{ color: '#F59E0B' }} size={36} />
+            <p style={{ marginTop: 12, color: 'var(--muted)', fontWeight: 600 }}>Loading profile...</p>
           </div>
         ) : !profile ? (
-          <div className="empty-state">
-            <div className="empty-icon">🏪</div>
-            <h3>No Profile Found</h3>
-            <p>Could not load salon profile data.</p>
+          <div className="empty-state" style={{ padding: 48 }}>
+            <Building2 size={48} style={{ opacity: 0.3, marginBottom: 12 }} />
+            <h3 style={{ color: 'var(--text-h)', margin: '0 0 4px 0' }}>No profile data found</h3>
+            <p style={{ color: 'var(--muted)' }}>Could not load salon profile details.</p>
           </div>
         ) : (
-          <div className="profile-card">
+          <motion.div className="profile-card" variants={itemVariants}>
             {isEditing ? (
               <form onSubmit={handleSubmit}>
-                <div className="form-group">
-                  <label>Salon Name</label>
-                  <input
-                    value={form.name}
-                    onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>City</label>
-                  <input
-                    value={form.city}
-                    onChange={(e) => setForm({ ...form, city: e.target.value })}
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Starting Price (₹)</label>
-                  <input
-                    type="number"
-                    value={form.starting_price}
-                    onChange={(e) =>
-                      setForm({ ...form, starting_price: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Home Service Charge Starting From (₹)</label>
-                  <input
-                    type="number"
-                    value={form.home_service_charge}
-                    onChange={(e) =>
-                      setForm({ ...form, home_service_charge: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Salon Opening Time</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. 09:00 AM"
-                    value={form.opening_time}
-                    onChange={(e) =>
-                      setForm({ ...form, opening_time: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Salon Closing Time</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. 08:00 PM"
-                    value={form.closing_time}
-                    onChange={(e) =>
-                      setForm({ ...form, closing_time: e.target.value })
-                    }
-                  />
-                </div>
-                <div className="form-group">
-                  <label>Slot Duration / Interval (Minutes)</label>
-                  <select
-                    value={form.slot_interval}
-                    onChange={(e) =>
-                      setForm({ ...form, slot_interval: e.target.value })
-                    }
-                    style={{
-                      width: "100%",
-                      padding: "10px 14px",
-                      borderRadius: "8px",
-                      border: "1px solid #e2e8f0",
-                      outline: "none",
-                      fontSize: "14px",
-                      background: "#fff",
-                    }}
-                  >
-                    <option value="15">15 Minutes</option>
-                    <option value="20">20 Minutes</option>
-                    <option value="30">30 Minutes (Default)</option>
-                    <option value="45">45 Minutes</option>
-                    <option value="60">60 Minutes (1 Hour)</option>
-                  </select>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+                  <div className="form-group">
+                    <label>Salon Name</label>
+                    <input
+                      value={form.name}
+                      onChange={(e) => setForm({ ...form, name: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>City</label>
+                    <input
+                      value={form.city}
+                      onChange={(e) => setForm({ ...form, city: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Starting Price (₹)</label>
+                    <input
+                      type="number"
+                      value={form.starting_price}
+                      onChange={(e) =>
+                        setForm({ ...form, starting_price: e.target.value })
+                      }
+                      required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Home Service Charge Starting From (₹)</label>
+                    <input
+                      type="number"
+                      value={form.home_service_charge}
+                      onChange={(e) =>
+                        setForm({ ...form, home_service_charge: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Opening Time</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 09:00 AM"
+                      value={form.opening_time}
+                      onChange={(e) =>
+                        setForm({ ...form, opening_time: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Closing Time</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 08:00 PM"
+                      value={form.closing_time}
+                      onChange={(e) =>
+                        setForm({ ...form, closing_time: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div className="form-group" style={{ gridColumn: "1 / -1" }}>
+                    <label>Slot Interval (Minutes)</label>
+                    <select
+                      value={form.slot_interval}
+                      onChange={(e) =>
+                        setForm({ ...form, slot_interval: e.target.value })
+                      }
+                    >
+                      <option value="15">15 Minutes</option>
+                      <option value="20">20 Minutes</option>
+                      <option value="30">30 Minutes (Default)</option>
+                      <option value="45">45 Minutes</option>
+                      <option value="60">60 Minutes (1 Hour)</option>
+                    </select>
+                  </div>
                 </div>
 
-                {/* Salon Location Section */}
-                <div style={{ background: "#fdfbf9", padding: "16px", borderRadius: "12px", border: "1px solid #e8dcc9", marginBottom: "20px" }}>
-                  <h4 style={{ margin: "0 0 12px 0", color: "#6B554D", fontSize: "15px" }}>📍 Salon Location & Coordinates</h4>
-                  
-                  <div className="form-group" style={{ marginBottom: "16px" }}>
-                    <label>Google Maps Link / Location URL</label>
+                {/* Location Section */}
+                <div style={{ background: "rgba(124, 92, 252, 0.05)", padding: 18, borderRadius: 16, border: "1px solid var(--border)", margin: "20px 0" }}>
+                  <h4 style={{ margin: "0 0 12px 0", color: "var(--text-h)", fontSize: 15, display: "flex", alignItems: "center", gap: 6 }}>
+                    <MapPin size={16} style={{ color: "#7C5CFC" }} /> Location & Coordinates
+                  </h4>
+                  <div className="form-group" style={{ marginBottom: 12 }}>
+                    <label>Google Maps Link</label>
                     <input
                       type="url"
                       placeholder="https://maps.google.com/?q=28.6139,77.2090"
                       value={form.google_maps_link}
                       onChange={(e) => handleGoogleMapsUrlChange(e.target.value)}
                     />
-                    <small style={{ color: "#718096", fontSize: "12px", marginTop: "4px", display: "block" }}>
-                      Paste your salon's Google Maps link here (coordinates will auto-extract if present).
-                    </small>
                   </div>
-
-                  <div className="form-group" style={{ marginBottom: "0" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                      <label style={{ margin: 0 }}>Location Coordinates (Latitude & Longitude)</label>
-                      <button
-                        type="button"
-                        onClick={handleAutoDetectLocation}
-                        disabled={detectingLocation}
-                        style={{
-                          background: "#6B554D",
-                          color: "#fff",
-                          border: "none",
-                          padding: "6px 12px",
-                          borderRadius: "6px",
-                          fontSize: "12px",
-                          fontWeight: 600,
-                          cursor: "pointer",
-                          display: "flex",
-                          alignItems: "center",
-                          gap: "6px",
-                        }}
-                      >
-                        📍 {detectingLocation ? "Detecting Location..." : "Auto Detect My Location"}
-                      </button>
-                    </div>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                      <div>
-                        <input
-                          type="text"
-                          placeholder="Latitude e.g. 28.6139"
-                          value={form.latitude}
-                          onChange={(e) => setForm({ ...form, latitude: e.target.value })}
-                        />
-                      </div>
-                      <div>
-                        <input
-                          type="text"
-                          placeholder="Longitude e.g. 77.2090"
-                          value={form.longitude}
-                          onChange={(e) => setForm({ ...form, longitude: e.target.value })}
-                        />
-                      </div>
-                    </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+                    <label style={{ margin: 0, fontSize: 13, color: "var(--muted)", fontWeight: 600 }}>Coordinates (Lat, Lon)</label>
+                    <button
+                      type="button"
+                      className="btn-outline"
+                      onClick={handleAutoDetectLocation}
+                      disabled={detectingLocation}
+                      style={{ fontSize: 12 }}
+                    >
+                      <MapPin size={13} /> {detectingLocation ? "Detecting..." : "Auto Detect Location"}
+                    </button>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                    <input
+                      type="text"
+                      placeholder="Latitude e.g. 28.6139"
+                      value={form.latitude}
+                      onChange={(e) => setForm({ ...form, latitude: e.target.value })}
+                    />
+                    <input
+                      type="text"
+                      placeholder="Longitude e.g. 77.2090"
+                      value={form.longitude}
+                      onChange={(e) => setForm({ ...form, longitude: e.target.value })}
+                    />
                   </div>
                 </div>
+
+                {/* Cover Image Upload */}
                 <div className="form-group">
-                  <label>Background Image</label>
+                  <label>Background Cover Image</label>
                   {form.image && (
                     <div style={{ marginBottom: 10, display: "flex", alignItems: "center", gap: 12 }}>
                       <img
                         src={form.image}
-                        alt="Preview"
-                        style={{ maxWidth: "200px", maxHeight: "120px", borderRadius: "8px", objectFit: "cover" }}
+                        alt="Cover"
+                        style={{ maxWidth: 200, maxHeight: 100, borderRadius: 12, objectFit: "cover" }}
                       />
-                      <button
-                        type="button"
-                        onClick={removeImage}
-                        style={{ fontSize: 12, color: "#e74c3c", background: "none", border: "none", cursor: "pointer", padding: 0, fontWeight: 600 }}
-                      >
-                        ❌ Remove Image
+                      <button type="button" onClick={removeImage} className="btn-sm danger">
+                        Remove
                       </button>
                     </div>
                   )}
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleImageUpload}
-                    disabled={isUploadingImage}
-                  />
-                  {isUploadingImage && <p style={{ fontSize: 12, color: "#CA9A86", marginTop: 4 }}>Uploading image...</p>}
+                  <input type="file" accept="image/*" onChange={handleImageUpload} disabled={isUploadingImage} />
                 </div>
+
+                {/* Video Upload */}
                 <div className="form-group">
-                  <label>Salon Video (MP4/WebM, max 200MB)</label>
-                  <input
-                    type="file"
-                    accept="video/*"
-                    onChange={handleVideoUpload}
-                    disabled={isUploadingVideo}
-                  />
-                  {isUploadingVideo && (
-                    <div style={{ marginTop: "8px" }}>
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          fontSize: "12px",
-                          color: "#6B554D",
-                          marginBottom: "4px",
-                          fontWeight: 600,
-                        }}
-                      >
-                        <span>Uploading video...</span>
-                        <span>{videoUploadProgress}%</span>
-                      </div>
-                      <div
-                        style={{
-                          width: "100%",
-                          height: "8px",
-                          backgroundColor: "#f0e6e2",
-                          borderRadius: "4px",
-                          overflow: "hidden",
-                        }}
-                      >
-                        <div
-                          style={{
-                            width: `${videoUploadProgress}%`,
-                            height: "100%",
-                            backgroundColor: "#CA9A86",
-                            transition: "width 0.2s ease-in-out",
-                            borderRadius: "4px",
-                          }}
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {videoUploadError && (
-                    <p style={{ fontSize: "12px", color: "#d9534f", marginTop: "4px" }}>
-                      ❌ {videoUploadError}
-                    </p>
-                  )}
-
+                  <label>Salon Video (MP4, max 200MB)</label>
                   {form.video && (
-                    <div style={{ marginTop: "10px" }}>
-                      <video
-                        src={form.video}
-                        controls
-                        style={{
-                          maxWidth: "240px",
-                          maxHeight: "150px",
-                          borderRadius: "8px",
-                          display: "block",
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={removeVideo}
-                        style={{
-                          marginTop: "6px",
-                          background: "#fee2e2",
-                          color: "#dc2626",
-                          border: "1px solid #fca5a5",
-                          padding: "4px 10px",
-                          borderRadius: "6px",
-                          fontSize: "12px",
-                          cursor: "pointer",
-                          fontWeight: 500,
-                        }}
-                      >
+                    <div style={{ marginBottom: 10, display: "flex", alignItems: "center", gap: 12 }}>
+                      <video src={form.video} controls style={{ maxWidth: 240, maxHeight: 120, borderRadius: 12 }} />
+                      <button type="button" onClick={removeVideo} className="btn-sm danger">
                         Remove Video
                       </button>
                     </div>
                   )}
+                  <input type="file" accept="video/*" onChange={handleVideoUpload} disabled={isUploadingVideo} />
+                  {isUploadingVideo && <p style={{ fontSize: 12, color: "#7C5CFC", marginTop: 4 }}>Uploading video ({videoUploadProgress}%)...</p>}
+                  {videoUploadError && <p style={{ fontSize: 12, color: "#EF4444", marginTop: 4 }}>{videoUploadError}</p>}
                 </div>
-                <div className="form-group" style={{ gridColumn: "1 / -1" }}>
+
+                {/* Gallery Images Upload */}
+                <div className="form-group">
                   <label>Gallery Images</label>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={handleGalleryUpload}
-                    disabled={isUploadingImage}
-                  />
+                  <input type="file" accept="image/*" onChange={handleGalleryUpload} disabled={isUploadingImage} />
                   {form.gallery && form.gallery.length > 0 && (
-                    <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginTop: "10px" }}>
+                    <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 10 }}>
                       {form.gallery.map((url, idx) => (
                         <div key={idx} style={{ position: "relative" }}>
-                          <img src={url} alt={`Gallery ${idx}`} style={{ width: "100px", height: "100px", objectFit: "cover", borderRadius: "8px" }} />
+                          <img src={url} alt={`Gallery ${idx}`} style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 10 }} />
                           <button
                             type="button"
                             onClick={() => removeGalleryImage(idx)}
-                            style={{ position: "absolute", top: -5, right: -5, background: "red", color: "white", border: "none", borderRadius: "50%", width: 20, height: 20, cursor: "pointer" }}
+                            style={{ position: "absolute", top: -6, right: -6, background: "#EF4444", color: "white", border: "none", borderRadius: "50%", width: 22, height: 22, cursor: "pointer", fontSize: 12 }}
                           >
                             ×
                           </button>
@@ -626,24 +489,19 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
                     </div>
                   )}
                 </div>
-                <div className="form-group" style={{ gridColumn: "1 / -1" }}>
+
+                <div className="form-group">
                   <label>About Salon</label>
                   <textarea
                     value={form.about}
                     onChange={(e) => setForm({ ...form, about: e.target.value })}
-                    placeholder="Tell customers about your salon..."
+                    placeholder="Describe your salon, specialty services, ambiance..."
                     rows={4}
-                    style={{ width: "100%", padding: "10px", borderRadius: "8px", border: "1px solid #e5e5e5" }}
                   />
                 </div>
-                <div className="modal-actions" style={{ marginTop: "32px", gridColumn: "1 / -1" }}>
-                  <button
-                    type="button"
-                    className="btn-cancel"
-                    onClick={() => setIsEditing(false)}
-                  >
-                    Cancel
-                  </button>
+
+                <div className="modal-actions" style={{ marginTop: 24 }}>
+                  <button type="button" className="btn-cancel" onClick={() => setIsEditing(false)}>Cancel</button>
                   <button type="submit" className="btn-add" disabled={isSavingProfile}>
                     {isSavingProfile ? "Saving..." : "Save Profile"}
                   </button>
@@ -661,40 +519,36 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
                 </div>
                 <div className="profile-field">
                   <div className="field-label">Rating</div>
-                  <div className="field-value">⭐ {profile.rating ? Number(profile.rating).toFixed(1) : "5.0"}</div>
+                  <div className="field-value" style={{ color: "#EAB308" }}>⭐ {profile.rating ? Number(profile.rating).toFixed(1) : "5.0"}</div>
                 </div>
                 <div className="profile-field">
                   <div className="field-label">Starting Price</div>
-                  <div className="field-value">₹{profile.starting_price}</div>
+                  <div className="field-value" style={{ color: "#10B981" }}>₹{profile.starting_price}</div>
                 </div>
                 <div className="profile-field">
-                  <div className="field-label">Home Service Charge Starting From</div>
+                  <div className="field-label">Home Service Charge</div>
                   <div className="field-value">₹{profile.home_service_charge || 0}</div>
                 </div>
                 <div className="profile-field">
-                  <div className="field-label">Salon Opening Time</div>
-                  <div className="field-value">⏰ {profile.working_hours?.open || form.opening_time || "09:00 AM"}</div>
-                </div>
-                <div className="profile-field">
-                  <div className="field-label">Salon Closing Time</div>
-                  <div className="field-value">🌙 {profile.working_hours?.close || form.closing_time || "08:00 PM"}</div>
-                </div>
-                <div className="profile-field">
-                  <div className="field-label">Slot Duration / Interval</div>
-                  <div className="field-value">⏱️ {profile.slot_interval || profile.working_hours?.slot_interval || form.slot_interval || 30} minutes</div>
-                </div>
-                <div className="profile-field">
-                  <div className="field-label">Location Coordinates</div>
+                  <div className="field-label">Working Hours</div>
                   <div className="field-value">
-                    📍 {profile.latitude && profile.longitude ? `${profile.latitude}, ${profile.longitude}` : "Not set"}
+                    <Clock size={14} style={{ display: "inline", marginRight: 6 }} />
+                    {profile.working_hours?.open || form.opening_time || "09:00 AM"} – {profile.working_hours?.close || form.closing_time || "08:00 PM"} ({profile.slot_interval || 30} min slots)
+                  </div>
+                </div>
+                <div className="profile-field">
+                  <div className="field-label">Coordinates</div>
+                  <div className="field-value">
+                    <MapPin size={14} style={{ display: "inline", marginRight: 6 }} />
+                    {profile.latitude && profile.longitude ? `${profile.latitude}, ${profile.longitude}` : "Not set"}
                   </div>
                 </div>
                 <div className="profile-field">
                   <div className="field-label">Google Maps Link</div>
                   <div className="field-value">
                     {profile.google_maps_link ? (
-                      <a href={profile.google_maps_link} target="_blank" rel="noreferrer" style={{ color: "#6B554D", fontWeight: 600, textDecoration: "underline" }}>
-                        🔗 Open Google Maps Link
+                      <a href={profile.google_maps_link} target="_blank" rel="noreferrer" style={{ color: "#7C5CFC", fontWeight: 600, display: "inline-flex", alignItems: "center", gap: 4 }}>
+                        View on Google Maps <ExternalLink size={13} />
                       </a>
                     ) : (
                       "Not set"
@@ -702,174 +556,29 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
                   </div>
                 </div>
 
-                {/* About Salon Block */}
-                <div className="profile-field block-field">
-                  <div className="field-label">About Salon</div>
-                  <div className="field-value" style={{ whiteSpace: "pre-line" }}>
-                    {profile.about || "No description set yet."}
+                <div style={{ marginTop: 20 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, color: "var(--muted)", marginBottom: 8 }}>About Salon</div>
+                  <div style={{ fontSize: 14, color: "var(--text-h)", background: "var(--bg)", padding: 16, borderRadius: 14, border: "1px solid var(--border)", lineHeight: 1.6 }}>
+                    {profile.about || "No description written yet."}
                   </div>
                 </div>
 
-                {/* Gallery Block */}
-                <div className="profile-field block-field">
-                  <div className="field-label">Gallery ({profile.gallery?.length || 0})</div>
-                  <div className="field-value" style={{ background: "transparent", border: "none", padding: 0 }}>
-                    {profile.gallery && profile.gallery.length > 0 ? (
-                      <div style={{ display: "flex", gap: "12px", flexWrap: "wrap", marginTop: "4px" }}>
-                        {profile.gallery.map((url: string, idx: number) => (
-                          <img key={idx} src={url} alt={`Gallery ${idx}`} style={{ width: "110px", height: "100px", objectFit: "cover", borderRadius: "10px", border: "1px solid #e8dcc9" }} />
-                        ))}
-                      </div>
-                    ) : (
-                      <span style={{ color: "#888", fontStyle: "italic" }}>No gallery images uploaded</span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Background Image & Video Block */}
                 {profile.image && (
-                  <div className="profile-field block-field">
-                    <div className="field-label">Salon Background Image</div>
-                    <div className="field-value" style={{ background: "transparent", border: "none", padding: 0 }}>
-                      <img
-                        src={profile.image}
-                        alt="Salon"
-                        style={{ maxWidth: "100%", maxHeight: "240px", borderRadius: "12px", objectFit: "cover" }}
-                      />
-                    </div>
-                  </div>
-                )}
-                {profile.video && (
-                  <div className="profile-field block-field">
-                    <div className="field-label">Salon Video</div>
-                    <div className="field-value" style={{ background: "transparent", border: "none", padding: 0 }}>
-                      <video
-                        src={profile.video}
-                        controls
-                        style={{ maxWidth: "100%", maxHeight: "300px", borderRadius: "12px" }}
-                      />
-                    </div>
+                  <div style={{ marginTop: 20 }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: "var(--muted)", marginBottom: 8 }}>Cover Background Image</div>
+                    <img
+                      src={profile.image}
+                      alt="Salon Cover"
+                      style={{ maxWidth: "100%", maxHeight: 220, borderRadius: 16, objectFit: "cover", border: "1px solid var(--border)" }}
+                    />
                   </div>
                 )}
               </div>
             )}
-          </div>
+          </motion.div>
         )}
 
-        {/* ─── Change Password Section ─── */}
-        <div className="profile-card" style={{ marginTop: "32px" }}>
-          <h2 style={{ fontSize: "18px", fontWeight: "600", marginBottom: "20px", color: "var(--heading)" }}>
-            Change Password
-          </h2>
-
-          {pwdSuccess && (
-            <div style={{ padding: "12px 16px", borderRadius: "8px", background: "#ecfdf5", color: "#047857", marginBottom: "16px", fontSize: "14px", border: "1px solid #a7f3d0" }}>
-              {pwdSuccess}
-            </div>
-          )}
-
-          {pwdErrors.general && (
-            <div style={{ padding: "12px 16px", borderRadius: "8px", background: "#fef2f2", color: "#b91c1c", marginBottom: "16px", fontSize: "14px", border: "1px solid #fecaca" }}>
-              {pwdErrors.general}
-            </div>
-          )}
-
-          <form onSubmit={handlePasswordSubmit} style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-            <div className="form-group">
-              <label style={{ display: "block", fontSize: "13px", fontWeight: "500", marginBottom: "6px", color: "var(--muted)" }}>
-                Old Password *
-              </label>
-              <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                <input
-                  type={showOldPwd ? "text" : "password"}
-                  value={pwdForm.oldPassword}
-                  onChange={(e) => setPwdForm({ ...pwdForm, oldPassword: e.target.value })}
-                  placeholder="Enter old password"
-                  style={{ width: "100%", paddingRight: "40px", padding: "10px 40px 10px 12px", borderRadius: "8px", border: "1px solid var(--border)", background: "var(--panel-bg)", color: "var(--text)" }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowOldPwd(!showOldPwd)}
-                  style={{ position: "absolute", right: "12px", background: "none", border: "none", cursor: "pointer", color: "var(--muted)", display: "flex", alignItems: "center" }}
-                >
-                  {showOldPwd ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>
-                  ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-                  )}
-                </button>
-              </div>
-              {pwdErrors.old && <span style={{ color: "#ef4444", fontSize: "12px", marginTop: "4px", display: "block" }}>{pwdErrors.old}</span>}
-            </div>
-
-            <div className="form-group">
-              <label style={{ display: "block", fontSize: "13px", fontWeight: "500", marginBottom: "6px", color: "var(--muted)" }}>
-                New Password *
-              </label>
-              <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                <input
-                  type={showNewPwd ? "text" : "password"}
-                  value={pwdForm.newPassword}
-                  onChange={(e) => setPwdForm({ ...pwdForm, newPassword: e.target.value })}
-                  placeholder="Min 8 characters"
-                  style={{ width: "100%", paddingRight: "40px", padding: "10px 40px 10px 12px", borderRadius: "8px", border: "1px solid var(--border)", background: "var(--panel-bg)", color: "var(--text)" }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowNewPwd(!showNewPwd)}
-                  style={{ position: "absolute", right: "12px", background: "none", border: "none", cursor: "pointer", color: "var(--muted)", display: "flex", alignItems: "center" }}
-                >
-                  {showNewPwd ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>
-                  ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-                  )}
-                </button>
-              </div>
-              {pwdErrors.new && <span style={{ color: "#ef4444", fontSize: "12px", marginTop: "4px", display: "block" }}>{pwdErrors.new}</span>}
-            </div>
-
-            <div className="form-group">
-              <label style={{ display: "block", fontSize: "13px", fontWeight: "500", marginBottom: "6px", color: "var(--muted)" }}>
-                Confirm New Password *
-              </label>
-              <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-                <input
-                  type={showConfirmPwd ? "text" : "password"}
-                  value={pwdForm.confirmPassword}
-                  onChange={(e) => setPwdForm({ ...pwdForm, confirmPassword: e.target.value })}
-                  placeholder="Re-enter new password"
-                  style={{ width: "100%", paddingRight: "40px", padding: "10px 40px 10px 12px", borderRadius: "8px", border: "1px solid var(--border)", background: "var(--panel-bg)", color: "var(--text)" }}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPwd(!showConfirmPwd)}
-                  style={{ position: "absolute", right: "12px", background: "none", border: "none", cursor: "pointer", color: "var(--muted)", display: "flex", alignItems: "center" }}
-                >
-                  {showConfirmPwd ? (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>
-                  ) : (
-                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>
-                  )}
-                </button>
-              </div>
-              {pwdErrors.confirm && <span style={{ color: "#ef4444", fontSize: "12px", marginTop: "4px", display: "block" }}>{pwdErrors.confirm}</span>}
-            </div>
-
-            <div style={{ marginTop: "12px" }}>
-              <button
-                type="submit"
-                className="btn-add"
-                disabled={isChangingPassword}
-              >
-                {isChangingPassword ? "Updating Password..." : "Update Password"}
-              </button>
-            </div>
-          </form>
-        </div>
-
-
-      </div>
+      </motion.div>
     </Layout>
   );
 }

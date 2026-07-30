@@ -247,24 +247,49 @@ html.dark .error {
   border-radius: 12px;
 }
 
-.app-root {
-  display: flex;
-  min-height: 100vh;
-  width: 100%;
-  align-items: stretch;
+/* ============================================================
+   DASHBOARD LAYOUT — Independent Scrolling (Notion/Vercel style)
+   ============================================================ */
+
+/* Prevent browser-level scrolling */
+html, body {
+  height: 100%;
+  overflow: hidden;
 }
 
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
+.app-root {
+  display: flex;
+  height: 100vh;
+  width: 100%;
+  overflow: hidden;
+}
+
+/* Sidebar — fixed, independently scrollable */
 .sidebar {
   width: 272px;
   flex: 0 0 272px;
-  min-height: 100vh;
+  flex-shrink: 0;
+  height: 100vh;
   padding: 24px 18px;
   background: linear-gradient(180deg, #fffaf8 0%, #f8f2ef 100%);
   border-right: 1px solid var(--border);
-  position: sticky;
-  top: 0;
-  align-self: flex-start;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overflow-x: hidden;
   box-sizing: border-box;
+  /* Hide scrollbar everywhere */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sidebar::-webkit-scrollbar {
+  display: none;
 }
 
 .sidebar .brand {
@@ -272,8 +297,20 @@ html.dark .error {
   margin-bottom: 22px;
 }
 
+/* Nav inside sidebar scrolls independently */
 .sidebar nav {
-  display: block;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.sidebar nav::-webkit-scrollbar {
+  display: none;
 }
 
 .sidebar ul {
@@ -314,22 +351,31 @@ html.dark .error {
   background: #fcf7f6;
 }
 
+/* Main area — fills remaining width, independently scrollable */
 .main {
   flex: 1;
   display: flex;
   flex-direction: column;
+  height: 100vh;
   min-width: 0;
+  overflow: hidden;  /* children handle their own scroll */
   background: var(--bg);
 }
 
+/* Topbar — sticky at top of main, never scrolls */
 .topbar {
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 50;
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 18px 24px;
   border-bottom: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
 }
 
 .profile {
@@ -351,8 +397,33 @@ html.dark .error {
   cursor: pointer;
 }
 
+/* Content — independently scrollable, fills remaining height */
 .content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
   padding: 24px;
+  box-sizing: border-box;
+  /* Hide scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(107, 75, 58, 0.18) transparent;
+}
+
+.content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.content::-webkit-scrollbar-thumb {
+  background: rgba(107, 75, 58, 0.18);
+  border-radius: 99px;
+}
+
+.content::-webkit-scrollbar-thumb:hover {
+  background: rgba(107, 75, 58, 0.35);
 }
 
 .btn-primary {
@@ -412,17 +483,35 @@ input:focus,
 }
 
 @media (max-width: 900px) {
+  /* On mobile: restore natural page scroll */
+  html, body, #root {
+    height: auto;
+    overflow: auto;
+  }
+
   .app-root {
     flex-direction: column;
+    height: auto;
+    overflow: visible;
   }
 
   .sidebar {
     width: 100%;
-    flex-basis: auto;
-    min-height: auto;
-    position: relative;
+    height: auto;
+    flex-shrink: 0;
+    overflow-y: visible;
     border-right: none;
     border-bottom: 1px solid var(--border);
+  }
+
+  .main {
+    height: auto;
+    overflow: visible;
+  }
+
+  .content {
+    overflow: visible;
+    height: auto;
   }
 
   .topbar,

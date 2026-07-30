@@ -7,10 +7,10 @@ export const getPublicServices = asyncHandler(
     // Optionally filter by salon_id
     const salonId = req.query.salon_id as string | undefined;
 
-    let sql = "SELECT * FROM public.services";
+    let sql = "SELECT * FROM public.services WHERE (is_active = true OR is_active IS NULL)";
     const params: any[] = [];
     if (salonId) {
-      sql += " WHERE salon_id = $1";
+      sql += " AND salon_id = $1";
       params.push(salonId);
     }
     sql += " ORDER BY name ASC";

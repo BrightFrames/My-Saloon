@@ -46,7 +46,37 @@ export async function ensureSalonsSchema() {
         updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
       );
     `);
+
+    // Staff availability & break time columns
+    await client.query(`
+      ALTER TABLE public.team_members
+        ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+
+      ALTER TABLE public.services
+        ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT true;
+
+      ALTER TABLE public.salons
+        ADD COLUMN IF NOT EXISTS break_time JSONB;
+    `);
+
+    // Create staff_leaves table
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS public.staff_leaves (
+        id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+        salon_id UUID REFERENCES public.salons(id) ON DELETE CASCADE,
+        team_member_id UUID REFERENCES public.team_members(id) ON DELETE CASCADE,
+        staff_name TEXT,
+        leave_date DATE NOT NULL,
+        end_date DATE,
+        start_time TEXT,
+        end_time TEXT,
+        is_full_day BOOLEAN DEFAULT true,
+        leave_type TEXT DEFAULT 'full_day',
+        reason TEXT,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
   } finally {
     client.release();
   }
-}
+}

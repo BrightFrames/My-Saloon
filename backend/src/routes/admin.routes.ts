@@ -9,6 +9,9 @@ import {
   createTeamMember,
   updateTeamMember,
   deleteTeamMember,
+  getStaffLeaves,
+  createStaffLeave,
+  deleteStaffLeave,
   getSalonProfile,
   createSalonProfile,
   updateSalonProfile,
@@ -16,6 +19,16 @@ import {
   updateSuperAdminSalon,
   deleteSuperAdminSalon,
   changePassword,
+  getReviews,
+  replyToReview,
+  getCustomers,
+  getEarnings,
+  getReports,
+  getCoupons,
+  getMemberships,
+  getQueries,
+  replyToQuery,
+  getRevenueAnalytics,
 } from "../controllers/admin.controller";
 import {
   getAdminBookings,
@@ -24,6 +37,7 @@ import {
   deleteAdminBooking,
 } from "../controllers/bookings.controller";
 import { createRateLimit } from "../middlewares/rateLimit";
+import { requireSuperAdmin } from "../middlewares/auth";
 
 const router = Router();
 const writeLimiter = createRateLimit({
@@ -33,8 +47,9 @@ const writeLimiter = createRateLimit({
   message: "Too many write requests. Please slow down and try again.",
 });
 
-// Dashboard
+// Analytics & Dashboard
 router.get("/dashboard-stats", getDashboardStats);
+router.get("/analytics/revenue", getRevenueAnalytics);
 
 // Bookings management
 router.get("/bookings", getAdminBookings);
@@ -54,16 +69,39 @@ router.post("/team", writeLimiter, createTeamMember);
 router.put("/team/:id", writeLimiter, updateTeamMember);
 router.delete("/team/:id", writeLimiter, deleteTeamMember);
 
+// Staff Leaves
+router.get("/leaves", getStaffLeaves);
+router.post("/leaves", writeLimiter, createStaffLeave);
+router.delete("/leaves/:id", writeLimiter, deleteStaffLeave);
+
 // Salon Profile
 router.get("/salon-profile", getSalonProfile);
 router.post("/salon-profile", writeLimiter, createSalonProfile);
 router.put("/salon-profile", writeLimiter, updateSalonProfile);
 
+// Reviews & Queries
+router.get("/reviews", getReviews);
+router.post("/reviews/:id/reply", writeLimiter, replyToReview);
+router.get("/queries", getQueries);
+router.post("/queries/:id/reply", writeLimiter, replyToQuery);
+
+// Customers
+router.get("/customers", getCustomers);
+
+// Earnings
+router.get("/earnings", getEarnings);
+
+// Reports
+router.get("/reports", getReports);
+
+// Coupons & Memberships
+router.get("/coupons", getCoupons);
+router.get("/memberships", getMemberships);
+
 // Password Management
 router.post("/change-password", writeLimiter, changePassword);
 
 // SuperAdmin Salon Management
-import { requireSuperAdmin } from "../middlewares/auth";
 router.post("/salons", requireSuperAdmin, writeLimiter, createSuperAdminSalon);
 router.put("/salons/:id", requireSuperAdmin, writeLimiter, updateSuperAdminSalon);
 router.delete("/salons/:id", requireSuperAdmin, writeLimiter, deleteSuperAdminSalon);

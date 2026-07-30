@@ -66,9 +66,9 @@ export function SalonDetailsPage() {
         const body = await res.json();
         if (body && body.success) {
           const fetchedSalon = body.data;
-          // Keep services list in sync with latest admin updates.
+          // Keep services list in sync with latest admin updates (active only).
           fetchedSalon.services = Array.isArray(fetchedSalon.services)
-            ? fetchedSalon.services
+            ? fetchedSalon.services.filter((s: any) => s.is_active !== false)
             : [];
 
           if (id) {
@@ -79,7 +79,7 @@ export function SalonDetailsPage() {
               const servicesBody = await servicesRes.json();
               if (servicesBody && servicesBody.success) {
                 fetchedSalon.services = Array.isArray(servicesBody.data)
-                  ? servicesBody.data
+                  ? servicesBody.data.filter((s: any) => s.is_active !== false)
                   : [];
               }
             }

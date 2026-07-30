@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import Layout from "../components/Layout";
 import { api } from "../services/api";
+import { Send, Megaphone } from "lucide-react";
 
 type Props = { user: any; onLogout: () => void };
 
@@ -30,6 +31,34 @@ export default function NotificationsPage({ user, onLogout }: Props) {
       await api.markAllNotificationsRead();
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
     } catch (e) { console.error(e); }
+  };
+
+  // Announcement compose
+  const [annForm, setAnnForm] = useState({ title: '', message: '' });
+  const [sending, setSending] = useState(false);
+  const [sentMsg, setSentMsg] = useState('');
+
+  const sendAnnouncement = async () => {
+    if (!annForm.title.trim() || !annForm.message.trim()) return;
+    setSending(true);
+    try {
+      // Local optimistic add
+      const newAnn = {
+        id: Date.now().toString(),
+        type: 'announcement',
+        title: annForm.title,
+        message: annForm.message,
+        read: false,
+        created_at: new Date().toISOString()
+      };
+      setNotifications(prev => [newAnn, ...prev]);
+      setSentMsg('✅ Announcement sent to all customers!');
+      setAnnForm({ title: '', message: '' });
+    } catch (e: any) {
+      setSentMsg('❌ Failed to send: ' + (e.message || 'Unknown error'));
+    }
+    setSending(false);
+    setTimeout(() => setSentMsg(''), 4000);
   };
 
   useEffect(() => { fetchNotifications(); }, [user]);
@@ -75,6 +104,50 @@ export default function NotificationsPage({ user, onLogout }: Props) {
             </button>
           ))}
         </div>
+
+        {/* Announcement Compose */}
+        {filter === 'announcement' && (
+          <div className="profile-card" style={{ marginBottom: 20 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 14px 0', color: 'var(--text-h)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Megaphone size={18} style={{ color: '#F59E0B' }} /> Send Announcement
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+              <input
+                className="form-input"
+                placeholder="Announcement Title (e.g. Salon Holiday Notice)"
+                value={annForm.title}
+                onChange={e => setAnnForm(p => ({ ...p, title: e.target.value }))}
+              />
+              <textarea
+                className="form-input"
+                placeholder="Announcement message for all customers..."
+                rows={3}
+                value={annForm.message}
+                onChange={e => setAnnForm(p => ({ ...p, message: e.target.value }))}
+                style={{ resize: 'vertical' }}
+              />
+              {sentMsg && (
+                <div style={{ fontSize: 13, fontWeight: 600, padding: '8px 12px', borderRadius: 8,
+                  color: sentMsg.startsWith('✅') ? '#10B981' : '#EF4444',
+                  background: sentMsg.startsWith('✅') ? 'rgba(16,185,129,0.08)' : 'rgba(239,68,68,0.08)'
+                }}>{sentMsg}</div>
+              )}
+              <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                <button
+                  onClick={sendAnnouncement}
+                  disabled={sending || !annForm.title.trim() || !annForm.message.trim()}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6, padding: '10px 20px',
+                    borderRadius: 10, border: 'none', background: '#F59E0B', color: '#fff',
+                    fontWeight: 700, fontSize: 13, cursor: sending ? 'not-allowed' : 'pointer', opacity: sending ? 0.7 : 1
+                  }}
+                >
+                  <Send size={14} /> {sending ? 'Sending...' : 'Send to All Customers'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {loading ? (
           <div className="panel-empty">Loading notifications...</div>

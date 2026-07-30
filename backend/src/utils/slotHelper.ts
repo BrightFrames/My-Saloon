@@ -106,9 +106,12 @@ export function hasOverlap(
   return aStart < bEnd && bStart < aEnd;
 }
 
+export type SlotState = "available" | "booked" | "unavailable" | "expired";
+
 export type SlotStatus = {
   time: string;
   available: boolean;
+  state: SlotState;
   reason?: string;
 };
 
@@ -123,11 +126,27 @@ export type ActiveBooking = {
   booking_status?: string;
 };
 
+export type StaffLeaveItem = {
+  is_full_day?: boolean;
+  start_time?: string;
+  end_time?: string;
+  leave_type?: string;
+  reason?: string;
+};
+
+export type BreakTimeItem = {
+  start?: string;
+  end?: string;
+  start_time?: string;
+  end_time?: string;
+};
+
 /**
  * Generates all candidate slots and calculates availability based on:
- * - Barber specific active bookings
- * - Service duration of the requested service
- * - Salon working hours
+ * - Current Time in Asia/Kolkata (expired)
+ * - Stylist active bookings (booked)
+ * - Stylist leaves & Salon break time (unavailable)
+ * - Service duration & Salon working hours
  */
 export function calculateAvailableSlots({
   requestedDuration = 30,
@@ -135,12 +154,18 @@ export function calculateAvailableSlots({
   salonClosingTime = "08:00 PM",
   slotInterval = 30,
   existingBookings = [],
+  staffLeaves = [],
+  breakTime,
+  bookingDate,
 }: {
   requestedDuration?: number | string;
   salonOpeningTime?: string;
   salonClosingTime?: string;
   slotInterval?: number;
   existingBookings?: ActiveBooking[];
+  staffLeaves?: StaffLeaveItem[];
+  breakTime?: BreakTimeItem | null;
+  bookingDate?: string;
 }): {
   availableSlots: string[];
   allSlots: SlotStatus[];
@@ -159,6 +184,12 @@ export function calculateAvailableSlots({
   }
 
   const safeReqDuration = parseDurationInMinutes(requestedDuration);
+
+  // Check if bookingDate is Today in Asia/Kolkata
+  const nowIST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+  const todayISO_IST = `${nowIST.getFullYear()}-${String(nowIST.getMonth() + 1).padStart(2, '0')}-${String(nowIST.getDate()).padStart(2, '0')}`;
+  const isTodayIST = Boolean(bookingDate && (bookingDate === todayISO_IST || bookingDate.startsWith(todayISO_IST)));
+  const currentMinsIST = nowIST.getHours() * 60 + nowIST.getMinutes();
 
   // Convert existing active bookings into minute intervals [startMins, endMins)
   const bookedIntervals = existingBookings
@@ -182,6 +213,30 @@ export function calculateAvailableSlots({
       return { start, end, booking: b };
     });
 
+  // Convert break time to minute interval
+  let breakStartMins: number | null = null;
+  let breakEndMins: number | null = null;
+  if (breakTime) {
+    const bStartStr = breakTime.start || breakTime.start_time;
+    const bEndStr = breakTime.end || breakTime.end_time;
+    if (bStartStr && bEndStr) {
+      breakStartMins = timeToMinutes(bStartStr);
+      breakEndMins = timeToMinutes(bEndStr);
+    }
+  }
+
+  // Check if stylist is on Full Day Leave
+  const isFullDayLeave = staffLeaves.some((l) => l.is_full_day || l.leave_type === "full_day");
+
+  // Convert partial staff leaves into minute intervals
+  const leaveIntervals = staffLeaves
+    .filter((l) => !l.is_full_day && l.leave_type !== "full_day")
+    .map((l) => {
+      const start = timeToMinutes(l.start_time || "09:00 AM");
+      const end = timeToMinutes(l.end_time || "08:00 PM");
+      return { start, end, leave: l };
+    });
+
   const allSlots: SlotStatus[] = [];
   const availableSlots: string[] = [];
 
@@ -191,17 +246,71 @@ export function calculateAvailableSlots({
     const candidateStart = current;
     const candidateEnd = candidateStart + safeReqDuration;
 
-    // Check 1: Does requested service start time + slot interval exceed salon closing time?
+    // State 1: EXPIRED — Slot start time has already passed today in Asia/Kolkata
+    if (isTodayIST && candidateStart <= currentMinsIST) {
+      allSlots.push({
+        time: slotTimeStr,
+        available: false,
+        state: "expired",
+        reason: "Time slot has passed",
+      });
+      continue;
+    }
+
+    // State 2: UNAVAILABLE — Exceeds salon closing time
     if (candidateStart + Math.min(safeReqDuration, slotInterval) > closingMins) {
       allSlots.push({
         time: slotTimeStr,
         available: false,
+        state: "unavailable",
         reason: "Exceeds salon working hours",
       });
       continue;
     }
 
-    // Check 2: Does candidate interval overlap with ANY existing booking interval?
+    // State 3: UNAVAILABLE — Stylist is on Full Day Leave
+    if (isFullDayLeave) {
+      allSlots.push({
+        time: slotTimeStr,
+        available: false,
+        state: "unavailable",
+        reason: "Stylist is on Leave today",
+      });
+      continue;
+    }
+
+    // State 4: UNAVAILABLE — Overlaps with Salon Break Time
+    if (
+      breakStartMins !== null &&
+      breakEndMins !== null &&
+      hasOverlap(candidateStart, candidateEnd, breakStartMins, breakEndMins)
+    ) {
+      allSlots.push({
+        time: slotTimeStr,
+        available: false,
+        state: "unavailable",
+        reason: `Salon Break (${minutesToTimeString(breakStartMins)} - ${minutesToTimeString(breakEndMins)})`,
+      });
+      continue;
+    }
+
+    // State 5: UNAVAILABLE — Overlaps with Stylist Partial Leave
+    const conflictingLeave = leaveIntervals.find((interval) =>
+      hasOverlap(candidateStart, candidateEnd, interval.start, interval.end)
+    );
+    if (conflictingLeave) {
+      const leaveStartStr = minutesToTimeString(conflictingLeave.start);
+      const leaveEndStr = minutesToTimeString(conflictingLeave.end);
+      allSlots.push({
+        time: slotTimeStr,
+        available: false,
+        state: "unavailable",
+        reason: `Stylist on Leave (${leaveStartStr} - ${leaveEndStr})`,
+      });
+      continue;
+    }
+
+    // State 6: BOOKED — Overlaps with an Existing Booking
     const conflictingBooking = bookedIntervals.find((interval) =>
       hasOverlap(candidateStart, candidateEnd, interval.start, interval.end)
     );
@@ -212,12 +321,15 @@ export function calculateAvailableSlots({
       allSlots.push({
         time: slotTimeStr,
         available: false,
-        reason: `Occupied (${busyStartStr} - ${busyEndStr})`,
+        state: "booked",
+        reason: `Booked (${busyStartStr} - ${busyEndStr})`,
       });
     } else {
+      // State 7: AVAILABLE — Clean open slot
       allSlots.push({
         time: slotTimeStr,
         available: true,
+        state: "available",
       });
       availableSlots.push(slotTimeStr);
     }
@@ -225,3 +337,4 @@ export function calculateAvailableSlots({
 
   return { availableSlots, allSlots };
 }
+

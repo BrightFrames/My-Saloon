@@ -135,12 +135,14 @@ export function calculateAvailableSlots({
   salonClosingTime = "08:00 PM",
   slotInterval = 30,
   existingBookings = [],
+  bookingDate,
 }: {
   requestedDuration?: number | string;
   salonOpeningTime?: string;
   salonClosingTime?: string;
   slotInterval?: number;
   existingBookings?: ActiveBooking[];
+  bookingDate?: string;
 }): {
   availableSlots: string[];
   allSlots: SlotStatus[];
@@ -159,6 +161,12 @@ export function calculateAvailableSlots({
   }
 
   const safeReqDuration = parseDurationInMinutes(requestedDuration);
+
+  // Check if bookingDate is Today in Asia/Kolkata
+  const nowIST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+  const todayISO_IST = `${nowIST.getFullYear()}-${String(nowIST.getMonth() + 1).padStart(2, '0')}-${String(nowIST.getDate()).padStart(2, '0')}`;
+  const isTodayIST = Boolean(bookingDate && (bookingDate === todayISO_IST || bookingDate.startsWith(todayISO_IST)));
+  const currentMinsIST = nowIST.getHours() * 60 + nowIST.getMinutes();
 
   // Convert existing active bookings into minute intervals [startMins, endMins)
   const bookedIntervals = existingBookings
@@ -190,6 +198,16 @@ export function calculateAvailableSlots({
     const slotTimeStr = minutesToTimeString(current);
     const candidateStart = current;
     const candidateEnd = candidateStart + safeReqDuration;
+
+    // Check 0: Has this slot already passed today in Asia/Kolkata?
+    if (isTodayIST && candidateStart <= currentMinsIST) {
+      allSlots.push({
+        time: slotTimeStr,
+        available: false,
+        reason: "Time slot has passed",
+      });
+      continue;
+    }
 
     // Check 1: Does requested service start time + slot interval exceed salon closing time?
     if (candidateStart + Math.min(safeReqDuration, slotInterval) > closingMins) {

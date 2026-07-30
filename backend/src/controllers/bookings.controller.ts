@@ -345,6 +345,24 @@ export const createBooking = asyncHandler(
         return;
       }
 
+      // REQUIREMENT 8: Server-side validation for expired time slots on today's date (Asia/Kolkata)
+      const nowIST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
+      const todayISO_IST = `${nowIST.getFullYear()}-${String(nowIST.getMonth() + 1).padStart(2, '0')}-${String(nowIST.getDate()).padStart(2, '0')}`;
+      const reqDateVariants = normalizeDateVariants(appointment_date);
+      const isBookingTodayIST = reqDateVariants.some(v => v === todayISO_IST || v.startsWith(todayISO_IST));
+
+      if (isBookingTodayIST) {
+        const currentMinsIST = nowIST.getHours() * 60 + nowIST.getMinutes();
+        const reqStartMins = timeToMinutes(booking_time);
+        if (reqStartMins <= currentMinsIST) {
+          res.status(400).json({
+            success: false,
+            message: "This time slot has already passed."
+          });
+          return;
+        }
+      }
+
       // Determine requested total service duration in minutes
       let durationMins = parseDurationInMinutes(
         validatedData.duration_minutes || validatedData.total_duration || (req.body as any)?.total_duration
@@ -788,6 +806,7 @@ export const getAvailableSlots = asyncHandler(
         salonClosingTime,
         slotInterval,
         existingBookings,
+        bookingDate: String(date),
       });
 
       res.status(200).json({

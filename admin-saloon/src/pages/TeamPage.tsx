@@ -4,6 +4,16 @@ import { api } from "../services/api";
 import { API_BASE_URL } from "../services/apiBase";
 import "./pages.css";
 import CircularProgress from '@mui/material/CircularProgress';
+import { motion, type Variants } from 'framer-motion';
+import {
+  UserCheck,
+  Plus,
+  RefreshCw,
+  Award,
+  Edit2,
+  Trash2,
+  Camera
+} from 'lucide-react';
 
 type Props = {
   user: any;
@@ -17,6 +27,23 @@ type TeamMember = {
   experience?: string;
   image_url?: string;
   service_ids?: string[];
+};
+
+function getInitials(name?: string) {
+  if (!name) return "T";
+  const parts = name.trim().split(" ");
+  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  return parts[0].slice(0, 2).toUpperCase();
+}
+
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.05 } }
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.3 } }
 };
 
 export default function TeamPage({ user, onLogout }: Props) {
@@ -144,65 +171,100 @@ export default function TeamPage({ user, onLogout }: Props) {
 
   return (
     <Layout user={user?.email || "Admin"} onLogout={onLogout}>
-      <div className="page-root container">
-        <div className="page-header">
+      <motion.div
+        className="page-root"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        <motion.div className="page-header" variants={itemVariants}>
           <div>
-            <h1>Team Members</h1>
-            <div className="subtitle">
-              {team.length} staff members in your salon
-            </div>
+            <h1 className="page-title">
+              <UserCheck size={26} style={{ color: "#10B981" }} />
+              Stylists & Staff
+            </h1>
+            <p className="page-sub">{team.length} staff members on team</p>
           </div>
-          <button className="btn-add" onClick={openCreate}>
-            + Add Team Member
-          </button>
-        </div>
+          <div className="header-actions">
+            <button className="btn-outline" onClick={fetchTeam}>
+              <RefreshCw size={15} /> Refresh
+            </button>
+            <button className="btn-add" onClick={openCreate}>
+              <Plus size={16} /> Add Team Member
+            </button>
+          </div>
+        </motion.div>
 
         {loading ? (
-          <div className="empty-state" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '16px' }}>
-            <CircularProgress sx={{ color: '#CA9A86' }} size={40} />
-            <p style={{ color: '#7f6f69', fontWeight: 500 }}>Loading team members...</p>
+          <div className="empty-state" style={{ padding: 48 }}>
+            <CircularProgress sx={{ color: '#10B981' }} size={36} />
+            <p style={{ marginTop: 12, color: 'var(--muted)', fontWeight: 600 }}>Loading team members...</p>
           </div>
         ) : team.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-icon">👥</div>
-            <h3>No team members yet</h3>
-            <p>Your team members will appear here.</p>
+          <div className="empty-state" style={{ padding: 48 }}>
+            <UserCheck size={48} style={{ opacity: 0.3, marginBottom: 12 }} />
+            <h3 style={{ color: 'var(--text-h)', margin: '0 0 4px 0' }}>No team members added yet</h3>
+            <p style={{ color: 'var(--muted)' }}>Add your hair stylists, barbers, and salon staff.</p>
           </div>
         ) : (
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Role</th>
-                <th>Experience</th>
-                <th style={{ textAlign: "right" }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {team.map((t) => (
-                <tr key={t.id}>
-                  <td style={{ fontWeight: 600 }}>{t.name}</td>
-                  <td>
-                    <span className={`badge ${t.role}`}>{t.role}</span>
-                  </td>
-                  <td>{t.experience || "-"}</td>
-                  <td>
-                    <div className="td-actions">
-                      <button className="btn-sm" onClick={() => openEdit(t)}>
-                        Edit
-                      </button>
-                      <button
-                        className="btn-sm danger"
-                        onClick={() => handleDelete(t.id)}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
+          <motion.div className="dash-table-wrap" variants={itemVariants}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Staff Member</th>
+                  <th>Role</th>
+                  <th>Experience</th>
+                  <th style={{ textAlign: "right" }}>Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {team.map((t) => (
+                  <tr key={t.id}>
+                    <td>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        {t.image_url ? (
+                          <img
+                            src={t.image_url}
+                            alt={t.name}
+                            style={{ width: 40, height: 40, borderRadius: 12, objectFit: 'cover' }}
+                          />
+                        ) : (
+                          <div className="avatar-circle" style={{ width: 40, height: 40, background: "linear-gradient(135deg, #10B981 0%, #3B82F6 100%)" }}>
+                            {getInitials(t.name)}
+                          </div>
+                        )}
+                        <div>
+                          <div style={{ fontWeight: 700, color: 'var(--text-h)' }}>{t.name}</div>
+                          <div style={{ fontSize: 12, color: 'var(--muted)' }}>
+                            {t.service_ids?.length ? `${t.service_ids.length} assigned services` : 'All services'}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <span className="badge admin" style={{ background: 'rgba(16, 185, 129, 0.12)', color: '#10B981' }}>
+                        <Award size={12} /> {t.role}
+                      </span>
+                    </td>
+                    <td style={{ fontWeight: 600 }}>{t.experience || "Entry Level"}</td>
+                    <td>
+                      <div className="td-actions">
+                        <button className="btn-sm" onClick={() => openEdit(t)}>
+                          <Edit2 size={13} /> Edit
+                        </button>
+                        <button
+                          className="btn-sm danger"
+                          onClick={() => handleDelete(t.id)}
+                        >
+                          <Trash2 size={13} /> Delete
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </motion.div>
         )}
 
         {/* Modal */}
@@ -217,6 +279,7 @@ export default function TeamPage({ user, onLogout }: Props) {
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
                     placeholder="e.g. Rahul Sharma"
+                    required
                   />
                 </div>
                 <div className="form-group">
@@ -225,6 +288,7 @@ export default function TeamPage({ user, onLogout }: Props) {
                     value={form.role}
                     onChange={(e) => setForm({ ...form, role: e.target.value })}
                     placeholder="e.g. Senior Stylist"
+                    required
                   />
                 </div>
                 <div className="form-group">
@@ -239,36 +303,32 @@ export default function TeamPage({ user, onLogout }: Props) {
                 </div>
                 <div className="form-group">
                   <label>Photo (Optional)</label>
-                  {/* Photo preview */}
                   {form.image_url && (
                     <div style={{ marginBottom: 10, display: 'flex', alignItems: 'center', gap: 12 }}>
                       <img
                         src={form.image_url}
                         alt="Preview"
-                        style={{ width: 64, height: 64, borderRadius: 12, objectFit: 'cover', border: '2px solid #e7dbd7' }}
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                        style={{ width: 56, height: 56, borderRadius: 12, objectFit: 'cover' }}
                       />
                       <button
                         type="button"
                         onClick={() => setForm({ ...form, image_url: '' })}
-                        style={{ fontSize: 12, color: '#e74c3c', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
+                        style={{ fontSize: 12, color: '#EF4444', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
                       >
                         Remove photo
                       </button>
                     </div>
                   )}
-                  {/* Upload button */}
                   <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
                     <button
                       type="button"
-                      className="btn-sm"
+                      className="btn-outline"
                       onClick={() => fileInputRef.current?.click()}
                       disabled={isUploading}
-                      style={{ whiteSpace: 'nowrap' }}
                     >
-                      {isUploading ? 'Uploading...' : '📷 Upload Photo'}
+                      <Camera size={14} /> {isUploading ? 'Uploading...' : 'Upload Photo'}
                     </button>
-                    <span style={{ fontSize: 12, color: '#999' }}>or paste URL below</span>
+                    <span style={{ fontSize: 12, color: 'var(--muted)' }}>or paste image URL</span>
                   </div>
                   <input
                     ref={fileInputRef}
@@ -284,14 +344,14 @@ export default function TeamPage({ user, onLogout }: Props) {
                   />
                 </div>
                 <div className="form-group">
-                  <div className="services-checkbox-header">
-                    <label>
-                      Services {form.service_ids.length > 0 && `(${form.service_ids.length} selected)`}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
+                    <label style={{ marginBottom: 0 }}>
+                      Assignable Services {form.service_ids.length > 0 && `(${form.service_ids.length} selected)`}
                     </label>
                     {services.length > 0 && (
                       <button
                         type="button"
-                        className="btn-select-toggle"
+                        style={{ background: 'none', border: 'none', color: '#7C5CFC', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}
                         onClick={() => {
                           if (form.service_ids.length === services.length) {
                             setForm({ ...form, service_ids: [] });
@@ -331,7 +391,7 @@ export default function TeamPage({ user, onLogout }: Props) {
                             <input
                               type="checkbox"
                               checked={isChecked}
-                              onChange={() => {}}
+                              readOnly
                             />
                             <span className="service-checkbox-name">{s.name}</span>
                             {s.price !== undefined && (
@@ -359,7 +419,7 @@ export default function TeamPage({ user, onLogout }: Props) {
             </div>
           </div>
         )}
-      </div>
+      </motion.div>
     </Layout>
   );
 }

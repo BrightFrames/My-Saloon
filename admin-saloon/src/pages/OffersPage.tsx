@@ -1,8 +1,29 @@
 import { useEffect, useState } from "react";
 import Layout from "../components/Layout";
 import { api } from "../services/api";
+import { motion, type Variants } from "framer-motion";
+import {
+  Gift,
+  Tag,
+  Award,
+  Share2,
+  Plus,
+  RefreshCw,
+  CheckCircle2
+} from "lucide-react";
+import "./pages.css";
 
 type Props = { user: any; onLogout: () => void };
+
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.05 } }
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.3 } }
+};
 
 export default function OffersPage({ user, onLogout }: Props) {
   const [activeTab, setActiveTab] = useState<"coupons" | "memberships" | "referral">("coupons");
@@ -61,182 +82,253 @@ export default function OffersPage({ user, onLogout }: Props) {
 
   return (
     <Layout user={user?.email || "Admin"} onLogout={onLogout}>
-      <div className="page-root">
-        <div className="page-header">
+      <motion.div
+        className="page-root"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        <motion.div className="page-header" variants={itemVariants}>
           <div>
-            <h1 className="page-title">🎁 Offers & Promotions</h1>
-            <p className="page-sub">Manage discount coupons, memberships and referral offers.</p>
+            <h1 className="page-title">
+              <Gift size={26} style={{ color: "#EC4899" }} />
+              Offers & Promotions
+            </h1>
+            <p className="page-sub">Manage discount coupons, VIP memberships, and referral incentives.</p>
           </div>
-          <button onClick={fetchAll} className="btn-outline">🔄 Refresh</button>
-        </div>
+          <button onClick={fetchAll} className="btn-outline">
+            <RefreshCw size={15} /> Refresh
+          </button>
+        </motion.div>
 
-        <div className="tab-bar">
-          {[["coupons", "🏷️ Coupons"], ["memberships", "💎 Memberships"], ["referral", "🔗 Referral"]] .map(([t, label]) => (
-            <button key={t} onClick={() => setActiveTab(t as any)} className={`tab-btn ${activeTab === t ? "active" : ""}`}>
-              {label}
+        <motion.div className="tab-bar" variants={itemVariants}>
+          {[["coupons", "Coupons", Tag], ["memberships", "Memberships", Award], ["referral", "Referral Setup", Share2]].map(([t, label, Icon]: any) => (
+            <button key={t} onClick={() => setActiveTab(t)} className={`tab-btn ${activeTab === t ? "active" : ""}`}>
+              <Icon size={15} /> {label}
             </button>
           ))}
-        </div>
+        </motion.div>
 
         {activeTab === "coupons" && (
-          <div>
+          <motion.div variants={itemVariants}>
             <div style={{ marginBottom: 16, display: "flex", justifyContent: "flex-end" }}>
-              <button className="btn-primary" onClick={() => setShowCouponForm(!showCouponForm)}>
-                {showCouponForm ? "Cancel" : "+ Create Coupon"}
+              <button className="btn-add" onClick={() => setShowCouponForm(!showCouponForm)}>
+                <Plus size={16} /> {showCouponForm ? "Cancel Form" : "Create Coupon"}
               </button>
             </div>
 
             {showCouponForm && (
-              <div className="panel" style={{ marginBottom: 20 }}>
-                <div className="panel-title">New Discount Coupon</div>
-                <div className="form-grid-2">
-                  {[
-                    { label: "Coupon Code", key: "code", placeholder: "e.g. SAVE20" },
-                    { label: "Discount Value", key: "discount_value", placeholder: "e.g. 20", type: "number" },
-                    { label: "Min Order (₹)", key: "min_order", placeholder: "e.g. 500", type: "number" },
-                    { label: "Max Uses", key: "max_uses", placeholder: "e.g. 100", type: "number" },
-                    { label: "Expiry Date", key: "expiry_date", type: "date" },
-                  ].map(f => (
-                    <div key={f.key} className="form-group">
-                      <label className="form-label">{f.label}</label>
-                      <input
-                        className="form-input"
-                        type={f.type || "text"}
-                        placeholder={f.placeholder}
-                        value={couponForm[f.key as keyof typeof couponForm]}
-                        onChange={e => setCouponForm(p => ({ ...p, [f.key]: e.target.value }))}
-                      />
-                    </div>
-                  ))}
+              <div className="profile-card" style={{ marginBottom: 24, maxWidth: "100%" }}>
+                <h3 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 16px 0", color: "var(--text-h)" }}>New Discount Coupon</h3>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
                   <div className="form-group">
-                    <label className="form-label">Discount Type</label>
-                    <select className="form-input" value={couponForm.discount_type} onChange={e => setCouponForm(p => ({ ...p, discount_type: e.target.value }))}>
+                    <label>Coupon Code</label>
+                    <input
+                      placeholder="e.g. SAVE20"
+                      value={couponForm.code}
+                      onChange={e => setCouponForm(p => ({ ...p, code: e.target.value.toUpperCase() }))}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Discount Value</label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 20"
+                      value={couponForm.discount_value}
+                      onChange={e => setCouponForm(p => ({ ...p, discount_value: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Min Order (₹)</label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 500"
+                      value={couponForm.min_order}
+                      onChange={e => setCouponForm(p => ({ ...p, min_order: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Max Uses</label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 100"
+                      value={couponForm.max_uses}
+                      onChange={e => setCouponForm(p => ({ ...p, max_uses: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Expiry Date</label>
+                    <input
+                      type="date"
+                      value={couponForm.expiry_date}
+                      onChange={e => setCouponForm(p => ({ ...p, expiry_date: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Discount Type</label>
+                    <select value={couponForm.discount_type} onChange={e => setCouponForm(p => ({ ...p, discount_type: e.target.value }))}>
                       <option value="percent">Percentage (%)</option>
-                      <option value="flat">Flat (₹)</option>
+                      <option value="flat">Flat Amount (₹)</option>
                     </select>
                   </div>
                 </div>
-                <button className="btn-primary" onClick={saveCoupon} disabled={savingCoupon}>
-                  {savingCoupon ? "Creating..." : "Create Coupon"}
-                </button>
+                <div className="modal-actions">
+                  <button className="btn-add" onClick={saveCoupon} disabled={savingCoupon}>
+                    {savingCoupon ? "Creating..." : "Save Coupon"}
+                  </button>
+                </div>
               </div>
             )}
 
-            {loading ? <div className="panel-empty">Loading...</div> : coupons.length === 0 ? (
-              <div className="panel-empty">No coupons yet. Create your first coupon above.</div>
+            {loading ? <div style={{ textAlign: "center", padding: 48, color: "var(--muted)" }}>Loading coupons...</div> : coupons.length === 0 ? (
+              <div className="empty-state" style={{ padding: 48 }}>
+                <Tag size={48} style={{ opacity: 0.3, marginBottom: 12 }} />
+                <h3>No discount coupons yet</h3>
+                <p>Create promotional codes to boost appointments.</p>
+              </div>
             ) : (
-              <div className="coupon-list">
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 18 }}>
                 {coupons.map(c => (
-                  <div key={c.id} className={`coupon-card ${!c.active ? "inactive" : ""}`}>
-                    <div className="coupon-code">{c.code}</div>
-                    <div className="coupon-meta">
-                      <span>{c.discount_type === "percent" ? `${c.discount_value}% off` : `₹${c.discount_value} off`}</span>
-                      {c.min_order && <span>· Min ₹{c.min_order}</span>}
-                      {c.expiry_date && <span>· Expires {new Date(c.expiry_date).toLocaleDateString("en-IN")}</span>}
-                      <span>· {c.used_count || 0}/{c.max_uses || "∞"} used</span>
+                  <div key={c.id} className="stat-card" style={{ opacity: !c.active ? 0.6 : 1, position: "relative" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span className="badge" style={{ background: "rgba(124, 92, 252, 0.15)", color: "#7C5CFC", fontSize: 14, fontWeight: 800, padding: "4px 12px" }}>
+                        {c.code}
+                      </span>
+                      {c.active ? (
+                        <button className="btn-sm danger" onClick={() => deactivateCoupon(c.id)} style={{ fontSize: 11 }}>
+                          Deactivate
+                        </button>
+                      ) : (
+                        <span className="badge cancelled">Inactive</span>
+                      )}
                     </div>
-                    {c.active ? (
-                      <button className="btn-danger-sm" onClick={() => deactivateCoupon(c.id)}>Deactivate</button>
-                    ) : (
-                      <span className="badge-inactive">Inactive</span>
-                    )}
+                    <div style={{ fontSize: 22, fontWeight: 800, color: "#10B981", marginTop: 8 }}>
+                      {c.discount_type === "percent" ? `${c.discount_value}% OFF` : `₹${c.discount_value} OFF`}
+                    </div>
+                    <div style={{ fontSize: 12, color: "var(--muted)", display: "flex", flexDirection: "column", gap: 4, marginTop: 6 }}>
+                      {c.min_order && <span>Min Order: ₹{c.min_order}</span>}
+                      {c.expiry_date && <span>Expires: {new Date(c.expiry_date).toLocaleDateString("en-IN")}</span>}
+                      <span>Redeemed: {c.used_count || 0} / {c.max_uses || "∞"}</span>
+                    </div>
                   </div>
                 ))}
               </div>
             )}
-          </div>
+          </motion.div>
         )}
 
         {activeTab === "memberships" && (
-          <div>
+          <motion.div variants={itemVariants}>
             <div style={{ marginBottom: 16, display: "flex", justifyContent: "flex-end" }}>
-              <button className="btn-primary" onClick={() => setShowMemberForm(!showMemberForm)}>
-                {showMemberForm ? "Cancel" : "+ Create Plan"}
+              <button className="btn-add" onClick={() => setShowMemberForm(!showMemberForm)}>
+                <Plus size={16} /> {showMemberForm ? "Cancel Form" : "Create Plan"}
               </button>
             </div>
 
             {showMemberForm && (
-              <div className="panel" style={{ marginBottom: 20 }}>
-                <div className="panel-title">New Membership Plan</div>
-                <div className="form-grid-2">
-                  {[
-                    { label: "Plan Name", key: "name", placeholder: "e.g. Gold Member" },
-                    { label: "Price (₹)", key: "price", placeholder: "e.g. 999", type: "number" },
-                    { label: "Duration (Days)", key: "duration_days", placeholder: "e.g. 30", type: "number" },
-                  ].map(f => (
-                    <div key={f.key} className="form-group">
-                      <label className="form-label">{f.label}</label>
-                      <input
-                        className="form-input"
-                        type={f.type || "text"}
-                        placeholder={f.placeholder}
-                        value={memberForm[f.key as keyof typeof memberForm]}
-                        onChange={e => setMemberForm(p => ({ ...p, [f.key]: e.target.value }))}
-                      />
-                    </div>
-                  ))}
-                  <div className="form-group" style={{ gridColumn: "1/-1" }}>
-                    <label className="form-label">Benefits (comma-separated)</label>
+              <div className="profile-card" style={{ marginBottom: 24, maxWidth: "100%" }}>
+                <h3 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 16px 0", color: "var(--text-h)" }}>New Membership Plan</h3>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
+                  <div className="form-group">
+                    <label>Plan Name</label>
+                    <input
+                      placeholder="e.g. VIP Gold Member"
+                      value={memberForm.name}
+                      onChange={e => setMemberForm(p => ({ ...p, name: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Price (₹)</label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 999"
+                      value={memberForm.price}
+                      onChange={e => setMemberForm(p => ({ ...p, price: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Duration (Days)</label>
+                    <input
+                      type="number"
+                      placeholder="e.g. 30"
+                      value={memberForm.duration_days}
+                      onChange={e => setMemberForm(p => ({ ...p, duration_days: e.target.value }))}
+                    />
+                  </div>
+                  <div className="form-group" style={{ gridColumn: "1 / -1" }}>
+                    <label>Benefits (comma-separated)</label>
                     <textarea
-                      className="form-input"
-                      placeholder="e.g. 10% off all services, Free head massage, Priority booking"
+                      placeholder="e.g. 10% off all haircuts, Free head massage, Priority booking"
                       rows={2}
                       value={memberForm.benefits}
                       onChange={e => setMemberForm(p => ({ ...p, benefits: e.target.value }))}
                     />
                   </div>
                 </div>
-                <button className="btn-primary" onClick={saveMembership} disabled={savingMember}>
-                  {savingMember ? "Creating..." : "Create Plan"}
-                </button>
+                <div className="modal-actions">
+                  <button className="btn-add" onClick={saveMembership} disabled={savingMember}>
+                    {savingMember ? "Creating..." : "Save Plan"}
+                  </button>
+                </div>
               </div>
             )}
 
-            {loading ? <div className="panel-empty">Loading...</div> : memberships.length === 0 ? (
-              <div className="panel-empty">No membership plans yet.</div>
+            {loading ? <div style={{ textAlign: "center", padding: 48, color: "var(--muted)" }}>Loading membership plans...</div> : memberships.length === 0 ? (
+              <div className="empty-state" style={{ padding: 48 }}>
+                <Award size={48} style={{ opacity: 0.3, marginBottom: 12 }} />
+                <h3>No membership plans yet</h3>
+                <p>Create subscription packages for loyal customers.</p>
+              </div>
             ) : (
-              <div className="membership-grid">
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 18 }}>
                 {memberships.map(m => (
-                  <div key={m.id} className="membership-card">
-                    <div className="membership-name">💎 {m.name}</div>
-                    <div className="membership-price">₹{m.price}<span style={{ fontSize: 13, fontWeight: 400, color: "var(--muted)" }}>/{m.duration_days} days</span></div>
-                    <ul className="membership-benefits">
+                  <div key={m.id} className="stat-card">
+                    <div style={{ fontSize: 18, fontWeight: 800, color: "var(--text-h)", display: "flex", alignItems: "center", gap: 8 }}>
+                      <Award size={20} style={{ color: "#F59E0B" }} />
+                      {m.name}
+                    </div>
+                    <div style={{ fontSize: 26, fontWeight: 900, color: "#7C5CFC", marginTop: 4 }}>
+                      ₹{m.price} <span style={{ fontSize: 13, fontWeight: 500, color: "var(--muted)" }}>/ {m.duration_days} days</span>
+                    </div>
+                    <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 6 }}>
                       {(m.benefits || "").split(",").map((b: string, i: number) => (
-                        <li key={i}>✓ {b.trim()}</li>
+                        <div key={i} style={{ fontSize: 13, color: "var(--text-h)", display: "flex", alignItems: "center", gap: 6 }}>
+                          <CheckCircle2 size={13} style={{ color: "#10B981" }} />
+                          {b.trim()}
+                        </div>
                       ))}
-                    </ul>
+                    </div>
                   </div>
                 ))}
               </div>
             )}
-          </div>
+          </motion.div>
         )}
 
         {activeTab === "referral" && (
-          <div className="panel">
-            <div className="panel-title">🔗 Referral Program</div>
-            <div className="referral-info">
-              <div className="referral-icon">🎁</div>
-              <h3>Referral Program Setup</h3>
-              <p>Configure your referral offer so customers can earn rewards for bringing in new customers.</p>
-              <div className="form-grid-2" style={{ marginTop: 20 }}>
-                <div className="form-group">
-                  <label className="form-label">Referrer Reward (₹)</label>
-                  <input type="number" className="form-input" placeholder="e.g. 100" />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Referee Discount (%)</label>
-                  <input type="number" className="form-input" placeholder="e.g. 10" />
-                </div>
+          <motion.div className="profile-card" variants={itemVariants} style={{ maxWidth: "100%" }}>
+            <h3 style={{ fontSize: 18, fontWeight: 800, margin: "0 0 12px 0", color: "var(--text-h)", display: "flex", alignItems: "center", gap: 8 }}>
+              <Share2 size={20} style={{ color: "#3B82F6" }} /> Customer Referral Incentives
+            </h3>
+            <p style={{ color: "var(--muted)", fontSize: 14 }}>
+              Set rewards for existing customers who invite friends and family to book appointments.
+            </p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 20 }}>
+              <div className="form-group">
+                <label>Referrer Reward (₹)</label>
+                <input type="number" placeholder="e.g. 100" defaultValue="100" />
               </div>
-              <button className="btn-primary" style={{ marginTop: 12 }}>Save Referral Settings</button>
-              <p style={{ fontSize: 12, color: "var(--muted)", marginTop: 8 }}>
-                Coming soon: Shareable referral links for each customer.
-              </p>
+              <div className="form-group">
+                <label>Referee Discount (%)</label>
+                <input type="number" placeholder="e.g. 10" defaultValue="10" />
+              </div>
             </div>
-          </div>
+            <div style={{ marginTop: 16 }}>
+              <button className="btn-add">Save Settings</button>
+            </div>
+          </motion.div>
         )}
-      </div>
+      </motion.div>
     </Layout>
   );
 }

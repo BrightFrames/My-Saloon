@@ -5,11 +5,33 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, Legend
 } from "recharts";
+import { motion, type Variants } from "framer-motion";
+import {
+  BarChart3,
+  Download,
+  RefreshCw,
+  Calendar,
+  Scissors,
+  Users,
+  TrendingUp,
+  UserCheck
+} from "lucide-react";
+import "./pages.css";
 
 type Props = { user: any; onLogout: () => void };
 type ReportType = "daily" | "monthly" | "services" | "staff" | "retention";
 
 const COLORS = ["#7C5CFC", "#EC4899", "#F59E0B", "#10B981", "#3B82F6", "#EF4444"];
+
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: { opacity: 1, transition: { staggerChildren: 0.05 } }
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 10 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.3 } }
+};
 
 export default function ReportsPage({ user, onLogout }: Props) {
   const [reportType, setReportType] = useState<ReportType>("monthly");
@@ -41,79 +63,97 @@ export default function ReportsPage({ user, onLogout }: Props) {
 
   return (
     <Layout user={user?.email || "Admin"} onLogout={onLogout}>
-      <div className="page-root">
-        <div className="page-header">
+      <motion.div
+        className="page-root"
+        variants={containerVariants}
+        initial="hidden"
+        animate="visible"
+      >
+        <motion.div className="page-header" variants={itemVariants}>
           <div>
-            <h1 className="page-title">📊 Reports</h1>
-            <p className="page-sub">Detailed analytics and performance insights.</p>
+            <h1 className="page-title">
+              <BarChart3 size={26} style={{ color: "#3B82F6" }} />
+              Analytics & Performance Reports
+            </h1>
+            <p className="page-sub">Comprehensive metrics on revenue, service popularity, & staff efficiency.</p>
           </div>
           <div className="header-actions">
             <button onClick={exportCSV} className="btn-outline" disabled={!reportData?.rows?.length}>
-              📥 Export CSV
+              <Download size={15} /> Export CSV
             </button>
-            <button onClick={fetchReport} className="btn-outline">🔄 Refresh</button>
+            <button onClick={fetchReport} className="btn-outline">
+              <RefreshCw size={15} /> Refresh
+            </button>
           </div>
-        </div>
+        </motion.div>
 
         {/* Report Type Tabs */}
-        <div className="tab-bar" style={{ flexWrap: "wrap" }}>
-          {([
-            ["daily",     "📅 Daily"],
-            ["monthly",   "📆 Monthly"],
-            ["services",  "✂️ Best Services"],
-            ["staff",     "👤 Staff Performance"],
-            ["retention", "🔄 Customer Retention"],
-          ] as const).map(([t, label]) => (
+        <motion.div className="tab-bar" variants={itemVariants}>
+          {[
+            ["daily", "Daily Report", Calendar],
+            ["monthly", "Monthly Performance", TrendingUp],
+            ["services", "Top Services", Scissors],
+            ["staff", "Staff Performance", UserCheck],
+            ["retention", "Client Retention", Users],
+          ].map(([t, label, Icon]: any) => (
             <button
               key={t}
               onClick={() => setReportType(t)}
               className={`tab-btn ${reportType === t ? "active" : ""}`}
             >
-              {label}
+              <Icon size={15} /> {label}
             </button>
           ))}
-        </div>
+        </motion.div>
 
         {/* Date selector for daily */}
         {reportType === "daily" && (
-          <div className="report-date-row">
-            <label className="form-label">Select Date</label>
+          <motion.div className="page-toolbar" variants={itemVariants}>
+            <label style={{ fontSize: 13, fontWeight: 600, color: "var(--muted)" }}>Select Date:</label>
             <input
               type="date"
-              className="form-input"
-              style={{ width: "auto" }}
+              style={{ padding: "8px 14px", borderRadius: 10, border: "1px solid var(--border)", background: "var(--panel-bg)", color: "var(--text-h)" }}
               value={selectedDate}
               onChange={e => setSelectedDate(e.target.value)}
             />
-            <button className="btn-primary" onClick={fetchReport}>Load Report</button>
-          </div>
+            <button className="btn-add" onClick={fetchReport} style={{ padding: "8px 16px", fontSize: 13 }}>
+              Load Daily Report
+            </button>
+          </motion.div>
         )}
 
         {loading ? (
-          <div className="panel-empty">Loading report...</div>
+          <div style={{ textAlign: "center", padding: 48, color: "var(--muted)" }}>Loading analytics...</div>
         ) : !reportData ? (
-          <div className="panel-empty">No data available for this report.</div>
+          <div className="empty-state" style={{ padding: 48 }}>
+            <BarChart3 size={48} style={{ opacity: 0.3, marginBottom: 12 }} />
+            <h3>No data available</h3>
+            <p>Select a different date or report category.</p>
+          </div>
         ) : (
           <>
             {/* Summary KPIs */}
             {reportData.summary && (
-              <div className="report-kpi-row">
+              <motion.div className="stats-row" variants={containerVariants}>
                 {Object.entries(reportData.summary).map(([k, v]) => (
-                  <div key={k} className="report-kpi-card">
-                    <div className="report-kpi-label">{k.replace(/_/g, " ").toUpperCase()}</div>
-                    <div className="report-kpi-val">{typeof v === "number" && k.includes("revenue") ? `₹${Number(v).toLocaleString()}` : String(v)}</div>
-                  </div>
+                  <motion.div key={k} className="stat-card" variants={itemVariants}>
+                    <div className="stat-label">{k.replace(/_/g, " ").toUpperCase()}</div>
+                    <div className="stat-value">
+                      {typeof v === "number" && k.includes("revenue") ? `₹${Number(v).toLocaleString()}` : String(v)}
+                    </div>
+                  </motion.div>
                 ))}
-              </div>
+              </motion.div>
             )}
 
             {/* Chart */}
             {reportData.chart_data && reportData.chart_data.length > 0 && (
-              <div className="panel">
-                <div className="panel-title">
-                  {reportType === "services" ? "Top Services by Bookings" :
-                   reportType === "staff"    ? "Staff Bookings" :
-                   "Revenue Trend"}
+              <motion.div className="customers-list-panel" variants={itemVariants}>
+                <div className="panel-header">
+                  <BarChart3 size={18} style={{ color: "#7C5CFC" }} />
+                  {reportType === "services" ? "Top Performing Services" :
+                   reportType === "staff"    ? "Staff Booking Distribution" :
+                   "Revenue Trend Analytics"}
                 </div>
                 {reportType === "services" ? (
                   <ResponsiveContainer width="100%" height={280}>
@@ -124,29 +164,29 @@ export default function ReportsPage({ user, onLogout }: Props) {
                           <Cell key={i} fill={COLORS[i % COLORS.length]} />
                         ))}
                       </Pie>
-                      <Tooltip contentStyle={{ background: "var(--panel-bg)", border: "1px solid var(--border)", borderRadius: 10 }} />
+                      <Tooltip contentStyle={{ background: "var(--panel-bg)", border: "1px solid var(--border)", borderRadius: 12, color: "var(--text-h)" }} />
                       <Legend iconType="circle" />
                     </PieChart>
                   </ResponsiveContainer>
                 ) : (
                   <ResponsiveContainer width="100%" height={280}>
-                    <BarChart data={reportData.chart_data}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
+                    <BarChart data={reportData.chart_data} margin={{ top: 10, right: 16, left: -10, bottom: 0 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.06)" />
                       <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "var(--muted)" }} />
                       <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: "var(--muted)" }} />
-                      <Tooltip contentStyle={{ background: "var(--panel-bg)", border: "1px solid var(--border)", borderRadius: 10 }} />
-                      <Bar dataKey="value" fill="#7C5CFC" radius={[6, 6, 0, 0]} />
+                      <Tooltip contentStyle={{ background: "var(--panel-bg)", border: "1px solid var(--border)", borderRadius: 12, color: "var(--text-h)" }} />
+                      <Bar dataKey="value" fill="#7C5CFC" radius={[8, 8, 0, 0]} />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
-              </div>
+              </motion.div>
             )}
 
-            {/* Data Table */}
+            {/* Detailed Data Table */}
             {reportData.rows && reportData.rows.length > 0 && (
-              <div className="panel">
-                <div className="panel-title">Detailed Data</div>
-                <div style={{ overflowX: "auto" }}>
+              <motion.div className="customers-list-panel" variants={itemVariants}>
+                <div className="panel-header">Detailed Breakdown Data</div>
+                <div className="dash-table-wrap">
                   <table className="data-table">
                     <thead>
                       <tr>
@@ -159,18 +199,20 @@ export default function ReportsPage({ user, onLogout }: Props) {
                       {reportData.rows.map((row: any, i: number) => (
                         <tr key={i}>
                           {Object.values(row).map((v: any, j: number) => (
-                            <td key={j}>{typeof v === "number" ? v.toLocaleString() : String(v ?? "—")}</td>
+                            <td key={j} style={{ fontWeight: typeof v === "number" ? 700 : 500 }}>
+                              {typeof v === "number" ? v.toLocaleString() : String(v ?? "—")}
+                            </td>
                           ))}
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
-              </div>
+              </motion.div>
             )}
           </>
         )}
-      </div>
+      </motion.div>
     </Layout>
   );
 }

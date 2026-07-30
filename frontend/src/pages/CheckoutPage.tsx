@@ -37,6 +37,61 @@ function parseDurationInMinutes(durationVal: any): number {
   return 30;
 }
 
+// ─── Real-Time IST Slot Helpers (Asia/Kolkata) ──────────────────────────
+function getCurrentTimeInMinutesIST(): number {
+  const now = new Date();
+  const options: Intl.DateTimeFormatOptions = {
+    timeZone: "Asia/Kolkata",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  };
+  const timeString = new Intl.DateTimeFormat("en-US", options).format(now);
+  const [hStr, mStr] = timeString.split(":");
+  const hours = parseInt(hStr, 10) % 24;
+  const minutes = parseInt(mStr, 10);
+  return hours * 60 + minutes;
+}
+
+function getTodayISOIST(): string {
+  const now = new Date();
+  const options: Intl.DateTimeFormatOptions = {
+    timeZone: "Asia/Kolkata",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  };
+  const parts = new Intl.DateTimeFormat("en-US", options).formatToParts(now);
+  let year = "", month = "", day = "";
+  parts.forEach(p => {
+    if (p.type === "year") year = p.value;
+    if (p.type === "month") month = p.value;
+    if (p.type === "day") day = p.value;
+  });
+  return `${year}-${month}-${day}`;
+}
+
+function parseSlotTimeToMinutes(slotStr: string): number {
+  if (!slotStr) return -1;
+  const cleaned = slotStr.trim();
+  const match12 = cleaned.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+  if (match12) {
+    let hours = parseInt(match12[1], 10);
+    const minutes = parseInt(match12[2], 10);
+    const period = match12[3].toUpperCase();
+    if (period === "PM" && hours < 12) hours += 12;
+    if (period === "AM" && hours === 12) hours = 0;
+    return hours * 60 + minutes;
+  }
+  const match24 = cleaned.match(/^(\d{1,2}):(\d{2})$/);
+  if (match24) {
+    const hours = parseInt(match24[1], 10);
+    const minutes = parseInt(match24[2], 10);
+    return hours * 60 + minutes;
+  }
+  return -1;
+}
+
 export function CheckoutPage() {
   const navigate = useNavigate();
   const base = API_BASE_URL;
@@ -48,6 +103,16 @@ export function CheckoutPage() {
   const [allSlots, setAllSlots] = useState<string[]>([]);
   const [loadingSlots, setLoadingSlots] = useState(false);
   const [teamMembers, setTeamMembers] = useState<any[]>([]);
+
+  // REQUIREMENT 10: Live IST time state auto-updating every 10s
+  const [nowMinutesIST, setNowMinutesIST] = useState<number>(() => getCurrentTimeInMinutesIST());
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setNowMinutesIST(getCurrentTimeInMinutesIST());
+    }, 10000);
+    return () => clearInterval(timer);
+  }, []);
 
   // Form State
   const [bookingData, setBookingData] = useState({
@@ -764,28 +829,72 @@ export function CheckoutPage() {
                       {allSlots.length > 0 ? (
                         <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
                           {allSlots.map((slot) => {
-                            const isBooked = !availableSlots.includes(slot);
+                            const todayISO = getTodayISOIST();
+                            const isSelectedDateToday = Boolean(
+                              bookingData.booking_date &&
+                              (bookingData.booking_date === todayISO || bookingData.booking_date.startsWith(todayISO))
+                            );
+                            const slotMins = parseSlotTimeToMinutes(slot);
+                            
+                            // 1. Check if slot has expired (start time <= current time in IST on today's date)
+                            const isExpired = isSelectedDateToday && slotMins >= 0 && slotMins <= nowMinutesIST;
+                            
+                            // 2. Check if slot is already booked in database
+                            const isBooked = !availableSlots.includes(slot) && !isExpired;
+
+                            // 3. Selection state
                             const isSelected = bookingData.booking_time === slot;
+
+                            // State 1: EXPIRED State (Grey / dull / opacity-60 / cursor-not-allowed)
+                            if (isExpired) {
+                              return (
+                                <button
+                                  key={slot}
+                                  disabled={true}
+                                  type="button"
+                                  title="This time slot has already passed"
+                                  className="py-3 rounded-lg text-sm font-medium border-2 border-stone-200 bg-stone-100/70 text-stone-400 opacity-60 cursor-not-allowed relative select-none"
+                                >
+                                  {slot}
+                                  <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center rounded-full bg-stone-300 px-1.5 py-0.5 text-[8px] text-stone-600 font-bold uppercase tracking-wider shadow-sm">
+                                    Expired
+                                  </span>
+                                </button>
+                              );
+                            }
+
+                            // State 2: BOOKED State (Dull red / line-through / disabled)
+                            if (isBooked) {
+                              return (
+                                <button
+                                  key={slot}
+                                  disabled={true}
+                                  type="button"
+                                  title="Already booked in database"
+                                  className="py-3 rounded-lg text-sm font-medium border-2 border-red-200 bg-red-50 text-red-400 opacity-80 cursor-not-allowed line-through relative select-none"
+                                >
+                                  {slot}
+                                  <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[8px] text-white font-bold shadow-sm">
+                                    ✕
+                                  </span>
+                                </button>
+                              );
+                            }
+
+                            // State 3: AVAILABLE State (Interactive / Clickable)
                             return (
                               <button
                                 key={slot}
-                                disabled={isBooked}
-                                onClick={() => !isBooked && handleUpdate("booking_time", slot)}
-                                title={isBooked ? "Already booked" : slot}
-                                className={`py-3 rounded-lg text-sm font-medium border-2 transition-colors relative ${
+                                type="button"
+                                onClick={() => handleUpdate("booking_time", slot)}
+                                title={`Select ${slot}`}
+                                className={`py-3 rounded-lg text-sm font-medium border-2 transition-all relative cursor-pointer ${
                                   isSelected
-                                    ? "border-[#CA9A86] bg-[#CA9A86] text-white"
-                                    : isBooked
-                                    ? "border-stone-100 bg-stone-50 text-stone-300 cursor-not-allowed line-through"
-                                    : "border-stone-100 bg-white text-stone-600 hover:border-stone-300 cursor-pointer"
+                                    ? "border-[#CA9A86] bg-[#CA9A86] text-white shadow-md font-bold scale-[1.02]"
+                                    : "border-stone-200 bg-white text-stone-700 hover:border-[#CA9A86] hover:bg-[#F9F4F2]"
                                 }`}
                               >
                                 {slot}
-                                {isBooked && (
-                                  <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-400 text-[8px] text-white font-bold">
-                                    ✕
-                                  </span>
-                                )}
                               </button>
                             );
                           })}

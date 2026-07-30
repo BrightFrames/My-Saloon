@@ -273,12 +273,20 @@ export const api = {
   toggleLoyalCustomer: (email: string, is_loyal: boolean) =>
     request("PUT", `/admin/customers/${encodeURIComponent(email)}/loyalty`, { is_loyal }),
 
-  // ── Reviews ───────────────────────────────────────
+  // ── Reviews & Queries ──────────────────────────────
   getReviews: () => request("GET", "/admin/reviews"),
   replyToReview: (id: string, reply: string) =>
     request("POST", `/admin/reviews/${id}/reply`, { reply }),
+  getQueries: () => request("GET", "/admin/queries"),
+  replyToQuery: (id: string, reply: string) =>
+    request("POST", `/admin/queries/${id}/reply`, { reply }),
 
-  // ── Earnings ──────────────────────────────────────
+  // ── Earnings & Analytics ──────────────────────────
+  getRevenueAnalytics: (range: string = "month", salonId?: string) => {
+    const params = new URLSearchParams({ range });
+    if (salonId) params.append("salon_id", salonId);
+    return request("GET", `/admin/analytics/revenue?${params.toString()}`);
+  },
   getEarnings: () => request("GET", "/admin/earnings"),
   requestWithdrawal: (amount: number) =>
     request("POST", "/admin/withdrawal-request", { amount }),

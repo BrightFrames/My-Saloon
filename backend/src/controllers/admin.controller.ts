@@ -283,15 +283,16 @@ export const getServices = asyncHandler(async (req: Request, res: Response) => {
     discountedPrice: row.discounted_price ?? row.price,
     homeServiceAvailable: row.home_service_available ?? false,
     homeServicePrice: row.home_service_price ?? null,
+    is_active: row.is_active ?? true,
   }));
 
   res.json({ success: true, data: mappedData });
 });
 
-  export const createService = asyncHandler(
+export const createService = asyncHandler(
   async (req: Request, res: Response) => {
     const { salon_id } = (req as any).user;
-    const { name, price, originalPrice, discountedPrice, duration, homeServiceAvailable, homeServicePrice } = req.body;
+    const { name, price, originalPrice, discountedPrice, duration, homeServiceAvailable, homeServicePrice, is_active } = req.body;
 
     if (!salon_id) {
       res
@@ -311,9 +312,11 @@ export const getServices = asyncHandler(async (req: Request, res: Response) => {
       return;
     }
 
+    const isActiveBool = is_active !== undefined ? Boolean(is_active) : true;
+
     const result = await query(
-      "INSERT INTO public.services (salon_id, name, price, original_price, discounted_price, duration, home_service_available, home_service_price) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *",
-      [salon_id, name, finalPrice, finalOriginalPrice, finalDiscountedPrice, duration, homeServiceAvailable || false, homeServicePrice || null],
+      "INSERT INTO public.services (salon_id, name, price, original_price, discounted_price, duration, home_service_available, home_service_price, is_active) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING *",
+      [salon_id, name, finalPrice, finalOriginalPrice, finalDiscountedPrice, duration, homeServiceAvailable || false, homeServicePrice || null, isActiveBool],
     );
 
     const row = result.rows[0];
@@ -323,17 +326,18 @@ export const getServices = asyncHandler(async (req: Request, res: Response) => {
       discountedPrice: row.discounted_price ?? row.price,
       homeServiceAvailable: row.home_service_available ?? false,
       homeServicePrice: row.home_service_price ?? null,
+      is_active: row.is_active ?? true,
     };
 
     res.status(201).json({ success: true, data: mappedRow });
   },
 );
 
-  export const updateService = asyncHandler(
+export const updateService = asyncHandler(
   async (req: Request, res: Response) => {
     const { salon_id } = (req as any).user;
     const { id } = req.params;
-    const { name, price, originalPrice, discountedPrice, duration, homeServiceAvailable, homeServicePrice } = req.body;
+    const { name, price, originalPrice, discountedPrice, duration, homeServiceAvailable, homeServicePrice, is_active } = req.body;
 
     if (!salon_id) {
       res
@@ -344,27 +348,39 @@ export const getServices = asyncHandler(async (req: Request, res: Response) => {
 
     // Ensure service belongs to this salon
     const checkResult = await query(
-      "SELECT salon_id FROM public.services WHERE id = $1",
+      "SELECT * FROM public.services WHERE id = $1",
       [id],
     );
     if (checkResult.rows.length === 0) {
       res.status(404).json({ message: "Service not found" });
       return;
     }
-    if (checkResult.rows[0].salon_id !== salon_id) {
+    const existing = checkResult.rows[0];
+    if (existing.salon_id !== salon_id) {
       res
         .status(403)
         .json({ message: "Forbidden: Service belongs to another salon" });
       return;
     }
 
-    const finalOriginalPrice = originalPrice !== undefined ? originalPrice : price;
-    const finalDiscountedPrice = discountedPrice !== undefined ? discountedPrice : price;
-    const finalPrice = finalDiscountedPrice !== undefined ? finalDiscountedPrice : price;
+    const newName = (name !== undefined && name !== null && String(name).trim() !== "") ? name : (existing.name || "Service");
+    const newPrice = (price !== undefined && price !== null)
+      ? Number(price)
+      : Number(existing.price ?? existing.discounted_price ?? existing.original_price ?? 0);
+    const newOriginalPrice = (originalPrice !== undefined && originalPrice !== null)
+      ? Number(originalPrice)
+      : Number(existing.original_price ?? existing.price ?? newPrice);
+    const newDiscountedPrice = (discountedPrice !== undefined && discountedPrice !== null)
+      ? Number(discountedPrice)
+      : Number(existing.discounted_price ?? existing.price ?? newPrice);
+    const newDuration = (duration !== undefined && duration !== null && String(duration).trim() !== "") ? duration : (existing.duration || "30 min");
+    const newHomeAvailable = homeServiceAvailable !== undefined ? Boolean(homeServiceAvailable) : (existing.home_service_available ?? false);
+    const newHomePrice = homeServicePrice !== undefined && homeServicePrice !== null ? Number(homeServicePrice) : (existing.home_service_price ?? null);
+    const newIsActive = is_active !== undefined ? Boolean(is_active) : (existing.is_active ?? true);
 
     const result = await query(
-      "UPDATE public.services SET name = $1, price = $2, original_price = $3, discounted_price = $4, duration = $5, home_service_available = $6, home_service_price = $7 WHERE id = $8 RETURNING *",
-      [name, finalPrice, finalOriginalPrice, finalDiscountedPrice, duration, homeServiceAvailable !== undefined ? homeServiceAvailable : false, homeServicePrice || null, id],
+      "UPDATE public.services SET name = $1, price = $2, original_price = $3, discounted_price = $4, duration = $5, home_service_available = $6, home_service_price = $7, is_active = $8 WHERE id = $9 RETURNING *",
+      [newName, newPrice, newOriginalPrice, newDiscountedPrice, newDuration, newHomeAvailable, newHomePrice, newIsActive, id],
     );
 
     const row = result.rows[0];
@@ -374,6 +390,7 @@ export const getServices = asyncHandler(async (req: Request, res: Response) => {
       discountedPrice: row.discounted_price ?? row.price,
       homeServiceAvailable: row.home_service_available ?? false,
       homeServicePrice: row.home_service_price ?? null,
+      is_active: row.is_active ?? true,
     };
 
     res.json({ success: true, data: mappedRow });
@@ -434,7 +451,7 @@ export const getTeam = asyncHandler(async (req: Request, res: Response) => {
 export const createTeamMember = asyncHandler(
   async (req: Request, res: Response) => {
     const { salon_id } = (req as any).user;
-    const { name, role, experience, image_url, availability, service_ids } =
+    const { name, role, experience, image_url, availability, service_ids, is_active } =
       req.body;
 
     if (!salon_id) {
@@ -449,8 +466,10 @@ export const createTeamMember = asyncHandler(
       return;
     }
 
+    const activeBool = is_active === undefined ? true : Boolean(is_active);
+
     const result = await query(
-      "INSERT INTO public.team_members (salon_id, name, role, experience, image_url, availability, service_ids) VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *",
+      "INSERT INTO public.team_members (salon_id, name, role, experience, image_url, availability, service_ids, is_active) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *",
       [
         salon_id,
         name,
@@ -459,6 +478,7 @@ export const createTeamMember = asyncHandler(
         image_url,
         availability ? JSON.stringify(availability) : null,
         Array.isArray(service_ids) ? service_ids : [],
+        activeBool,
       ],
     );
 
@@ -470,7 +490,7 @@ export const updateTeamMember = asyncHandler(
   async (req: Request, res: Response) => {
     const { salon_id } = (req as any).user;
     const { id } = req.params;
-    const { name, role, experience, image_url, availability, service_ids } =
+    const { name, role, experience, image_url, availability, service_ids, is_active } =
       req.body;
 
     if (!salon_id) {
@@ -481,7 +501,7 @@ export const updateTeamMember = asyncHandler(
     }
 
     const checkResult = await query(
-      "SELECT salon_id FROM public.team_members WHERE id = $1",
+      "SELECT salon_id, name, role, experience, image_url, availability, service_ids, is_active FROM public.team_members WHERE id = $1",
       [id],
     );
     if (checkResult.rows.length === 0) {
@@ -493,15 +513,25 @@ export const updateTeamMember = asyncHandler(
       return;
     }
 
+    const existing = checkResult.rows[0];
+    const newName = name !== undefined ? name : existing.name;
+    const newRole = role !== undefined ? role : existing.role;
+    const newExp = experience !== undefined ? experience : existing.experience;
+    const newImg = image_url !== undefined ? image_url : existing.image_url;
+    const newAvail = availability !== undefined ? (availability ? JSON.stringify(availability) : null) : existing.availability;
+    const newServices = service_ids !== undefined ? (Array.isArray(service_ids) ? service_ids : []) : existing.service_ids;
+    const newActive = is_active !== undefined ? Boolean(is_active) : (existing.is_active ?? true);
+
     const result = await query(
-      "UPDATE public.team_members SET name = $1, role = $2, experience = $3, image_url = $4, availability = $5, service_ids = $6 WHERE id = $7 RETURNING *",
+      "UPDATE public.team_members SET name = $1, role = $2, experience = $3, image_url = $4, availability = $5, service_ids = $6, is_active = $7 WHERE id = $8 RETURNING *",
       [
-        name,
-        role,
-        experience,
-        image_url,
-        availability ? JSON.stringify(availability) : null,
-        Array.isArray(service_ids) ? service_ids : [],
+        newName,
+        newRole,
+        newExp,
+        newImg,
+        newAvail,
+        newServices,
+        newActive,
         id,
       ],
     );
@@ -537,6 +567,83 @@ export const deleteTeamMember = asyncHandler(
 
     await query("DELETE FROM public.team_members WHERE id = $1", [id]);
     res.json({ success: true, message: "Team member deleted" });
+  },
+);
+
+// ── Staff Leave Management ──────────────────────────────
+export const getStaffLeaves = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { salon_id } = (req as any).user;
+    if (!salon_id) {
+      res.status(403).json({ message: "Salon ID missing." });
+      return;
+    }
+
+    const result = await query(
+      "SELECT * FROM public.staff_leaves WHERE salon_id = $1 ORDER BY leave_date DESC, created_at DESC",
+      [salon_id],
+    );
+    res.json({ success: true, data: result.rows });
+  },
+);
+
+export const createStaffLeave = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { salon_id } = (req as any).user;
+    const { team_member_id, staff_name, leave_date, end_date, start_time, end_time, is_full_day, leave_type, reason } = req.body;
+
+    if (!salon_id) {
+      res.status(403).json({ message: "Salon ID missing." });
+      return;
+    }
+
+    if (!leave_date) {
+      res.status(400).json({ message: "Leave date is required." });
+      return;
+    }
+
+    let resolvedName = staff_name;
+    if (!resolvedName && team_member_id) {
+      const tm = await query("SELECT name FROM public.team_members WHERE id = $1 LIMIT 1", [team_member_id]);
+      if (tm.rows[0]?.name) resolvedName = tm.rows[0].name;
+    }
+
+    const fullDayBool = is_full_day !== undefined ? Boolean(is_full_day) : (leave_type === "full_day" || (!start_time && !end_time));
+
+    const result = await query(
+      `INSERT INTO public.staff_leaves (
+        salon_id, team_member_id, staff_name, leave_date, end_date, start_time, end_time, is_full_day, leave_type, reason
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+      [
+        salon_id,
+        team_member_id || null,
+        resolvedName || "Staff Member",
+        leave_date,
+        end_date || leave_date,
+        start_time || null,
+        end_time || null,
+        fullDayBool,
+        leave_type || (fullDayBool ? "full_day" : "hours"),
+        reason || "Leave",
+      ],
+    );
+
+    res.status(201).json({ success: true, data: result.rows[0] });
+  },
+);
+
+export const deleteStaffLeave = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { salon_id } = (req as any).user;
+    const { id } = req.params;
+
+    if (!salon_id) {
+      res.status(403).json({ message: "Salon ID missing." });
+      return;
+    }
+
+    await query("DELETE FROM public.staff_leaves WHERE id = $1 AND salon_id = $2", [id, salon_id]);
+    res.json({ success: true, message: "Leave record deleted" });
   },
 );
 

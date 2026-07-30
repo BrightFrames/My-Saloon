@@ -101,11 +101,11 @@ export const api = {
 
   // Services
   getServices: () => request("GET", "/admin/services"),
-  createService: (data: { name: string; price?: number; originalPrice?: number; discountedPrice?: number; duration: string; homeServiceAvailable?: boolean; homeServicePrice?: number }) =>
+  createService: (data: { name: string; price?: number; originalPrice?: number; discountedPrice?: number; duration: string; homeServiceAvailable?: boolean; homeServicePrice?: number; is_active?: boolean }) =>
     request("POST", "/admin/services", data),
   updateService: (
     id: string,
-    data: { name: string; price?: number; originalPrice?: number; discountedPrice?: number; duration: string; homeServiceAvailable?: boolean; homeServicePrice?: number },
+    data: { name?: string; price?: number; originalPrice?: number; discountedPrice?: number; duration?: string; homeServiceAvailable?: boolean; homeServicePrice?: number; is_active?: boolean },
   ) => request("PUT", `/admin/services/${id}`, data),
   deleteService: (id: string) => request("DELETE", `/admin/services/${id}`),
 
@@ -117,18 +117,35 @@ export const api = {
     experience?: string;
     image_url?: string;
     service_ids?: string[];
+    is_active?: boolean;
   }) => request("POST", "/admin/team", data),
   updateTeamMember: (
     id: string,
     data: {
-      name: string;
-      role: string;
+      name?: string;
+      role?: string;
       experience?: string;
       image_url?: string;
       service_ids?: string[];
+      is_active?: boolean;
     },
   ) => request("PUT", `/admin/team/${id}`, data),
   deleteTeamMember: (id: string) => request("DELETE", `/admin/team/${id}`),
+
+  // Staff Leaves
+  getStaffLeaves: () => request("GET", "/admin/leaves"),
+  createStaffLeave: (data: {
+    team_member_id?: string;
+    staff_name?: string;
+    leave_date: string;
+    end_date?: string;
+    start_time?: string;
+    end_time?: string;
+    is_full_day?: boolean;
+    leave_type?: string;
+    reason?: string;
+  }) => request("POST", "/admin/leaves", data),
+  deleteStaffLeave: (id: string) => request("DELETE", `/admin/leaves/${id}`),
 
   // Salon Profile
   getSalonProfile: async () => {

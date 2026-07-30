@@ -351,11 +351,12 @@ export function CheckoutPage() {
     // Fetch team members from backend for the selected salon
     const fetchTeam = async () => {
       try {
-        let salonIdQuery = "";
+        const params = new URLSearchParams();
         const salonId = getSalonIdFromStorage();
-        if (salonId) salonIdQuery = `?salon_id=${salonId}`;
+        if (salonId) params.append("salon_id", String(salonId));
+        if (bookingData.booking_date) params.append("date", bookingData.booking_date);
 
-        const res = await fetch(`${base}/team${salonIdQuery}`);
+        const res = await fetch(`${base}/team?${params.toString()}`);
         if (!res.ok) {
           throw new Error(`Failed team API: ${res.status}`);
         }
@@ -371,7 +372,7 @@ export function CheckoutPage() {
       }
     };
     fetchTeam();
-  }, [base]);
+  }, [base, bookingData.booking_date]);
 
   useEffect(() => {
     if (
@@ -384,13 +385,11 @@ export function CheckoutPage() {
     }
   }, [filteredTeamMembers, bookingData.stylist]);
 
-  // Fetch Slots when date and stylist are selected
+  // Fetch Slots when date and stylist are selected, with 10s auto-polling
   useEffect(() => {
     if (bookingData.booking_date && bookingData.stylist) {
+      let isMounted = true;
       const fetchSlots = async () => {
-        setLoadingSlots(true);
-        setAvailableSlots([]);
-        setAllSlots([]);
         try {
           const salonId = getSalonIdFromStorage() || salonData?.id || salonData?.salon_id || salonData?.salonId;
           const serviceIds = selectedServicesArr.map((s) => s.id).join(",");
@@ -406,27 +405,31 @@ export function CheckoutPage() {
 
           const res = await fetch(`${base}/bookings/slots?${queryParams.toString()}`);
           const data = await res.json();
-          if (data.success) {
+          if (data.success && isMounted) {
             const available: string[] = data.availableSlots || [];
             setAvailableSlots(available);
 
-            // Backend returns allSlots as SlotStatus[] ({time, available, reason})
-            // Extract the .time string from each object
-            const rawAll = data.allSlots || [];
-            const allTimes: string[] = rawAll.map((s: any) =>
-              typeof s === "string" ? s : s.time
-            );
-            setAllSlots(allTimes.length > 0 ? allTimes : available);
+            // Backend returns allSlots as SlotStatus[] ({time, available, state, reason})
+            const rawAll: any[] = data.allSlots || [];
+            setAllSlots(rawAll);
           }
         } catch (error) {
           console.error("Failed to fetch slots", error);
         } finally {
-          setLoadingSlots(false);
+          if (isMounted) setLoadingSlots(false);
         }
       };
+
+      setLoadingSlots(true);
       fetchSlots();
+
+      const pollInterval = setInterval(fetchSlots, 10000);
+      return () => {
+        isMounted = false;
+        clearInterval(pollInterval);
+      };
     }
-  }, [bookingData.booking_date, bookingData.stylist, totalDuration, selectedServicesArr, salonData]);
+  }, [bookingData.booking_date, bookingData.stylist, totalDuration, selectedServicesArr, salonData, base]);
 
   const handleUpdate = (field: string, value: any) => {
     setBookingData((prev) => {
@@ -753,36 +756,62 @@ export function CheckoutPage() {
                     </h3>
                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
                       {filteredTeamMembers.length > 0 ? (
-                        filteredTeamMembers.map((st) => (
-                          <div
-                            key={st.id}
-                            onClick={() => handleUpdate("stylist", st.name)}
-                            className={`flex cursor-pointer flex-col items-center gap-3 rounded-xl border-2 p-4 text-center transition-all ${bookingData.stylist === st.name ? "border-[#CA9A86] bg-[#F9F4F2]" : "border-stone-100 bg-white hover:border-stone-200"}`}
-                          >
-                            <div className="w-14 h-14 rounded-full bg-stone-200 overflow-hidden flex items-center justify-center">
-                              {st.image_url ? (
-                                <img
-                                  src={st.image_url}
-                                  alt={st.name}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <img
-                                  src={`https://ui-avatars.com/api/?name=${st.name}&background=DEB5A4&color=fff`}
-                                  alt={st.name}
-                                />
+                        filteredTeamMembers.map((st) => {
+                          const isOnLeave = Boolean(st.isOnLeave);
+                          const isSelected = bookingData.stylist === st.name;
+                          return (
+                            <div
+                              key={st.id}
+                              onClick={() => {
+                                if (isOnLeave) {
+                                  setPopup({
+                                    open: true,
+                                    title: "Stylist Unavailable",
+                                    message: `${st.name} is on full-day leave today (${st.leaveReason || "On Leave"}). Please select another stylist.`,
+                                    tone: "warning",
+                                  });
+                                  return;
+                                }
+                                handleUpdate("stylist", st.name);
+                              }}
+                              className={`flex flex-col items-center gap-3 rounded-xl border-2 p-4 text-center transition-all relative ${
+                                isOnLeave
+                                  ? "border-amber-200 bg-amber-50/50 opacity-75 cursor-not-allowed"
+                                  : isSelected
+                                    ? "border-[#CA9A86] bg-[#F9F4F2] cursor-pointer"
+                                    : "border-stone-100 bg-white hover:border-stone-200 cursor-pointer"
+                              }`}
+                            >
+                              {isOnLeave && (
+                                <span className="absolute top-2 right-2 bg-amber-500 text-white text-[9px] font-bold px-2 py-0.5 rounded-full shadow-sm">
+                                  On Leave
+                                </span>
                               )}
+                              <div className="w-14 h-14 rounded-full bg-stone-200 overflow-hidden flex items-center justify-center">
+                                {st.image_url ? (
+                                  <img
+                                    src={st.image_url}
+                                    alt={st.name}
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  <img
+                                    src={`https://ui-avatars.com/api/?name=${st.name}&background=DEB5A4&color=fff`}
+                                    alt={st.name}
+                                  />
+                                )}
+                              </div>
+                              <div>
+                                <p className="font-medium text-stone-800 text-sm">
+                                  {st.name}
+                                </p>
+                                <p className="text-[11px] text-stone-500 mt-0.5">
+                                  {st.role}
+                                </p>
+                              </div>
                             </div>
-                            <div>
-                              <p className="font-medium text-stone-800 text-sm">
-                                {st.name}
-                              </p>
-                              <p className="text-[11px] text-stone-500 mt-0.5">
-                                {st.role}
-                              </p>
-                            </div>
-                          </div>
-                        ))
+                          );
+                        })
                       ) : (
                         <p className="text-sm text-stone-500 px-2">
                           {bookingData.hairstyle
@@ -826,36 +855,45 @@ export function CheckoutPage() {
                           ⏱️ Service Duration: {totalDuration} mins
                         </span>
                       </h3>
+                      {/* Slot Legend */}
+                      <div className="flex flex-wrap items-center gap-4 text-xs font-semibold text-stone-500 mb-4 bg-stone-50 p-3 rounded-xl border border-stone-100">
+                        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#CA9A86]"></span> Available</span>
+                        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-red-500"></span> Booked</span>
+                        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-amber-500"></span> On Leave / Break</span>
+                        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-stone-400"></span> Expired</span>
+                      </div>
+
                       {allSlots.length > 0 ? (
                         <div className="grid grid-cols-3 sm:grid-cols-4 gap-3">
-                          {allSlots.map((slot) => {
+                          {allSlots.map((slotObj: any) => {
+                            const timeStr = typeof slotObj === "string" ? slotObj : slotObj.time;
+                            const slotState = typeof slotObj === "object" ? slotObj.state : undefined;
+                            const reason = typeof slotObj === "object" ? slotObj.reason : undefined;
+
                             const todayISO = getTodayISOIST();
                             const isSelectedDateToday = Boolean(
                               bookingData.booking_date &&
                               (bookingData.booking_date === todayISO || bookingData.booking_date.startsWith(todayISO))
                             );
-                            const slotMins = parseSlotTimeToMinutes(slot);
+                            const slotMins = parseSlotTimeToMinutes(timeStr);
                             
-                            // 1. Check if slot has expired (start time <= current time in IST on today's date)
-                            const isExpired = isSelectedDateToday && slotMins >= 0 && slotMins <= nowMinutesIST;
-                            
-                            // 2. Check if slot is already booked in database
-                            const isBooked = !availableSlots.includes(slot) && !isExpired;
+                            // Check states
+                            const isExpired = slotState === "expired" || (isSelectedDateToday && slotMins >= 0 && slotMins <= nowMinutesIST);
+                            const isUnavailable = slotState === "unavailable";
+                            const isBooked = slotState === "booked" || (!availableSlots.includes(timeStr) && !isExpired && !isUnavailable);
+                            const isSelected = bookingData.booking_time === timeStr;
 
-                            // 3. Selection state
-                            const isSelected = bookingData.booking_time === slot;
-
-                            // State 1: EXPIRED State (Grey / dull / opacity-60 / cursor-not-allowed)
+                            // State 1: EXPIRED State (Grey / opacity-50 / cursor-not-allowed)
                             if (isExpired) {
                               return (
                                 <button
-                                  key={slot}
+                                  key={timeStr}
                                   disabled={true}
                                   type="button"
                                   title="This time slot has already passed"
-                                  className="py-3 rounded-lg text-sm font-medium border-2 border-stone-200 bg-stone-100/70 text-stone-400 opacity-60 cursor-not-allowed relative select-none"
+                                  className="py-3 rounded-lg text-sm font-medium border-2 border-stone-200 bg-stone-100/70 text-stone-400 opacity-50 cursor-not-allowed relative select-none"
                                 >
-                                  {slot}
+                                  {timeStr}
                                   <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center rounded-full bg-stone-300 px-1.5 py-0.5 text-[8px] text-stone-600 font-bold uppercase tracking-wider shadow-sm">
                                     Expired
                                   </span>
@@ -863,17 +901,35 @@ export function CheckoutPage() {
                               );
                             }
 
-                            // State 2: BOOKED State (Dull red / line-through / disabled)
+                            // State 2: UNAVAILABLE / ON LEAVE State (Amber / Orange)
+                            if (isUnavailable) {
+                              return (
+                                <button
+                                  key={timeStr}
+                                  disabled={true}
+                                  type="button"
+                                  title={reason || "Unavailable due to staff leave or break"}
+                                  className="py-3 rounded-lg text-sm font-medium border-2 border-amber-200 bg-amber-50 text-amber-600 opacity-80 cursor-not-allowed relative select-none"
+                                >
+                                  {timeStr}
+                                  <span className="absolute -top-1.5 -right-1.5 flex items-center justify-center rounded-full bg-amber-500 px-1.5 py-0.5 text-[8px] text-white font-bold uppercase tracking-wider shadow-sm">
+                                    On Leave
+                                  </span>
+                                </button>
+                              );
+                            }
+
+                            // State 3: BOOKED State (Dull red / line-through / disabled)
                             if (isBooked) {
                               return (
                                 <button
-                                  key={slot}
+                                  key={timeStr}
                                   disabled={true}
                                   type="button"
                                   title="Already booked in database"
                                   className="py-3 rounded-lg text-sm font-medium border-2 border-red-200 bg-red-50 text-red-400 opacity-80 cursor-not-allowed line-through relative select-none"
                                 >
-                                  {slot}
+                                  {timeStr}
                                   <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[8px] text-white font-bold shadow-sm">
                                     ✕
                                   </span>
@@ -881,20 +937,20 @@ export function CheckoutPage() {
                               );
                             }
 
-                            // State 3: AVAILABLE State (Interactive / Clickable)
+                            // State 4: AVAILABLE State (Interactive / Clickable)
                             return (
                               <button
-                                key={slot}
+                                key={timeStr}
                                 type="button"
-                                onClick={() => handleUpdate("booking_time", slot)}
-                                title={`Select ${slot}`}
+                                onClick={() => handleUpdate("booking_time", timeStr)}
+                                title={`Select ${timeStr}`}
                                 className={`py-3 rounded-lg text-sm font-medium border-2 transition-all relative cursor-pointer ${
                                   isSelected
                                     ? "border-[#CA9A86] bg-[#CA9A86] text-white shadow-md font-bold scale-[1.02]"
                                     : "border-stone-200 bg-white text-stone-700 hover:border-[#CA9A86] hover:bg-[#F9F4F2]"
                                 }`}
                               >
-                                {slot}
+                                {timeStr}
                               </button>
                             );
                           })}

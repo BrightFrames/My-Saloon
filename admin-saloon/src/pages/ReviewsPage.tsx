@@ -7,7 +7,8 @@ import {
   MessageSquare,
   RefreshCw,
   Send,
-  CheckCircle2
+  CheckCircle2,
+  BarChart3
 } from "lucide-react";
 import "./pages.css";
 
@@ -31,6 +32,7 @@ const itemVariants: Variants = {
 };
 
 export default function ReviewsPage({ user, onLogout }: Props) {
+  const [activeTab, setActiveTab] = useState<'reviews' | 'summary'>('reviews');
   const [reviews, setReviews] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [replyText, setReplyText] = useState<Record<string, string>>({});
@@ -107,37 +109,48 @@ export default function ReviewsPage({ user, onLogout }: Props) {
           </button>
         </motion.div>
 
-        {/* Rating Summary Header */}
-        <motion.div className="reviews-summary-card" variants={itemVariants}>
-          <div className="reviews-avg-block">
-            <div className="reviews-avg-number" style={{ color: "#EAB308" }}>{summary.avg || "0.0"}</div>
-            <div style={{ marginTop: 4 }}>
-              {renderStars(Math.round(summary.avg || 5))}
-            </div>
-            <div style={{ fontSize: 13, color: "var(--muted)", fontWeight: 600, marginTop: 4 }}>
-              Based on {summary.count} reviews
-            </div>
-          </div>
-
-          <div style={{ flex: 1, minWidth: 240, display: "flex", flexDirection: "column", gap: 8 }}>
-            {[5, 4, 3, 2, 1].map(star => {
-              const cnt = summary[["one","two","three","four","five"][star - 1] as keyof typeof summary] as number;
-              const pct = summary.count > 0 ? (cnt / summary.count) * 100 : 0;
-              return (
-                <div key={star} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
-                  <span style={{ fontWeight: 700, width: 30, color: "var(--text-h)" }}>{star} ★</span>
-                  <div style={{ flex: 1, height: 8, borderRadius: 4, background: "var(--border)", overflow: "hidden" }}>
-                    <div style={{ width: `${pct}%`, height: "100%", background: star >= 4 ? "#10B981" : star === 3 ? "#F59E0B" : "#EF4444", borderRadius: 4 }} />
-                  </div>
-                  <span style={{ width: 24, textAlign: "right", color: "var(--muted)", fontWeight: 600 }}>{cnt}</span>
-                </div>
-              );
-            })}
-          </div>
+        {/* Tabs */}
+        <motion.div className="tab-bar" variants={itemVariants}>
+          <button onClick={() => setActiveTab('reviews')} className={`tab-btn ${activeTab === 'reviews' ? 'active' : ''}`}>
+            <MessageSquare size={15} /> Customer Reviews ({reviews.length})
+          </button>
+          <button onClick={() => setActiveTab('summary')} className={`tab-btn ${activeTab === 'summary' ? 'active' : ''}`}>
+            <BarChart3 size={15} /> Rating Summary
+          </button>
         </motion.div>
 
+        {/* Rating Summary Card - show on reviews tab */}
+        {activeTab === 'reviews' && (
+          <motion.div className="reviews-summary-card" variants={itemVariants}>
+            <div className="reviews-avg-block">
+              <div className="reviews-avg-number" style={{ color: "#EAB308" }}>{summary.avg || "0.0"}</div>
+              <div style={{ marginTop: 4 }}>
+                {renderStars(Math.round(summary.avg || 5))}
+              </div>
+              <div style={{ fontSize: 13, color: "var(--muted)", fontWeight: 600, marginTop: 4 }}>
+                Based on {summary.count} reviews
+              </div>
+            </div>
+            <div style={{ flex: 1, minWidth: 240, display: "flex", flexDirection: "column", gap: 8 }}>
+              {[5, 4, 3, 2, 1].map(star => {
+                const cnt = summary[["one","two","three","four","five"][star - 1] as keyof typeof summary] as number;
+                const pct = summary.count > 0 ? (cnt / summary.count) * 100 : 0;
+                return (
+                  <div key={star} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 13 }}>
+                    <span style={{ fontWeight: 700, width: 30, color: "var(--text-h)" }}>{star} ★</span>
+                    <div style={{ flex: 1, height: 8, borderRadius: 4, background: "var(--border)", overflow: "hidden" }}>
+                      <div style={{ width: `${pct}%`, height: "100%", background: star >= 4 ? "#10B981" : star === 3 ? "#F59E0B" : "#EF4444", borderRadius: 4 }} />
+                    </div>
+                    <span style={{ width: 24, textAlign: "right", color: "var(--muted)", fontWeight: 600 }}>{cnt}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+
         {/* Reviews List */}
-        {loading ? (
+        {activeTab === 'reviews' && (loading ? (
           <div style={{ textAlign: "center", padding: 48, color: "var(--muted)" }}>Loading customer reviews...</div>
         ) : reviews.length === 0 ? (
           <div className="empty-state" style={{ padding: 48 }}>
@@ -231,6 +244,49 @@ export default function ReviewsPage({ user, onLogout }: Props) {
                 )}
               </motion.div>
             ))}
+          </motion.div>
+        ))}
+
+        {/* Rating Summary Tab */}
+        {activeTab === 'summary' && (
+          <motion.div variants={itemVariants}>
+            <div className="reviews-summary-card" style={{ flexDirection: 'column', gap: 24, padding: 32 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 20, flexWrap: 'wrap' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: 72, fontWeight: 900, color: '#EAB308', lineHeight: 1 }}>{summary.avg || '0.0'}</div>
+                  <div style={{ marginTop: 6 }}>{renderStars(Math.round(summary.avg || 0))}</div>
+                  <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 6 }}>Average Rating</div>
+                </div>
+                <div style={{ flex: 1, minWidth: 220 }}>
+                  {[5, 4, 3, 2, 1].map(star => {
+                    const cnt = summary[['one','two','three','four','five'][star - 1] as keyof typeof summary] as number;
+                    const pct = summary.count > 0 ? (cnt / summary.count) * 100 : 0;
+                    return (
+                      <div key={star} style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
+                        <span style={{ fontWeight: 700, width: 36, color: 'var(--text-h)', fontSize: 14 }}>{star} ★</span>
+                        <div style={{ flex: 1, height: 12, borderRadius: 6, background: 'var(--border)', overflow: 'hidden' }}>
+                          <div style={{ width: `${pct}%`, height: '100%', background: star >= 4 ? '#10B981' : star === 3 ? '#F59E0B' : '#EF4444', borderRadius: 6, transition: 'width 0.4s' }} />
+                        </div>
+                        <span style={{ width: 80, fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>{cnt} ({Math.round(pct)}%)</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(160px, 1fr))', gap: 14, marginTop: 8 }}>
+                {[
+                  { label: 'Total Reviews', val: summary.count, color: '#7C5CFC' },
+                  { label: '5 Star Reviews', val: summary.five, color: '#10B981' },
+                  { label: '4 Star Reviews', val: summary.four, color: '#3B82F6' },
+                  { label: 'Below 3 Stars', val: (summary.one + summary.two + summary.three), color: '#EF4444' },
+                ].map(m => (
+                  <div key={m.label} style={{ background: 'var(--bg)', borderRadius: 12, padding: '14px 16px', borderLeft: `3px solid ${m.color}` }}>
+                    <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 4 }}>{m.label}</div>
+                    <div style={{ fontSize: 24, fontWeight: 900, color: m.color }}>{m.val}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </motion.div>
         )}
       </motion.div>

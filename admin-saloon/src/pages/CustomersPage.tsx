@@ -11,7 +11,9 @@ import {
   HelpCircle,
   Clock3,
   Scissors,
-  UserCheck
+  UserCheck,
+  Users,
+  Crown
 } from "lucide-react";
 import "./pages.css";
 
@@ -35,9 +37,10 @@ const itemVariants: Variants = {
 };
 
 export default function CustomersPage({ user, onLogout }: Props) {
-  const [activeTab, setActiveTab] = useState<"feedback" | "queries">("feedback");
+  const [activeTab, setActiveTab] = useState<"feedback" | "queries" | "customers" | "loyalty">("feedback");
   const [feedbacks, setFeedbacks] = useState<any[]>([]);
   const [queries, setQueries] = useState<any[]>([]);
+  const [customers, setCustomers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [ratingFilter, setRatingFilter] = useState("all");
@@ -50,12 +53,14 @@ export default function CustomersPage({ user, onLogout }: Props) {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [revRes, qRes] = await Promise.all([
+      const [revRes, qRes, custRes] = await Promise.all([
         api.getReviews().catch(() => ({ data: [] })),
         api.getQueries().catch(() => ({ data: [] })),
+        api.getCustomers().catch(() => ({ data: [] })),
       ]);
       setFeedbacks(revRes?.data || []);
       setQueries(qRes?.data || []);
+      setCustomers(custRes?.data || []);
     } catch (e) {
       console.error(e);
     } finally {
@@ -147,68 +152,22 @@ export default function CustomersPage({ user, onLogout }: Props) {
           </button>
         </div>
 
-        {/* Tab Selection */}
-        <div style={{ display: "flex", gap: 12, marginBottom: 24 }}>
-          <button
-            onClick={() => setActiveTab("feedback")}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "12px 24px",
-              borderRadius: "16px",
-              border: "1px solid",
-              borderColor: activeTab === "feedback" ? "#7C5CFC" : "var(--border)",
-              background: activeTab === "feedback" ? "rgba(124, 92, 252, 0.1)" : "var(--panel-bg)",
-              color: activeTab === "feedback" ? "#7C5CFC" : "var(--text-h)",
-              fontWeight: 700,
-              fontSize: 14,
-              cursor: "pointer",
-              boxShadow: activeTab === "feedback" ? "0 4px 14px rgba(124, 92, 252, 0.15)" : "none",
-              transition: "all 0.2s ease"
-            }}
-          >
-            <Star size={18} style={{ color: activeTab === "feedback" ? "#7C5CFC" : "var(--muted)" }} />
-            Customer Feedback ({feedbacks.length})
-          </button>
-
-          <button
-            onClick={() => setActiveTab("queries")}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 8,
-              padding: "12px 24px",
-              borderRadius: "16px",
-              border: "1px solid",
-              borderColor: activeTab === "queries" ? "#3B82F6" : "var(--border)",
-              background: activeTab === "queries" ? "rgba(59, 130, 246, 0.1)" : "var(--panel-bg)",
-              color: activeTab === "queries" ? "#3B82F6" : "var(--text-h)",
-              fontWeight: 700,
-              fontSize: 14,
-              cursor: "pointer",
-              boxShadow: activeTab === "queries" ? "0 4px 14px rgba(59, 130, 246, 0.15)" : "none",
-              transition: "all 0.2s ease"
-            }}
-          >
-            <HelpCircle size={18} style={{ color: activeTab === "queries" ? "#3B82F6" : "var(--muted)" }} />
-            Customer Queries ({queries.length})
-            {pendingQueryCount > 0 && (
-              <span
-                style={{
-                  background: "#EF4444",
-                  color: "#FFFFFF",
-                  fontSize: 11,
-                  fontWeight: 800,
-                  padding: "2px 8px",
-                  borderRadius: "12px"
-                }}
-              >
-                {pendingQueryCount} Pending
-              </span>
-            )}
-          </button>
-        </div>
+          {/* Tab Selection */}
+          <div className="tab-bar" style={{ marginBottom: 0 }}>
+            <button onClick={() => setActiveTab("customers")} className={`tab-btn ${activeTab === "customers" ? "active" : ""}`}>
+              <Users size={15} /> Customers ({customers.length})
+            </button>
+            <button onClick={() => setActiveTab("loyalty")} className={`tab-btn ${activeTab === "loyalty" ? "active" : ""}`}>
+              <Crown size={15} /> Loyal Customers ({customers.filter(c => c.is_loyal).length})
+            </button>
+            <button onClick={() => setActiveTab("feedback")} className={`tab-btn ${activeTab === "feedback" ? "active" : ""}`}>
+              <Star size={15} /> Feedback ({feedbacks.length})
+            </button>
+            <button onClick={() => setActiveTab("queries")} className={`tab-btn ${activeTab === "queries" ? "active" : ""}`}>
+              <HelpCircle size={15} /> Queries ({queries.length})
+              {pendingQueryCount > 0 && <span className="tab-badge">{pendingQueryCount}</span>}
+            </button>
+          </div>
 
         {/* Search Bar */}
         <div style={{ position: "relative", marginBottom: 20 }}>
@@ -601,6 +560,95 @@ export default function CustomersPage({ user, onLogout }: Props) {
             )}
           </motion.div>
         )}
+        {/* Customer List Tab */}
+        {activeTab === "customers" && (
+          <motion.div variants={itemVariants}>
+            {loading ? (
+              <div className="empty-state" style={{ padding: 48, color: 'var(--muted)' }}>Loading customers...</div>
+            ) : customers.length === 0 ? (
+              <div className="empty-state" style={{ padding: 48 }}>
+                <Users size={48} style={{ opacity: 0.3, marginBottom: 12 }} />
+                <h3>No customers yet</h3>
+                <p>Customers who book appointments will appear here.</p>
+              </div>
+            ) : (
+              <div className="dash-table-wrap">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Customer</th>
+                      <th>Email</th>
+                      <th>Total Bookings</th>
+                      <th>Loyalty</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {customers.map((c: any) => (
+                      <tr key={c.email || c.id}>
+                        <td>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                            <div className="avatar-circle" style={{ width: 36, height: 36, fontSize: 12, background: 'linear-gradient(135deg, #7C5CFC 0%, #EC4899 100%)' }}>
+                              {getInitials(c.name || c.customer_name)}
+                            </div>
+                            <span style={{ fontWeight: 700, color: 'var(--text-h)' }}>{c.name || c.customer_name || '—'}</span>
+                          </div>
+                        </td>
+                        <td style={{ color: 'var(--muted)' }}>{c.email || '—'}</td>
+                        <td style={{ fontWeight: 600 }}>{c.total_bookings ?? c.booking_count ?? '—'}</td>
+                        <td>
+                          {c.is_loyal ? (
+                            <span className="badge confirmed" style={{ display: 'flex', alignItems: 'center', gap: 4, width: 'fit-content' }}>
+                              <Crown size={12} /> Loyal
+                            </span>
+                          ) : (
+                            <span style={{ color: 'var(--muted)', fontSize: 13 }}>Regular</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {/* Loyalty Tab */}
+        {activeTab === "loyalty" && (
+          <motion.div variants={itemVariants}>
+            {(() => {
+              const loyal = customers.filter(c => c.is_loyal);
+              return loyal.length === 0 ? (
+                <div className="empty-state" style={{ padding: 48 }}>
+                  <Crown size={48} style={{ opacity: 0.3, marginBottom: 12 }} />
+                  <h3>No loyal customers yet</h3>
+                  <p>Mark customers as loyal from the Customer List tab.</p>
+                </div>
+              ) : (
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 18 }}>
+                  {loyal.map((c: any) => (
+                    <div key={c.email || c.id} className="stat-card" style={{ borderTop: '3px solid #F59E0B', display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                        <div className="avatar-circle" style={{ width: 44, height: 44, background: 'linear-gradient(135deg, #F59E0B 0%, #EC4899 100%)' }}>
+                          {getInitials(c.name || c.customer_name)}
+                        </div>
+                        <div>
+                          <div style={{ fontWeight: 800, color: 'var(--text-h)', fontSize: 15 }}>{c.name || c.customer_name || '—'}</div>
+                          <div style={{ fontSize: 12, color: 'var(--muted)' }}>{c.email}</div>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <span className="badge confirmed" style={{ display: 'flex', alignItems: 'center', gap: 4 }}><Crown size={11} /> Loyal Customer</span>
+                        {c.total_bookings && <span className="badge" style={{ background: 'rgba(124,92,252,0.1)', color: '#7C5CFC' }}>{c.total_bookings} Bookings</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+          </motion.div>
+        )}
+
       </motion.div>
     </Layout>
   );

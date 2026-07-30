@@ -85,6 +85,8 @@ const itemVariants: Variants = {
 };
 
 export default function BookingsPage({ user, onLogout }: Props) {
+  const [viewMode, setViewMode] = useState<'list' | 'calendar'>('list');
+  const [calendarDate, setCalendarDate] = useState<dayjs.Dayjs>(dayjs());
   const [bookings, setBookings] = useState<any[]>([]);
   const [services, setServices] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -279,12 +281,86 @@ export default function BookingsPage({ user, onLogout }: Props) {
             <button className="btn-outline" onClick={() => fetchBookings()}>
               <RefreshCw size={15} /> Refresh
             </button>
+            <button
+              className={`btn-outline ${viewMode === 'calendar' ? 'active' : ''}`}
+              onClick={() => setViewMode(v => v === 'list' ? 'calendar' : 'list')}
+              style={{ fontWeight: 700 }}
+            >
+              <Calendar size={15} /> {viewMode === 'list' ? 'Calendar View' : 'List View'}
+            </button>
             <button className="btn-add" onClick={() => setShowNewModal(true)}>
               <Plus size={16} /> New Booking
             </button>
           </div>
         </motion.div>
 
+        {/* Calendar View */}
+        {viewMode === 'calendar' && (
+          <motion.div variants={itemVariants}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 }}>
+              <button className="btn-outline" onClick={() => setCalendarDate(d => d.subtract(1, 'month'))}>&lt; Prev</button>
+              <span style={{ fontWeight: 800, fontSize: 18, color: 'var(--text-h)' }}>{calendarDate.format('MMMM YYYY')}</span>
+              <button className="btn-outline" onClick={() => setCalendarDate(d => d.add(1, 'month'))}>Next &gt;</button>
+            </div>
+            {(() => {
+              const startOfMonth = calendarDate.startOf('month');
+              const daysInMonth = calendarDate.daysInMonth();
+              const firstDayOfWeek = startOfMonth.day(); // 0=Sun
+              const cells: (number | null)[] = Array(firstDayOfWeek).fill(null);
+              for (let i = 1; i <= daysInMonth; i++) cells.push(i);
+              while (cells.length % 7 !== 0) cells.push(null);
+              const weeks = [];
+              for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+              const statusColor: Record<string, string> = { confirmed: '#3B82F6', completed: '#10B981', pending: '#F59E0B', cancelled: '#EF4444' };
+              return (
+                <div style={{ background: 'var(--panel-bg)', borderRadius: 16, overflow: 'hidden', border: '1px solid var(--border)' }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', background: 'var(--bg)' }}>
+                    {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
+                      <div key={d} style={{ textAlign: 'center', padding: '10px 0', fontSize: 12, fontWeight: 700, color: 'var(--muted)' }}>{d}</div>
+                    ))}
+                  </div>
+                  {weeks.map((week, wi) => (
+                    <div key={wi} style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', borderTop: '1px solid var(--border)' }}>
+                      {week.map((day, di) => {
+                        if (!day) return <div key={di} style={{ minHeight: 90, background: 'var(--bg)', opacity: 0.3 }} />;
+                        const dateStr = calendarDate.date(day).format('YYYY-MM-DD');
+                        const dayBookings = bookings.filter(b => {
+                          const bd = b.booking_date || b.appointment_date || '';
+                          return bd.startsWith(dateStr);
+                        });
+                        const isToday = dayjs().format('YYYY-MM-DD') === dateStr;
+                        return (
+                          <div key={di} style={{ minHeight: 90, padding: '8px 6px', borderLeft: di > 0 ? '1px solid var(--border)' : 'none', position: 'relative' }}>
+                            <div style={{ fontSize: 13, fontWeight: isToday ? 900 : 600, color: isToday ? '#7C5CFC' : 'var(--text-h)',
+                              width: 26, height: 26, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              background: isToday ? 'rgba(124,92,252,0.12)' : 'transparent' }}>{day}</div>
+                            <div style={{ marginTop: 4, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                              {dayBookings.slice(0, 3).map((b: any, bi: number) => (
+                                <div key={bi} style={{ fontSize: 10, fontWeight: 600, padding: '2px 5px', borderRadius: 4,
+                                  background: `${statusColor[b.booking_status?.toLowerCase()] || '#7C5CFC'}20`,
+                                  color: statusColor[b.booking_status?.toLowerCase()] || '#7C5CFC',
+                                  overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                                  {b.booking_time || ''} {b.customer_name || 'Customer'}
+                                </div>
+                              ))}
+                              {dayBookings.length > 3 && (
+                                <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 600 }}>+{dayBookings.length - 3} more</div>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+          </motion.div>
+        )}
+
+        {/* List View */}
+        {viewMode === 'list' && (
+          <>
         <motion.div className="page-toolbar" variants={itemVariants}>
           <select 
             value={statusFilter} 
@@ -440,6 +516,8 @@ export default function BookingsPage({ user, onLogout }: Props) {
               </tbody>
             </table>
           </motion.div>
+        )}
+          </>
         )}
 
         {/* New Booking Modal */}

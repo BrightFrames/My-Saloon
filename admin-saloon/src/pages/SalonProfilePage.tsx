@@ -8,13 +8,9 @@ import {
   Award,
   MapPin,
   Clock,
-  Lock,
   RefreshCw,
   Edit2,
-  Key,
   ExternalLink,
-  Eye,
-  EyeOff,
   Building2
 } from 'lucide-react';
 
@@ -40,68 +36,6 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
   const submitLockRef = useRef(false);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [isUploadingImage, setIsUploadingImage] = useState(false);
-
-  // Change Password state
-  const [pwdForm, setPwdForm] = useState({
-    oldPassword: "",
-    newPassword: "",
-    confirmPassword: "",
-  });
-  const [showOldPwd, setShowOldPwd] = useState(false);
-  const [showNewPwd, setShowNewPwd] = useState(false);
-  const [showConfirmPwd, setShowConfirmPwd] = useState(false);
-  const [pwdErrors, setPwdErrors] = useState<{ old?: string; new?: string; confirm?: string; general?: string }>({});
-  const [pwdSuccess, setPwdSuccess] = useState<string | null>(null);
-  const [isChangingPassword, setIsChangingPassword] = useState(false);
-
-  const handlePasswordSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setPwdErrors({});
-    setPwdSuccess(null);
-
-    const errors: typeof pwdErrors = {};
-    if (!pwdForm.oldPassword) errors.old = "Old Password is required";
-    if (!pwdForm.newPassword) {
-      errors.new = "New Password is required";
-    } else if (pwdForm.newPassword.length < 8) {
-      errors.new = "Password must be at least 8 characters long";
-    } else if (pwdForm.newPassword === pwdForm.oldPassword) {
-      errors.new = "New password must be different from old password";
-    }
-
-    if (!pwdForm.confirmPassword) {
-      errors.confirm = "Confirm Password is required";
-    } else if (pwdForm.confirmPassword !== pwdForm.newPassword) {
-      errors.confirm = "Passwords do not match";
-    }
-
-    if (Object.keys(errors).length > 0) {
-      setPwdErrors(errors);
-      return;
-    }
-
-    setIsChangingPassword(true);
-    try {
-      const res = await api.changePassword({
-        oldPassword: pwdForm.oldPassword,
-        newPassword: pwdForm.newPassword,
-      });
-
-      if (res.success) {
-        setPwdSuccess("Password updated successfully! Logging out...");
-        setPwdForm({ oldPassword: "", newPassword: "", confirmPassword: "" });
-        setTimeout(() => {
-          onLogout();
-        }, 2000);
-      } else {
-        setPwdErrors({ general: res.message || "Failed to update password" });
-      }
-    } catch (err: any) {
-      setPwdErrors({ general: err.message || "Something went wrong while changing password" });
-    } finally {
-      setIsChangingPassword(false);
-    }
-  };
 
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
   const [videoUploadProgress, setVideoUploadProgress] = useState(0);
@@ -644,96 +578,6 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
           </motion.div>
         )}
 
-        {/* Change Password Card */}
-        <motion.div className="profile-card" variants={itemVariants}>
-          <h2 style={{ fontSize: 18, fontWeight: 800, margin: "0 0 16px 0", color: "var(--text-h)", display: "flex", alignItems: "center", gap: 8 }}>
-            <Lock size={18} style={{ color: "#7C5CFC" }} /> Security & Password
-          </h2>
-
-          {pwdSuccess && (
-            <div style={{ padding: "12px 16px", borderRadius: 12, background: "rgba(16, 185, 129, 0.12)", color: "#10B981", marginBottom: 16, fontSize: 13, fontWeight: 600 }}>
-              {pwdSuccess}
-            </div>
-          )}
-
-          {pwdErrors.general && (
-            <div style={{ padding: "12px 16px", borderRadius: 12, background: "rgba(239, 68, 68, 0.12)", color: "#EF4444", marginBottom: 16, fontSize: 13, fontWeight: 600 }}>
-              {pwdErrors.general}
-            </div>
-          )}
-
-          <form onSubmit={handlePasswordSubmit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div className="form-group">
-              <label>Old Password *</label>
-              <div style={{ position: "relative" }}>
-                <input
-                  type={showOldPwd ? "text" : "password"}
-                  value={pwdForm.oldPassword}
-                  onChange={(e) => setPwdForm({ ...pwdForm, oldPassword: e.target.value })}
-                  placeholder="Enter current password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowOldPwd(!showOldPwd)}
-                  style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--muted)" }}
-                >
-                  {showOldPwd ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-              {pwdErrors.old && <span style={{ color: "#EF4444", fontSize: 12 }}>{pwdErrors.old}</span>}
-            </div>
-
-            <div className="form-group">
-              <label>New Password *</label>
-              <div style={{ position: "relative" }}>
-                <input
-                  type={showNewPwd ? "text" : "password"}
-                  value={pwdForm.newPassword}
-                  onChange={(e) => setPwdForm({ ...pwdForm, newPassword: e.target.value })}
-                  placeholder="Min 8 characters"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowNewPwd(!showNewPwd)}
-                  style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--muted)" }}
-                >
-                  {showNewPwd ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-              {pwdErrors.new && <span style={{ color: "#EF4444", fontSize: 12 }}>{pwdErrors.new}</span>}
-            </div>
-
-            <div className="form-group">
-              <label>Confirm New Password *</label>
-              <div style={{ position: "relative" }}>
-                <input
-                  type={showConfirmPwd ? "text" : "password"}
-                  value={pwdForm.confirmPassword}
-                  onChange={(e) => setPwdForm({ ...pwdForm, confirmPassword: e.target.value })}
-                  placeholder="Re-enter new password"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowConfirmPwd(!showConfirmPwd)}
-                  style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--muted)" }}
-                >
-                  {showConfirmPwd ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-              {pwdErrors.confirm && <span style={{ color: "#EF4444", fontSize: 12 }}>{pwdErrors.confirm}</span>}
-            </div>
-
-            <div>
-              <button
-                type="submit"
-                className="btn-add"
-                disabled={isChangingPassword}
-              >
-                <Key size={15} /> {isChangingPassword ? "Updating Password..." : "Update Password"}
-              </button>
-            </div>
-          </form>
-        </motion.div>
       </motion.div>
     </Layout>
   );

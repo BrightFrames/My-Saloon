@@ -203,10 +203,6 @@ export default function Dashboard({ user, onLogout }: Props) {
 
   useEffect(() => {
     fetchData();
-    // Auto-refresh every 10 seconds for real-time live database updates
-    const interval = setInterval(() => {
-      fetchData();
-    }, 10000);
     api.getServices().then(res => {
       if (res?.data) {
         const map: Record<string, string> = {};
@@ -216,7 +212,6 @@ export default function Dashboard({ user, onLogout }: Props) {
         setServicesMap(map);
       }
     }).catch(() => {});
-    return () => clearInterval(interval);
   }, [user]);
 
   useEffect(() => {

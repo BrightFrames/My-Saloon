@@ -9,7 +9,9 @@ import {
   Share2,
   Plus,
   RefreshCw,
-  CheckCircle2
+  CheckCircle2,
+  Sparkles,
+  Calendar
 } from "lucide-react";
 import "./pages.css";
 
@@ -26,10 +28,15 @@ const itemVariants: Variants = {
 };
 
 export default function OffersPage({ user, onLogout }: Props) {
-  const [activeTab, setActiveTab] = useState<"coupons" | "memberships" | "referral">("coupons");
+  const [activeTab, setActiveTab] = useState<"coupons" | "memberships" | "seasonal" | "referral">("coupons");
   const [coupons, setCoupons] = useState<any[]>([]);
   const [memberships, setMemberships] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Seasonal offers state
+  const [seasonalOffers, setSeasonalOffers] = useState<any[]>([]);
+  const [showSeasonalForm, setShowSeasonalForm] = useState(false);
+  const [seasonalForm, setSeasonalForm] = useState({ name: '', discount: '', startDate: '', endDate: '', description: '' });
 
   // Coupon form
   const [couponForm, setCouponForm] = useState({ code: "", discount_type: "percent", discount_value: "", min_order: "", expiry_date: "", max_uses: "" });
@@ -80,6 +87,17 @@ export default function OffersPage({ user, onLogout }: Props) {
     setSavingMember(false);
   };
 
+  const saveSeasonalOffer = () => {
+    if (!seasonalForm.name || !seasonalForm.discount || !seasonalForm.startDate || !seasonalForm.endDate) return;
+    setSeasonalOffers(prev => [{
+      id: Date.now().toString(),
+      ...seasonalForm,
+      active: true
+    }, ...prev]);
+    setSeasonalForm({ name: '', discount: '', startDate: '', endDate: '', description: '' });
+    setShowSeasonalForm(false);
+  };
+
   return (
     <Layout user={user?.email || "Admin"} onLogout={onLogout}>
       <motion.div
@@ -102,7 +120,7 @@ export default function OffersPage({ user, onLogout }: Props) {
         </motion.div>
 
         <motion.div className="tab-bar" variants={itemVariants}>
-          {[["coupons", "Coupons", Tag], ["memberships", "Memberships", Award], ["referral", "Referral Setup", Share2]].map(([t, label, Icon]: any) => (
+          {[["coupons", "Coupons", Tag], ["memberships", "Memberships", Award], ["seasonal", "Seasonal Offers", Sparkles], ["referral", "Referral Setup", Share2]].map(([t, label, Icon]: any) => (
             <button key={t} onClick={() => setActiveTab(t)} className={`tab-btn ${activeTab === t ? "active" : ""}`}>
               <Icon size={15} /> {label}
             </button>
@@ -297,6 +315,83 @@ export default function OffersPage({ user, onLogout }: Props) {
                           {b.trim()}
                         </div>
                       ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        )}
+
+        {activeTab === "seasonal" && (
+          <motion.div variants={itemVariants}>
+            <div style={{ marginBottom: 16, display: "flex", justifyContent: "flex-end" }}>
+              <button className="btn-add" onClick={() => setShowSeasonalForm(!showSeasonalForm)}>
+                <Plus size={16} /> {showSeasonalForm ? "Cancel" : "Create Seasonal Offer"}
+              </button>
+            </div>
+            {showSeasonalForm && (
+              <div className="profile-card" style={{ marginBottom: 24 }}>
+                <h3 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 16px 0", color: "var(--text-h)", display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Sparkles size={18} style={{ color: '#EC4899' }} /> New Seasonal Offer
+                </h3>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
+                  <div className="form-group">
+                    <label className="form-label">Offer Name</label>
+                    <input className="form-input" placeholder="e.g. Diwali Special" value={seasonalForm.name}
+                      onChange={e => setSeasonalForm(p => ({ ...p, name: e.target.value }))} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Discount (%)</label>
+                    <input className="form-input" type="number" placeholder="e.g. 25" value={seasonalForm.discount}
+                      onChange={e => setSeasonalForm(p => ({ ...p, discount: e.target.value }))} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Start Date</label>
+                    <input className="form-input" type="date" value={seasonalForm.startDate}
+                      onChange={e => setSeasonalForm(p => ({ ...p, startDate: e.target.value }))} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">End Date</label>
+                    <input className="form-input" type="date" value={seasonalForm.endDate}
+                      onChange={e => setSeasonalForm(p => ({ ...p, endDate: e.target.value }))} />
+                  </div>
+                  <div className="form-group" style={{ gridColumn: '1 / -1' }}>
+                    <label className="form-label">Description (optional)</label>
+                    <input className="form-input" placeholder="e.g. Flat 25% off on all services this festival season!"
+                      value={seasonalForm.description} onChange={e => setSeasonalForm(p => ({ ...p, description: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="modal-actions" style={{ marginTop: 16 }}>
+                  <button className="btn-add" onClick={saveSeasonalOffer}>Save Offer</button>
+                </div>
+              </div>
+            )}
+            {seasonalOffers.length === 0 ? (
+              <div className="empty-state" style={{ padding: 48 }}>
+                <Sparkles size={48} style={{ opacity: 0.3, marginBottom: 12 }} />
+                <h3>No seasonal offers yet</h3>
+                <p>Create festival and seasonal promotions to attract more customers.</p>
+              </div>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 18 }}>
+                {seasonalOffers.map(o => (
+                  <div key={o.id} className="stat-card" style={{ opacity: o.active ? 1 : 0.6, position: 'relative', borderTop: '3px solid #EC4899' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <Sparkles size={18} style={{ color: '#EC4899' }} />
+                        <span style={{ fontWeight: 800, color: 'var(--text-h)', fontSize: 15 }}>{o.name}</span>
+                      </div>
+                      {o.active ? (
+                        <button className="btn-sm danger" onClick={() => setSeasonalOffers(p => p.map(s => s.id === o.id ? { ...s, active: false } : s))} style={{ fontSize: 11 }}>
+                          End Offer
+                        </button>
+                      ) : <span className="badge cancelled">Ended</span>}
+                    </div>
+                    <div style={{ fontSize: 26, fontWeight: 900, color: '#EC4899', marginTop: 8 }}>{o.discount}% OFF</div>
+                    <div style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Calendar size={12} /> {o.startDate} → {o.endDate}</span>
+                      {o.description && <span>{o.description}</span>}
                     </div>
                   </div>
                 ))}

@@ -125,7 +125,7 @@ export class SalonsService {
       const salon = salonRes.rows[0];
 
       const servicesRes = await query(
-        "SELECT * FROM public.services WHERE salon_id = $1 ORDER BY name ASC",
+        "SELECT * FROM public.services WHERE salon_id = $1 AND (is_active = true OR is_active IS NULL) ORDER BY name ASC",
         [id],
       ).catch(() => ({ rows: [] }));
       const reviewsRes = await query(

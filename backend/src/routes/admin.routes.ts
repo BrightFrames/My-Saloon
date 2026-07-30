@@ -9,6 +9,9 @@ import {
   createTeamMember,
   updateTeamMember,
   deleteTeamMember,
+  getStaffLeaves,
+  createStaffLeave,
+  deleteStaffLeave,
   getSalonProfile,
   createSalonProfile,
   updateSalonProfile,
@@ -65,6 +68,11 @@ router.get("/team", getTeam);
 router.post("/team", writeLimiter, createTeamMember);
 router.put("/team/:id", writeLimiter, updateTeamMember);
 router.delete("/team/:id", writeLimiter, deleteTeamMember);
+
+// Staff Leaves
+router.get("/leaves", getStaffLeaves);
+router.post("/leaves", writeLimiter, createStaffLeave);
+router.delete("/leaves/:id", writeLimiter, deleteStaffLeave);
 
 // Salon Profile
 router.get("/salon-profile", getSalonProfile);

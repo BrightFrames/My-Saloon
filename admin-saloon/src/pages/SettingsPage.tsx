@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import Layout from "../components/Layout";
 import { api } from "../services/api";
+import { Eye, EyeOff } from "lucide-react";
 
 type Props = { user: any; onLogout: () => void };
 
@@ -19,9 +20,12 @@ export default function SettingsPage({ user, onLogout }: Props) {
 
   // Password
   const [pwForm, setPwForm] = useState({ oldPassword: "", newPassword: "", confirmPassword: "" });
+  const [pwErrors, setPwErrors] = useState<{ old?: string; new?: string; confirm?: string; general?: string }>({});
   const [savingPw, setSavingPw] = useState(false);
   const [pwMsg, setPwMsg] = useState("");
-  const [showPw, setShowPw] = useState(false);
+  const [showOldPw, setShowOldPw] = useState(false);
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [showConfirmPw, setShowConfirmPw] = useState(false);
 
   // Notification prefs
   const [notifPrefs, setNotifPrefs] = useState({ email_new_booking: true, email_cancellation: true, sms_new_booking: false, push_notifications: true });
@@ -62,14 +66,33 @@ export default function SettingsPage({ user, onLogout }: Props) {
   };
 
   const savePassword = async () => {
-    if (pwForm.newPassword !== pwForm.confirmPassword) { setPwMsg("❌ Passwords do not match."); return; }
-    if (pwForm.newPassword.length < 6) { setPwMsg("❌ Password must be at least 6 characters."); return; }
-    setSavingPw(true); setPwMsg("");
+    setPwErrors({});
+    setPwMsg("");
+    const errors: typeof pwErrors = {};
+    if (!pwForm.oldPassword) errors.old = "Current password is required.";
+    if (!pwForm.newPassword) {
+      errors.new = "New password is required.";
+    } else if (pwForm.newPassword.length < 8) {
+      errors.new = "Password must be at least 8 characters.";
+    } else if (pwForm.newPassword === pwForm.oldPassword) {
+      errors.new = "New password must be different from current password.";
+    }
+    if (!pwForm.confirmPassword) {
+      errors.confirm = "Please confirm your new password.";
+    } else if (pwForm.confirmPassword !== pwForm.newPassword) {
+      errors.confirm = "Passwords do not match.";
+    }
+    if (Object.keys(errors).length > 0) { setPwErrors(errors); return; }
+
+    setSavingPw(true);
     try {
       await api.changePassword({ oldPassword: pwForm.oldPassword, newPassword: pwForm.newPassword });
-      setPwMsg("✅ Password changed successfully.");
+      setPwMsg("✅ Password changed successfully. Logging out...");
       setPwForm({ oldPassword: "", newPassword: "", confirmPassword: "" });
-    } catch (e: any) { setPwMsg("❌ " + (e.message || "Failed to change password.")); }
+      setTimeout(() => onLogout(), 2000);
+    } catch (e: any) {
+      setPwErrors({ general: e.message || "Failed to change password." });
+    }
     setSavingPw(false);
   };
 
@@ -220,32 +243,81 @@ export default function SettingsPage({ user, onLogout }: Props) {
             )}
 
             {activeTab === "password" && (
-              <div className="settings-section" style={{ maxWidth: 420 }}>
+              <div className="settings-section" style={{ maxWidth: 440 }}>
                 <h2 className="settings-title">🔒 Change Password</h2>
-                <p className="settings-desc">Keep your account secure with a strong password.</p>
-                {[
-                  { label: "Current Password", key: "oldPassword" },
-                  { label: "New Password",     key: "newPassword" },
-                  { label: "Confirm Password", key: "confirmPassword" },
-                ].map(f => (
-                  <div key={f.key} className="form-group">
-                    <label className="form-label">{f.label}</label>
+                <p className="settings-desc">Keep your account secure with a strong password (min. 8 characters).</p>
+
+                {pwMsg && (
+                  <div className={`alert-msg ${pwMsg.startsWith("✅") ? "success" : "error"}`} style={{ marginBottom: 16 }}>
+                    {pwMsg}
+                  </div>
+                )}
+                {pwErrors.general && (
+                  <div className="alert-msg error" style={{ marginBottom: 16 }}>{pwErrors.general}</div>
+                )}
+
+                {/* Current Password */}
+                <div className="form-group" style={{ marginBottom: 14 }}>
+                  <label className="form-label">Current Password *</label>
+                  <div style={{ position: "relative" }}>
                     <input
                       className="form-input"
-                      type={showPw ? "text" : "password"}
-                      placeholder="••••••••"
-                      value={pwForm[f.key as keyof typeof pwForm]}
-                      onChange={e => setPwForm(p => ({ ...p, [f.key]: e.target.value }))}
+                      type={showOldPw ? "text" : "password"}
+                      placeholder="Enter current password"
+                      value={pwForm.oldPassword}
+                      onChange={e => setPwForm(p => ({ ...p, oldPassword: e.target.value }))}
+                      style={{ paddingRight: 40 }}
                     />
+                    <button type="button" onClick={() => setShowOldPw(v => !v)}
+                      style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--muted)", padding: 0 }}>
+                      {showOldPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
                   </div>
-                ))}
-                <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--muted)", marginBottom: 12, cursor: "pointer" }}>
-                  <input type="checkbox" checked={showPw} onChange={e => setShowPw(e.target.checked)} />
-                  Show passwords
-                </label>
-                {pwMsg && <div className={`alert-msg ${pwMsg.startsWith("✅") ? "success" : "error"}`}>{pwMsg}</div>}
+                  {pwErrors.old && <span style={{ color: "#EF4444", fontSize: 12, marginTop: 4, display: "block" }}>{pwErrors.old}</span>}
+                </div>
+
+                {/* New Password */}
+                <div className="form-group" style={{ marginBottom: 14 }}>
+                  <label className="form-label">New Password *</label>
+                  <div style={{ position: "relative" }}>
+                    <input
+                      className="form-input"
+                      type={showNewPw ? "text" : "password"}
+                      placeholder="Min. 8 characters"
+                      value={pwForm.newPassword}
+                      onChange={e => setPwForm(p => ({ ...p, newPassword: e.target.value }))}
+                      style={{ paddingRight: 40 }}
+                    />
+                    <button type="button" onClick={() => setShowNewPw(v => !v)}
+                      style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--muted)", padding: 0 }}>
+                      {showNewPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  {pwErrors.new && <span style={{ color: "#EF4444", fontSize: 12, marginTop: 4, display: "block" }}>{pwErrors.new}</span>}
+                </div>
+
+                {/* Confirm Password */}
+                <div className="form-group" style={{ marginBottom: 20 }}>
+                  <label className="form-label">Confirm New Password *</label>
+                  <div style={{ position: "relative" }}>
+                    <input
+                      className="form-input"
+                      type={showConfirmPw ? "text" : "password"}
+                      placeholder="Re-enter new password"
+                      value={pwForm.confirmPassword}
+                      onChange={e => setPwForm(p => ({ ...p, confirmPassword: e.target.value }))}
+                      style={{ paddingRight: 40 }}
+                    />
+                    <button type="button" onClick={() => setShowConfirmPw(v => !v)}
+                      style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--muted)", padding: 0 }}>
+                      {showConfirmPw ? <EyeOff size={16} /> : <Eye size={16} />}
+                    </button>
+                  </div>
+                  {pwErrors.confirm && <span style={{ color: "#EF4444", fontSize: 12, marginTop: 4, display: "block" }}>{pwErrors.confirm}</span>}
+                </div>
+
                 <button className="btn-primary" onClick={savePassword} disabled={savingPw}>
-                  {savingPw ? "Changing..." : "Change Password"}
+                  {savingPw ? "Changing..." : "🔐 Change Password"}
                 </button>
               </div>
             )}

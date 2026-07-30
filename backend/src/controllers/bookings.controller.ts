@@ -345,16 +345,24 @@ export const createBooking = asyncHandler(
         return;
       }
 
-      // REQUIREMENT 8: Server-side validation for expired time slots on today's date (Asia/Kolkata)
+      // Server-side validation for past dates & expired slots (Asia/Kolkata)
       const nowIST = new Date(new Date().toLocaleString("en-US", { timeZone: "Asia/Kolkata" }));
       const todayISO_IST = `${nowIST.getFullYear()}-${String(nowIST.getMonth() + 1).padStart(2, '0')}-${String(nowIST.getDate()).padStart(2, '0')}`;
       const reqDateVariants = normalizeDateVariants(appointment_date);
       const isBookingTodayIST = reqDateVariants.some(v => v === todayISO_IST || v.startsWith(todayISO_IST));
 
+      if (appointment_date < todayISO_IST) {
+        res.status(400).json({
+          success: false,
+          message: "Cannot book appointments on past dates.",
+        });
+        return;
+      }
+
+      const reqStartMinsEarly = timeToMinutes(booking_time);
       if (isBookingTodayIST) {
         const currentMinsIST = nowIST.getHours() * 60 + nowIST.getMinutes();
-        const reqStartMins = timeToMinutes(booking_time);
-        if (reqStartMins <= currentMinsIST) {
+        if (reqStartMinsEarly <= currentMinsIST) {
           res.status(400).json({
             success: false,
             message: "This time slot has already passed."
@@ -403,6 +411,57 @@ export const createBooking = asyncHandler(
       const reqEndMins = reqStartMins + durationMins;
       const startTimeStr = minutesToTimeString(reqStartMins);
       const endTimeStr = minutesToTimeString(reqEndMins);
+
+      // 2. Check if selected stylist is active
+      if (validatedData.team_member_id || validatedData.stylist) {
+        try {
+          const tmRes = await query(
+            `SELECT is_active FROM public.team_members WHERE id::text = $1 OR LOWER(TRIM(name)) = LOWER(TRIM($2)) LIMIT 1`,
+            [validatedData.team_member_id || "", validatedData.stylist || ""]
+          );
+          if (tmRes.rows.length > 0 && tmRes.rows[0].is_active === false) {
+            res.status(400).json({
+              success: false,
+              message: "The selected stylist is currently inactive.",
+            });
+            return;
+          }
+        } catch (e) {}
+      }
+
+      // 3. Check if selected stylist is on leave
+      try {
+        const leaveCheck = await query(
+          `SELECT is_full_day, start_time, end_time, leave_type, reason
+           FROM public.staff_leaves
+           WHERE leave_date::text LIKE $1 || '%'
+           AND (
+             LOWER(TRIM(staff_name)) = LOWER(TRIM($2))
+             OR team_member_id::text = $3
+           )`,
+          [appointment_date, validatedData.stylist || "", validatedData.team_member_id || ""]
+        );
+        for (const l of leaveCheck.rows) {
+          if (l.is_full_day || l.leave_type === "full_day") {
+            res.status(400).json({
+              success: false,
+              message: `The selected stylist is on leave on this date (${l.reason || "Full Day Leave"}).`,
+            });
+            return;
+          }
+          if (l.start_time && l.end_time) {
+            const lStart = timeToMinutes(l.start_time);
+            const lEnd = timeToMinutes(l.end_time);
+            if (hasOverlap(reqStartMins, reqEndMins, lStart, lEnd)) {
+              res.status(400).json({
+                success: false,
+                message: `The selected stylist is on leave from ${l.start_time} to ${l.end_time}.`,
+              });
+              return;
+            }
+          }
+        }
+      } catch (e) {}
 
       // Fetch active (non-cancelled, non-rejected) bookings for this barber & date
       const dateVariants = normalizeDateVariants(appointment_date);
@@ -751,9 +810,10 @@ export const getAvailableSlots = asyncHandler(
         } catch (e) {}
       }
 
+      let salonBreakTime: any = null;
       if (effectiveSalonId) {
         try {
-          const salonRes = await query("SELECT working_hours, slot_interval FROM public.salons WHERE id = $1 LIMIT 1", [
+          const salonRes = await query("SELECT working_hours, break_time, slot_interval FROM public.salons WHERE id = $1 LIMIT 1", [
             effectiveSalonId,
           ]);
           const row = salonRes.rows[0];
@@ -762,6 +822,10 @@ export const getAvailableSlots = asyncHandler(
             if (hours.open) salonOpeningTime = hours.open;
             if (hours.close) salonClosingTime = hours.close;
             if (hours.slot_interval) slotInterval = parseInt(hours.slot_interval) || 30;
+            if (hours.break) salonBreakTime = hours.break;
+          }
+          if (row?.break_time) {
+            salonBreakTime = row.break_time;
           }
           if (row?.slot_interval) {
             slotInterval = parseInt(row.slot_interval) || slotInterval;
@@ -769,6 +833,24 @@ export const getAvailableSlots = asyncHandler(
         } catch (err) {
           // Column working_hours / slot_interval might not exist yet, fallback gracefully
         }
+      }
+
+      // Fetch staff leaves for this barber on this date
+      let staffLeaves: any[] = [];
+      try {
+        const leaveRes = await query(
+          `SELECT is_full_day, start_time, end_time, leave_type, reason
+           FROM public.staff_leaves
+           WHERE leave_date::text LIKE $1 || '%'
+           AND (
+             LOWER(TRIM(staff_name)) = LOWER(TRIM($2))
+             OR team_member_id::text = $2
+           )`,
+          [String(date), String(stylist)],
+        );
+        staffLeaves = leaveRes.rows;
+      } catch (err) {
+        console.warn("[getAvailableSlots] Failed to fetch staff leaves:", err);
       }
 
       // Fetch active (non-cancelled) bookings for this barber on this date
@@ -806,6 +888,8 @@ export const getAvailableSlots = asyncHandler(
         salonClosingTime,
         slotInterval,
         existingBookings,
+        staffLeaves,
+        breakTime: salonBreakTime,
         bookingDate: String(date),
       });
 

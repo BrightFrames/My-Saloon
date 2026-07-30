@@ -12,7 +12,11 @@ import {
   RefreshCw,
   Edit2,
   Trash2,
-  Percent
+  Percent,
+  Tag,
+  ToggleLeft,
+  ToggleRight,
+  CheckCircle2
 } from 'lucide-react'
 
 type Props = {
@@ -29,6 +33,7 @@ type Service = {
   duration: string
   homeServiceAvailable?: boolean
   homeServicePrice?: number
+  is_active?: boolean
 }
 
 const SERVICE_OPTIONS = [
@@ -63,6 +68,7 @@ const itemVariants: Variants = {
 };
 
 export default function ServicesPage({ user, onLogout }: Props) {
+  const [activeTab, setActiveTab] = useState<'services' | 'categories' | 'availability'>('services');
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
@@ -72,11 +78,57 @@ export default function ServicesPage({ user, onLogout }: Props) {
   const submitLockRef = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Categories state
+  const [categories, setCategories] = useState<{id:string;name:string;color:string}[]>([
+    { id:'1', name:'Hair',  color:'#7C5CFC' },
+    { id:'2', name:'Skin',  color:'#EC4899' },
+    { id:'3', name:'Nails', color:'#10B981' },
+    { id:'4', name:'Body',  color:'#F59E0B' },
+  ]);
+  const [catForm, setCatForm] = useState({ name:'', color:'#7C5CFC' });
+  const [showCatForm, setShowCatForm] = useState(false);
+
+  // Availability state: serviceId -> enabled (true by default)
+  const [availability, setAvailability] = useState<Record<string,boolean>>({});
+
+  const toggleAvailability = async (s: Service) => {
+    const currentStatus = availability[s.id] ?? (s.is_active ?? true);
+    const newStatus = !currentStatus;
+
+    // Optimistic UI update
+    setAvailability(prev => ({ ...prev, [s.id]: newStatus }));
+    setServices(prev => prev.map(item => item.id === s.id ? { ...item, is_active: newStatus } : item));
+
+    try {
+      const disc = Number(s.discountedPrice ?? (s as any).discounted_price ?? s.price ?? 0);
+      const orig = Number(s.originalPrice ?? (s as any).original_price ?? s.price ?? disc);
+
+      await api.updateService(s.id, {
+        name: s.name,
+        price: disc,
+        originalPrice: orig,
+        discountedPrice: disc,
+        duration: s.duration || "30 min",
+        is_active: newStatus,
+      });
+    } catch (err: any) {
+      alert(err.message || 'Failed to update service availability.');
+      setAvailability(prev => ({ ...prev, [s.id]: currentStatus }));
+      setServices(prev => prev.map(item => item.id === s.id ? { ...item, is_active: currentStatus } : item));
+    }
+  };
+
   const fetchServices = async () => {
     try {
       setLoading(true);
       const res = await api.getServices();
-      setServices(res.data || []);
+      const fetchedServices = res.data || [];
+      setServices(fetchedServices);
+      const availMap: Record<string, boolean> = {};
+      fetchedServices.forEach((s: any) => {
+        availMap[s.id] = s.is_active ?? true;
+      });
+      setAvailability(availMap);
     } catch (err) {
       console.error("Failed to fetch services", err);
     } finally {
@@ -186,100 +238,214 @@ export default function ServicesPage({ user, onLogout }: Props) {
             <button className="btn-outline" onClick={fetchServices}>
               <RefreshCw size={15} /> Refresh
             </button>
-            <button className="btn-add" onClick={openCreate}>
-              <Plus size={16} /> Add Service
-            </button>
+            {activeTab === 'services' && (
+              <button className="btn-add" onClick={openCreate}>
+                <Plus size={16} /> Add Service
+              </button>
+            )}
+            {activeTab === 'categories' && (
+              <button className="btn-add" onClick={() => setShowCatForm(true)}>
+                <Plus size={16} /> Add Category
+              </button>
+            )}
           </div>
         </motion.div>
 
-        {loading ? (
-          <div className="empty-state" style={{ padding: 48 }}>
-            <CircularProgress sx={{ color: '#7C5CFC' }} size={36} />
-            <p style={{ marginTop: 12, color: 'var(--muted)', fontWeight: 600 }}>Loading services catalog...</p>
-          </div>
-        ) : services.length === 0 ? (
-          <div className="empty-state" style={{ padding: 48 }}>
-            <Scissors size={48} style={{ opacity: 0.3, marginBottom: 12 }} />
-            <h3 style={{ color: 'var(--text-h)', margin: '0 0 4px 0' }}>No services configured yet</h3>
-            <p style={{ color: 'var(--muted)' }}>Add your salon services to offer them to clients.</p>
-          </div>
-        ) : (
-          <motion.div className="dash-table-wrap" variants={itemVariants}>
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Service Name</th>
-                  <th>Price Details</th>
-                  <th>Discount Badge</th>
-                  <th>Duration</th>
-                  <th style={{ textAlign: 'right' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {services.map((s) => {
-                  const orig = Number(s.originalPrice ?? (s as any).original_price ?? s.price ?? 0);
-                  const disc = Number(s.discountedPrice ?? (s as any).discounted_price ?? s.price ?? 0);
-                  const hasDiscount = orig > disc;
-                  const discountPercent = hasDiscount ? Math.round(((orig - disc) / orig) * 100) : 0;
-                  
-                  return (
-                    <tr key={s.id}>
-                      <td>
-                        <div style={{ fontWeight: 700, color: 'var(--text-h)', display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <Scissors size={15} style={{ color: '#7C5CFC' }} />
-                          {s.name}
-                          {s.homeServiceAvailable && (
-                            <span className="badge" style={{ background: 'rgba(59, 130, 246, 0.12)', color: '#3B82F6', fontSize: 11 }}>
-                              <Home size={11} /> Home Service
-                            </span>
+        {/* Tabs */}
+        <motion.div className="tab-bar" variants={itemVariants}>
+          {([
+            ['services',     'Services',    Scissors],
+            ['categories',   'Categories',  Tag],
+            ['availability', 'Availability',ToggleRight],
+          ] as const).map(([t, label, Icon]) => (
+            <button key={t} onClick={() => setActiveTab(t)} className={`tab-btn ${activeTab === t ? 'active' : ''}`}>
+              <Icon size={15} /> {label}
+            </button>
+          ))}
+        </motion.div>
+
+        {/* Services Tab */}
+        {activeTab === 'services' && (
+          loading ? (
+            <div className="empty-state" style={{ padding: 48 }}>
+              <CircularProgress sx={{ color: '#7C5CFC' }} size={36} />
+              <p style={{ marginTop: 12, color: 'var(--muted)', fontWeight: 600 }}>Loading services catalog...</p>
+            </div>
+          ) : services.length === 0 ? (
+            <div className="empty-state" style={{ padding: 48 }}>
+              <Scissors size={48} style={{ opacity: 0.3, marginBottom: 12 }} />
+              <h3 style={{ color: 'var(--text-h)', margin: '0 0 4px 0' }}>No services configured yet</h3>
+              <p style={{ color: 'var(--muted)' }}>Add your salon services to offer them to clients.</p>
+            </div>
+          ) : (
+            <motion.div className="dash-table-wrap" variants={itemVariants}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Service Name</th>
+                    <th>Price Details</th>
+                    <th>Discount Badge</th>
+                    <th>Duration</th>
+                    <th style={{ textAlign: 'right' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {services.map((s) => {
+                    const orig = Number(s.originalPrice ?? (s as any).original_price ?? s.price ?? 0);
+                    const disc = Number(s.discountedPrice ?? (s as any).discounted_price ?? s.price ?? 0);
+                    const hasDiscount = orig > disc;
+                    const discountPercent = hasDiscount ? Math.round(((orig - disc) / orig) * 100) : 0;
+                    return (
+                      <tr key={s.id}>
+                        <td>
+                          <div style={{ fontWeight: 700, color: 'var(--text-h)', display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <Scissors size={15} style={{ color: '#7C5CFC' }} />
+                            {s.name}
+                            {s.homeServiceAvailable && (
+                              <span className="badge" style={{ background: 'rgba(59, 130, 246, 0.12)', color: '#3B82F6', fontSize: 11 }}>
+                                <Home size={11} /> Home Service
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td>
+                          {hasDiscount ? (
+                            <div>
+                              <span style={{ textDecoration: 'line-through', color: 'var(--muted)', marginRight: 8, fontSize: 12 }}>₹{orig}</span>
+                              <span style={{ fontWeight: 800, color: '#10B981', fontSize: 15 }}>₹{disc}</span>
+                            </div>
+                          ) : (
+                            <span style={{ fontWeight: 800, color: 'var(--text-h)', fontSize: 15 }}>₹{disc || s.price}</span>
                           )}
-                        </div>
-                      </td>
-                      <td>
-                        {hasDiscount ? (
-                          <div>
-                            <span style={{ textDecoration: 'line-through', color: 'var(--muted)', marginRight: 8, fontSize: 12 }}>₹{orig}</span>
-                            <span style={{ fontWeight: 800, color: '#10B981', fontSize: 15 }}>₹{disc}</span>
-                          </div>
-                        ) : (
-                          <span style={{ fontWeight: 800, color: 'var(--text-h)', fontSize: 15 }}>₹{disc || s.price}</span>
-                        )}
-                        {s.homeServiceAvailable && s.homeServicePrice && (
-                          <div style={{ marginTop: 2, fontSize: 12, color: 'var(--muted)' }}>
-                            Home: ₹{s.homeServicePrice}
-                          </div>
-                        )}
-                      </td>
-                      <td>
-                        {hasDiscount ? (
-                          <span className="badge" style={{ background: 'rgba(239, 68, 68, 0.12)', color: '#EF4444' }}>
-                            <Percent size={12} /> {discountPercent}% OFF (₹{orig - disc} OFF)
+                          {s.homeServiceAvailable && s.homeServicePrice && (
+                            <div style={{ marginTop: 2, fontSize: 12, color: 'var(--muted)' }}>Home: ₹{s.homeServicePrice}</div>
+                          )}
+                        </td>
+                        <td>
+                          {hasDiscount ? (
+                            <span className="badge" style={{ background: 'rgba(239, 68, 68, 0.12)', color: '#EF4444' }}>
+                              <Percent size={12} /> {discountPercent}% OFF (₹{orig - disc} OFF)
+                            </span>
+                          ) : (
+                            <span style={{ color: 'var(--muted)', fontSize: 12 }}>Standard Price</span>
+                          )}
+                        </td>
+                        <td>
+                          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, color: 'var(--text-h)' }}>
+                            <Clock size={13} style={{ color: 'var(--muted)' }} />
+                            {s.duration}
                           </span>
-                        ) : (
-                          <span style={{ color: 'var(--muted)', fontSize: 12 }}>Standard Price</span>
-                        )}
-                      </td>
-                      <td>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontWeight: 600, color: 'var(--text-h)' }}>
-                          <Clock size={13} style={{ color: 'var(--muted)' }} />
-                          {s.duration}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="td-actions">
-                          <button className="btn-sm" onClick={() => openEdit(s)}>
-                            <Edit2 size={13} /> Edit
-                          </button>
-                          <button className="btn-sm danger" onClick={() => handleDelete(s.id)}>
-                            <Trash2 size={13} /> Delete
-                          </button>
-                        </div>
-                      </td>
+                        </td>
+                        <td>
+                          <div className="td-actions">
+                            <button className="btn-sm" onClick={() => openEdit(s)}><Edit2 size={13} /> Edit</button>
+                            <button className="btn-sm danger" onClick={() => handleDelete(s.id)}><Trash2 size={13} /> Delete</button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </motion.div>
+          )
+        )}
+
+        {/* Categories Tab */}
+        {activeTab === 'categories' && (
+          <motion.div variants={itemVariants}>
+            {showCatForm && (
+              <div className="profile-card" style={{ marginBottom: 24 }}>
+                <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 16px 0', color: 'var(--text-h)' }}>New Category</h3>
+                <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+                  <div className="form-group" style={{ flex: 1, minWidth: 160 }}>
+                    <label className="form-label">Category Name</label>
+                    <input className="form-input" placeholder="e.g. Bridal" value={catForm.name}
+                      onChange={e => setCatForm(p => ({ ...p, name: e.target.value }))} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">Color</label>
+                    <input type="color" value={catForm.color} onChange={e => setCatForm(p => ({ ...p, color: e.target.value }))}
+                      style={{ width: 48, height: 38, padding: 2, borderRadius: 8, border: '1.5px solid var(--input-border)', cursor: 'pointer' }} />
+                  </div>
+                  <div style={{ display: 'flex', gap: 8 }}>
+                    <button className="btn-add" onClick={() => {
+                      if (!catForm.name.trim()) return;
+                      setCategories(p => [...p, { id: Date.now().toString(), name: catForm.name.trim(), color: catForm.color }]);
+                      setCatForm({ name: '', color: '#7C5CFC' });
+                      setShowCatForm(false);
+                    }}>Save</button>
+                    <button className="btn-outline" onClick={() => setShowCatForm(false)}>Cancel</button>
+                  </div>
+                </div>
+              </div>
+            )}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
+              {categories.map(cat => (
+                <div key={cat.id} className="stat-card" style={{ borderTop: `3px solid ${cat.color}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{ width: 14, height: 14, borderRadius: '50%', background: cat.color }} />
+                    <span style={{ fontWeight: 700, color: 'var(--text-h)', fontSize: 15 }}>{cat.name}</span>
+                  </div>
+                  <button onClick={() => setCategories(p => p.filter(c => c.id !== cat.id))}
+                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#EF4444', fontSize: 18, lineHeight: 1 }}
+                    title="Delete category">&times;</button>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+
+        {/* Availability Tab */}
+        {activeTab === 'availability' && (
+          <motion.div variants={itemVariants}>
+            {services.length === 0 ? (
+              <div className="empty-state" style={{ padding: 48 }}>
+                <ToggleLeft size={48} style={{ opacity: 0.3, marginBottom: 12 }} />
+                <h3>No services to manage</h3>
+                <p>Add services first from the Services tab.</p>
+              </div>
+            ) : (
+              <div className="dash-table-wrap">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Service</th>
+                      <th>Price</th>
+                      <th>Duration</th>
+                      <th style={{ textAlign: 'center' }}>Status</th>
+                      <th style={{ textAlign: 'center' }}>Toggle</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                  </thead>
+                  <tbody>
+                    {services.map(s => {
+                      const enabled = availability[s.id] ?? true;
+                      return (
+                        <tr key={s.id}>
+                          <td style={{ fontWeight: 700, color: 'var(--text-h)' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                              <Scissors size={14} style={{ color: '#7C5CFC' }} /> {s.name}
+                            </div>
+                          </td>
+                          <td>₹{Number(s.discountedPrice ?? (s as any).discounted_price ?? s.price ?? 0)}</td>
+                          <td>{s.duration}</td>
+                          <td style={{ textAlign: 'center' }}>
+                            <span className={`badge ${enabled ? 'confirmed' : 'cancelled'}`}>
+                              {enabled ? <CheckCircle2 size={12} /> : null} {enabled ? 'Active' : 'Inactive'}
+                            </span>
+                          </td>
+                          <td style={{ textAlign: 'center' }}>
+                            <button onClick={() => toggleAvailability(s)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: enabled ? '#10B981' : 'var(--muted)' }}>
+                              {enabled ? <ToggleRight size={28} /> : <ToggleLeft size={28} />}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </motion.div>
         )}
 

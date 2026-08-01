@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import Layout from "../components/Layout";
 import { api } from "../services/api";
-import { API_BASE_URL } from "../services/apiBase";
 import "./pages.css";
 import CircularProgress from '@mui/material/CircularProgress';
 import { motion, type Variants } from 'framer-motion';
@@ -17,7 +16,6 @@ import {
   BarChart3,
   Clock,
   CheckCircle2,
-  XCircle,
   Minus
 } from 'lucide-react';
 
@@ -33,6 +31,7 @@ type TeamMember = {
   experience?: string;
   image_url?: string;
   service_ids?: string[];
+  is_active?: boolean;
 };
 
 function getInitials(name?: string) {
@@ -54,8 +53,6 @@ const itemVariants: Variants = {
 
 const DAYS = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
 
-type LeaveRequest = { id: string; staffName: string; startDate: string; endDate: string; reason: string; status: 'pending' | 'approved' | 'rejected'; };
-
 export default function TeamPage({ user, onLogout }: Props) {
   const [activeTab, setActiveTab] = useState<'staff' | 'schedule' | 'performance' | 'leave'>('staff');
   const [team, setTeam] = useState<TeamMember[]>([]);
@@ -75,6 +72,10 @@ export default function TeamPage({ user, onLogout }: Props) {
   });
 
   const [services, setServices] = useState<any[]>([]);
+  const [bookingStatsByStylist, setBookingStatsByStylist] = useState<Record<string, {
+    bookings: number;
+    revenue: number;
+  }>>({});
 
   // Schedule state
   const [schedule, setSchedule] = useState<Record<string, Record<string, boolean>>>(() => ({}));
@@ -127,13 +128,28 @@ export default function TeamPage({ user, onLogout }: Props) {
       }
     };
     fetchServices();
-  }, []);
+    const fetchPerformance = async () => {
+      try {
+        const res = await api.getBookings({ limit: 500 });
+        const rows = Array.isArray(res?.data) ? res.data : [];
+        const aggregate: Record<string, { bookings: number; revenue: number }> = {};
 
-  const openCreate = () => {
-    setEditingMember(null);
-    setForm({ name: "", role: "", experience: "", image_url: "", service_ids: [] });
-    setShowModal(true);
-  };
+        rows.forEach((b: any) => {
+          const key = String(b.stylist || "").trim().toLowerCase();
+          if (!key) return;
+          if (!aggregate[key]) {
+            aggregate[key] = { bookings: 0, revenue: 0 };
+          }
+          aggregate[key].bookings += 1;
+          aggregate[key].revenue += Number(b.total_price || 0);
+        });
+        setBookingStatsByStylist(aggregate);
+      } catch (err) {
+        console.error("Failed to fetch performance data", err);
+      }
+    };
+    fetchPerformance();
+  }, []);
 
   const openEdit = (t: TeamMember) => {
     setEditingMember(t);
@@ -187,15 +203,9 @@ export default function TeamPage({ user, onLogout }: Props) {
     if (!file) return;
     setIsUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", file);
-      const res = await fetch(`${API_BASE_URL}/upload`, {
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      if (data.success && data.data?.url) {
-        setForm((f) => ({ ...f, image_url: data.data.url }));
+      const res = await api.uploadFile(file);
+      if (res.success && res.data?.url) {
+        setForm((f) => ({ ...f, image_url: res.data.url }));
       } else {
         alert("Upload failed. Please try again.");
       }
@@ -406,7 +416,7 @@ export default function TeamPage({ user, onLogout }: Props) {
                           </div>
                         </td>
                         {DAYS.map(day => {
-                          const active = schedule[member.id]?.[day] ?? (day !== 'Sun');
+                          const active = schedule[member.id]?.[day] ?? false;
                           return (
                             <td key={day} style={{ textAlign: 'center' }}>
                               <button
@@ -446,11 +456,11 @@ export default function TeamPage({ user, onLogout }: Props) {
               </div>
             ) : (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 20 }}>
-                {team.map((member, idx) => {
-                  const mockBookings = (idx * 7 + 12) % 40 + 5;
-                  const mockRevenue = mockBookings * (800 + idx * 120);
-                  const mockRating = (3.8 + (idx * 0.3) % 1.2).toFixed(1);
-                  const mockAttendance = 85 + (idx * 5) % 15;
+                {team.map((member) => {
+                  const perf = bookingStatsByStylist[String(member.name || '').trim().toLowerCase()] || {
+                    bookings: 0,
+                    revenue: 0,
+                  };
                   return (
                     <motion.div key={member.id} className="stat-card" variants={itemVariants}
                       style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
@@ -469,10 +479,10 @@ export default function TeamPage({ user, onLogout }: Props) {
                       </div>
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
                         {[
-                          { label: 'Bookings', val: mockBookings, color: '#7C5CFC' },
-                          { label: 'Revenue', val: `₹${mockRevenue.toLocaleString()}`, color: '#10B981' },
-                          { label: 'Avg Rating', val: `${mockRating} ★`, color: '#EAB308' },
-                          { label: 'Attendance', val: `${mockAttendance}%`, color: '#3B82F6' },
+                          { label: 'Bookings', val: perf.bookings, color: '#7C5CFC' },
+                          { label: 'Revenue', val: `₹${perf.revenue.toLocaleString()}`, color: '#10B981' },
+                          { label: 'Avg Rating', val: 'N/A', color: '#EAB308' },
+                          { label: 'Attendance', val: 'N/A', color: '#3B82F6' },
                         ].map(m => (
                           <div key={m.label} style={{ background: 'var(--bg)', borderRadius: 10, padding: '10px 12px' }}>
                             <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 2 }}>{m.label}</div>

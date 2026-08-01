@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import Layout from '../components/Layout'
 import { api } from '../services/api'
-import { API_BASE_URL } from '../services/apiBase'
 import './pages.css'
 import dayjs from 'dayjs'
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider'
@@ -94,6 +93,7 @@ export default function BookingsPage({ user, onLogout }: Props) {
   const [statusFilter, setStatusFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [showNewModal, setShowNewModal] = useState(false);
+  const [slotOptions, setSlotOptions] = useState<string[]>([]);
   const submittingBookingRef = useRef(false);
   const [isSubmittingBooking, setIsSubmittingBooking] = useState(false);
   const [newForm, setNewForm] = useState({
@@ -130,9 +130,56 @@ export default function BookingsPage({ user, onLogout }: Props) {
     }
   };
 
+  const fetchSalonProfileSlots = async () => {
+    try {
+      const res = await api.getSalonProfile();
+      const profile = res?.data;
+      const hours = profile?.working_hours || {};
+      const openTime = String(hours.open || profile?.opening_time || '09:00 AM');
+      const closeTime = String(hours.close || profile?.closing_time || '08:00 PM');
+      const interval = Number(hours.slot_interval || profile?.slot_interval || 30);
+
+      const parseTime = (value: string): number => {
+        const m = value.trim().match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+        if (!m) return NaN;
+        let h = Number(m[1]);
+        const min = Number(m[2]);
+        const ampm = m[3].toUpperCase();
+        if (ampm === 'PM' && h !== 12) h += 12;
+        if (ampm === 'AM' && h === 12) h = 0;
+        return h * 60 + min;
+      };
+
+      const formatTime = (mins: number): string => {
+        const h24 = Math.floor(mins / 60);
+        const min = mins % 60;
+        const ampm = h24 >= 12 ? 'PM' : 'AM';
+        const h12 = h24 % 12 || 12;
+        return `${String(h12).padStart(2, '0')}:${String(min).padStart(2, '0')} ${ampm}`;
+      };
+
+      const start = parseTime(openTime);
+      const end = parseTime(closeTime);
+      const step = Number.isFinite(interval) && interval > 0 ? interval : 30;
+
+      if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+        return;
+      }
+
+      const slots: string[] = [];
+      for (let t = start; t <= end; t += step) {
+        slots.push(formatTime(t));
+      }
+      setSlotOptions(slots);
+    } catch {
+      // Keep default options if profile cannot be loaded.
+    }
+  };
+
   useEffect(() => {
     fetchBookings(statusFilter, searchQuery);
     fetchServices();
+    fetchSalonProfileSlots();
     if (window.location.search.includes('new=true')) {
       setShowNewModal(true);
       window.history.replaceState({}, '', '/bookings');
@@ -182,16 +229,9 @@ export default function BookingsPage({ user, onLogout }: Props) {
     const reason = prompt("Please enter a rejection reason:");
     if (!reason) return;
     try {
-      const res = await fetch(`${API_BASE_URL}/bookings/${id}/reject`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
-        },
-        body: JSON.stringify({ rejectionReason: reason })
-      });
-      if (res.ok) fetchBookings();
-      else alert("Failed to decline booking.");
+      const res = await api.rejectBooking(id, reason);
+      if (res.success) fetchBookings();
+      else alert(res.message || "Failed to decline booking.");
     } catch (err: any) {
       alert(err.message || "Error declining booking.");
     }
@@ -230,18 +270,10 @@ export default function BookingsPage({ user, onLogout }: Props) {
         total_price: parseFloat(newForm.total_price) || 0,
         salon_id: user?.salon_id || null
       };
-      
-      const res = await fetch(`${API_BASE_URL}/bookings`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('admin_token')}`
-        },
-        body: JSON.stringify(payload)
-      });
-      const data = await res.json();
-      
-      if (data.success) {
+
+      const res = await api.createBooking(payload);
+
+      if (res.success) {
         setShowNewModal(false);
         setNewForm({
           customer_name: '', customer_email: '', mobile: '', country_code: '+91',
@@ -251,7 +283,7 @@ export default function BookingsPage({ user, onLogout }: Props) {
         alert('Booking created successfully!');
         fetchBookings();
       } else {
-        alert(data.message || 'Failed to create booking.');
+        alert(res.message || 'Failed to create booking.');
       }
     } catch (err: any) {
       alert(err.message || "Error creating booking.");
@@ -597,7 +629,7 @@ export default function BookingsPage({ user, onLogout }: Props) {
                     <label>Time</label>
                     <select value={newForm.booking_time} onChange={e => setNewForm({...newForm, booking_time: e.target.value})} required>
                       <option value="">Select Time</option>
-                      {['09:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM', '05:00 PM'].map(t => (
+                      {(slotOptions.length > 0 ? slotOptions : ['09:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM', '05:00 PM']).map(t => (
                         <option key={t} value={t}>{t}</option>
                       ))}
                     </select>

@@ -454,7 +454,7 @@ export default function CustomersPage({ user, onLogout }: Props) {
                           borderRadius: "10px"
                         }}
                       >
-                        📌 {q.topic || "General Customer Query"}
+                        📌 {q.topic || "General"}
                       </span>
                     </div>
 
@@ -490,32 +490,6 @@ export default function CustomersPage({ user, onLogout }: Props) {
                       </div>
                     ) : (
                       <div>
-                        {/* Quick Suggestion Chips */}
-                        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
-                          {[
-                            "Yes, your appointment slot is confirmed!",
-                            "Yes, home service is available in your area.",
-                            "Please contact our salon reception at +91 9876543210."
-                          ].map(chip => (
-                            <button
-                              key={chip}
-                              type="button"
-                              onClick={() => setReplyText({ ...replyText, [q.id]: chip })}
-                              style={{
-                                background: "var(--bg)",
-                                border: "1px solid var(--border)",
-                                borderRadius: 10,
-                                padding: "4px 10px",
-                                fontSize: 12,
-                                color: "var(--muted)",
-                                cursor: "pointer"
-                              }}
-                            >
-                              + {chip}
-                            </button>
-                          ))}
-                        </div>
-
                         <div style={{ display: "flex", gap: 10 }}>
                           <input
                             type="text"

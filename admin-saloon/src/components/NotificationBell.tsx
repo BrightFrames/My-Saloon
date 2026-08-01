@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../services/apiBase';
+import { api } from '../services/api';
 import { io } from 'socket.io-client';
 import './NotificationBell.css';
 
@@ -144,16 +145,9 @@ export default function NotificationBell({ salonId }: { salonId: string }) {
 
   const fetchNotifications = async () => {
     try {
-      const token = localStorage.getItem('admin_token');
-      if (!token) return;
-      const res = await fetch(`${API_BASE_URL}/notifications`, {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      const json = await res.json();
-      if (json.success) {
-        setNotifications(json.data);
+      const res = await api.getNotifications();
+      if (res?.success) {
+        setNotifications(res.data || []);
       }
     } catch (e) {
       console.error('Error fetching notifications:', e);
@@ -162,13 +156,7 @@ export default function NotificationBell({ salonId }: { salonId: string }) {
 
   const handleRead = async (id: string) => {
     try {
-      const token = localStorage.getItem('admin_token');
-      await fetch(`${API_BASE_URL}/notifications/${id}/read`, {
-        method: 'PATCH',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
+      await api.markNotificationRead(id);
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
     } catch (e) {
       console.error(e);
@@ -183,21 +171,10 @@ export default function NotificationBell({ salonId }: { salonId: string }) {
     // Update local state first for instant response
     setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
 
-    // Perform API calls in the background
-    const token = localStorage.getItem('admin_token');
-    if (!token) return;
-
-    for (const n of unread) {
-      try {
-        await fetch(`${API_BASE_URL}/notifications/${n.id}/read`, {
-          method: 'PATCH',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-      } catch (e) {
-        console.error(e);
-      }
+    try {
+      await api.markAllNotificationsRead(unread.map((n) => n.id));
+    } catch (e) {
+      console.error(e);
     }
   };
 
@@ -211,14 +188,8 @@ export default function NotificationBell({ salonId }: { salonId: string }) {
 
   const handleAccept = async (bookingId: string, notifId: string) => {
     try {
-      const token = localStorage.getItem('admin_token');
-      const res = await fetch(`${API_BASE_URL}/bookings/${bookingId}/accept`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      if (res.ok) {
+      const res = await api.acceptBooking(bookingId);
+      if (res?.success) {
         setNotifications(prev => prev.map(n => n.id === notifId ? { 
           ...n, 
           type: 'BOOKING_ACCEPTED', 
@@ -239,16 +210,8 @@ export default function NotificationBell({ salonId }: { salonId: string }) {
     if (!reason) return;
 
     try {
-      const token = localStorage.getItem('admin_token');
-      const res = await fetch(`${API_BASE_URL}/bookings/${bookingId}/reject`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ rejectionReason: reason })
-      });
-      if (res.ok) {
+      const res = await api.rejectBooking(bookingId, reason);
+      if (res?.success) {
         setNotifications(prev => prev.map(n => n.id === notifId ? { 
           ...n, 
           type: 'BOOKING_REJECTED', 

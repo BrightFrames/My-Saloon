@@ -162,13 +162,13 @@ export default function RevenueAnalyticsChart({
   };
 
   // Extract Summary Statistics
-  const todayRev = analyticsSummary?.todayRevenue ?? 3315.6;
-  const weeklyRev = analyticsSummary?.weeklyRevenue ?? 9460.8;
-  const monthlyRev = analyticsSummary?.monthlyRevenue ?? 14812.2;
-  const yearlyRev = analyticsSummary?.yearlyRevenue ?? 14812.2;
-  const avgVal = analyticsSummary?.averageBookingValue ?? 740;
+  const todayRev = analyticsSummary?.todayRevenue ?? 0;
+  const weeklyRev = analyticsSummary?.weeklyRevenue ?? 0;
+  const monthlyRev = analyticsSummary?.monthlyRevenue ?? 0;
+  const yearlyRev = analyticsSummary?.yearlyRevenue ?? 0;
+  const avgVal = analyticsSummary?.averageBookingValue ?? 0;
   const highestRev = analyticsSummary?.highestRevenue ?? Math.max(...activePoints.map(p => p.revenue || 0), 0);
-  const growthRate = analyticsSummary?.growthRate ?? "+14.2%";
+  const growthRate = analyticsSummary?.growthRate ?? "0%";
   const lastUpdated = analyticsSummary?.lastUpdated ?? new Date().toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit", hour12: true });
 
   return (

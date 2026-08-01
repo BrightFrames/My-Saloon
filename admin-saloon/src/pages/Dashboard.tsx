@@ -87,7 +87,7 @@ const KPI_CARDS = [
     color: "#EAB308",
     bgGradient: "linear-gradient(135deg, rgba(234, 179, 8, 0.16) 0%, rgba(234, 179, 8, 0.04) 100%)",
     tag: "Customer Reviews",
-    fmt: (v: number) => (v ? `${Number(v).toFixed(1)} ★` : "5.0 ★"),
+    fmt: (v: number) => (v ? `${Number(v).toFixed(1)} ★` : "—"),
   },
 ];
 
@@ -390,7 +390,7 @@ export default function Dashboard({ user, onLogout }: Props) {
                 }}
               >
                 <div style={{ fontSize: "20px", fontWeight: 800, color: "#0F172A", lineHeight: "1.1" }}>
-                  {stats.total_bookings ?? 20}
+                  {stats.total_bookings ?? 0}
                 </div>
                 <div style={{ fontSize: "11px", fontWeight: 600, color: "#64748B", textTransform: "uppercase" }}>
                   Total
@@ -527,8 +527,8 @@ export default function Dashboard({ user, onLogout }: Props) {
                           {(() => {
                             const rawD = b.appointment_date || b.booking_date || b.created_at;
                             const rawT = b.appointment_time || b.booking_time;
-                            let dStr = "30 Jul 2026";
-                            let tStr = rawT || "09:00 AM";
+                            let dStr = "—";
+                            let tStr = rawT || "—";
                             try {
                               if (rawD) {
                                 const parsed = new Date(rawD);

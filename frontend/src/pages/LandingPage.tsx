@@ -15,12 +15,12 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
 import { formatINR } from "../utils/currency";
-import { API_BASE_URL } from "../services/apiBase";
 import heroImage from "../assets/sign.jpg";
 import { motion } from "framer-motion";
 import { useTheme } from "../context/ThemeContext";
 import { GetDirectionsButton } from "../components/GetDirectionsButton";
 import { SalonMapPopup } from "../components/SalonMapPopup";
+import { API_BASE_URL } from "../services/apiBase";
 
 interface LandingPageProps {
   location: string;
@@ -105,7 +105,9 @@ export function LandingPage({
   const [filterRating, setFilterRating] = useState<number | "">("");
   const [filterService, setFilterService] = useState("");
   const [filterMaxPrice, setFilterMaxPrice] = useState<number | "">("");
-  const [availableServiceNames, setAvailableServiceNames] = useState<string[]>([]);
+  const [availableServiceNames, setAvailableServiceNames] = useState<string[]>(
+    [],
+  );
 
   // Favorites State & Persistence
   const [favorites, setFavorites] = useState<string[]>(() => {
@@ -124,7 +126,7 @@ export function LandingPage({
       const updated = prev.includes(id)
         ? prev.filter((favId) => favId !== id)
         : [...prev, id];
-      try {
+    try {
         localStorage.setItem("favorites", JSON.stringify(updated));
       } catch (e) {
         console.error("Failed to save favorites", e);
@@ -170,6 +172,17 @@ export function LandingPage({
 
   // Fetch salons dynamically with applied filters
   useEffect(() => {
+    // Skip fetching if we don't have valid location data AND no search criteria
+    if (
+      ((!latitude && !longitude && !location) &&
+       !(searchName || searchCity || filterRating || filterService || filterMaxPrice))
+    ) {
+      return;
+    }
+
+    // Skip if fetching is already in progress to prevent duplicate calls
+    if (isFetching) return;
+
     const fetchSalons = async () => {
       setIsFetching(true);
       try {
@@ -220,20 +233,23 @@ export function LandingPage({
       }
     };
 
-    const timeoutId = setTimeout(() => {
-      fetchSalons();
-    }, 400);
+    fetchSalons();
 
-    return () => clearTimeout(timeoutId);
+    // Cleanup effect to handle unmounting during fetch
+    return () => {
+      // Any cleanup logic if needed
+    };
   }, [
-    location,
     latitude,
     longitude,
+    location,
     searchName,
     searchCity,
     filterRating,
     filterService,
     filterMaxPrice,
+    // Adding isFetching to dependency array to prevent duplicate calls
+    isFetching
   ]);
 
   const handleSalonSelect = (id: string, lat: number, lon: number) => {
@@ -245,7 +261,6 @@ export function LandingPage({
     const cardEl = document.getElementById(`salon-card-${id}`);
     cardEl?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   };
-
 
   const handleSearchSubmit = (event: React.FormEvent) => {
     event.preventDefault();
@@ -277,7 +292,7 @@ export function LandingPage({
           <div className="absolute inset-0 bg-linear-to-r from-[#ffffff] dark:from-[#000000] via-transparent to-transparent"></div>
         </motion.div>
 
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
@@ -537,7 +552,7 @@ export function LandingPage({
                     : "Try relaxing your search terms or filters."}
                 </p>
               </div>
-            ) : (
+            ) :
               (filterFavoritesOnly ? salons.filter(s => favorites.includes(s.id)) : salons).map((s) => {
                 const isActive = selectedSalonId === s.id;
                 const isFav = favorites.includes(s.id);
@@ -663,8 +678,8 @@ export function LandingPage({
                       </div>
                     </div>
                   </motion.div>
-                );
-              })
+                )
+              }
             )}
           </div>
 

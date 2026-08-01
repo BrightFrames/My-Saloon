@@ -19,17 +19,22 @@ export default function NotificationsPage({ user, onLogout }: Props) {
     finally { setLoading(false); }
   };
 
+  const isNotificationRead = (n: any) =>
+    n?.is_read === true || n?.read === true;
+
   const markRead = async (id: string) => {
     try {
       await api.markNotificationRead(id);
-      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, is_read: true } : n));
     } catch (e) { console.error(e); }
   };
 
   const markAllRead = async () => {
     try {
-      await api.markAllNotificationsRead();
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      const unreadIds = notifications.filter(n => !isNotificationRead(n)).map(n => n.id);
+      if (unreadIds.length === 0) return;
+      await api.markAllNotificationsRead(unreadIds);
+      setNotifications(prev => prev.map(n => ({ ...n, is_read: true })));
     } catch (e) { console.error(e); }
   };
 
@@ -42,18 +47,7 @@ export default function NotificationsPage({ user, onLogout }: Props) {
     if (!annForm.title.trim() || !annForm.message.trim()) return;
     setSending(true);
     try {
-      // Local optimistic add
-      const newAnn = {
-        id: Date.now().toString(),
-        type: 'announcement',
-        title: annForm.title,
-        message: annForm.message,
-        read: false,
-        created_at: new Date().toISOString()
-      };
-      setNotifications(prev => [newAnn, ...prev]);
-      setSentMsg('✅ Announcement sent to all customers!');
-      setAnnForm({ title: '', message: '' });
+      setSentMsg('Announcement broadcasting endpoint is not available yet on the backend.');
     } catch (e: any) {
       setSentMsg('❌ Failed to send: ' + (e.message || 'Unknown error'));
     }
@@ -71,7 +65,7 @@ export default function NotificationsPage({ user, onLogout }: Props) {
   };
 
   const filtered = notifications.filter(n => filter === "all" || n.type === filter);
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadCount = notifications.filter(n => !isNotificationRead(n)).length;
 
   return (
     <Layout user={user?.email || "Admin"} onLogout={onLogout}>
@@ -161,8 +155,8 @@ export default function NotificationsPage({ user, onLogout }: Props) {
             {filtered.map(n => (
               <div
                 key={n.id}
-                className={`notification-item-new ${!n.read ? "unread" : ""}`}
-                onClick={() => !n.read && markRead(n.id)}
+                className={`notification-item-new ${!isNotificationRead(n) ? "unread" : ""}`}
+                onClick={() => !isNotificationRead(n) && markRead(n.id)}
               >
                 <div className="notif-icon">{iconFor(n.type)}</div>
                 <div className="notif-body">
@@ -170,7 +164,7 @@ export default function NotificationsPage({ user, onLogout }: Props) {
                   {n.title && n.message && <div className="notif-msg">{n.message}</div>}
                   <div className="notif-time">{n.created_at ? new Date(n.created_at).toLocaleString("en-IN") : ""}</div>
                 </div>
-                {!n.read && <div className="notif-dot" />}
+                {!isNotificationRead(n) && <div className="notif-dot" />}
               </div>
             ))}
           </div>

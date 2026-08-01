@@ -36,27 +36,6 @@ type Service = {
   is_active?: boolean
 }
 
-const SERVICE_OPTIONS = [
-  'Signature Haircut',
-  'Premium Balayage',
-  'Signature Silk Facial',
-  'Keratin Treatment',
-  'Haircut',
-  'Beard Trim',
-  'Hair Color',
-  'Hair Spa',
-  'Facial',
-  'Threading',
-  'Waxing',
-  'Manicure',
-  'Pedicure',
-  'Massage',
-  'Bridal Package',
-  'Kids Haircut',
-];
-
-const CUSTOM_SERVICE_VALUE = '__custom__';
-
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.05 } }
@@ -74,19 +53,10 @@ export default function ServicesPage({ user, onLogout }: Props) {
   const [showModal, setShowModal] = useState(false);
   const [editingService, setEditingService] = useState<Service | null>(null);
   const [form, setForm] = useState({ name: '', originalPrice: '', discountedPrice: '', duration: '', homeServiceAvailable: false, homeServicePrice: '' });
-  const [customServiceName, setCustomServiceName] = useState('');
   const submitLockRef = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Categories state
-  const [categories, setCategories] = useState<{id:string;name:string;color:string}[]>([
-    { id:'1', name:'Hair',  color:'#7C5CFC' },
-    { id:'2', name:'Skin',  color:'#EC4899' },
-    { id:'3', name:'Nails', color:'#10B981' },
-    { id:'4', name:'Body',  color:'#F59E0B' },
-  ]);
-  const [catForm, setCatForm] = useState({ name:'', color:'#7C5CFC' });
-  const [showCatForm, setShowCatForm] = useState(false);
+  // Categories are derived from live service data.
 
   // Availability state: serviceId -> enabled (true by default)
   const [availability, setAvailability] = useState<Record<string,boolean>>({});
@@ -143,30 +113,27 @@ export default function ServicesPage({ user, onLogout }: Props) {
   const openCreate = () => {
     setEditingService(null);
     setForm({ name: '', originalPrice: '', discountedPrice: '', duration: '', homeServiceAvailable: false, homeServicePrice: '' });
-    setCustomServiceName('');
     setShowModal(true);
   };
 
   const openEdit = (s: Service) => {
     setEditingService(s);
-    const isKnownService = SERVICE_OPTIONS.includes(s.name);
     const orig = s.originalPrice !== undefined ? s.originalPrice : ((s as any).original_price !== undefined ? (s as any).original_price : s.price);
     const disc = s.discountedPrice !== undefined ? s.discountedPrice : ((s as any).discounted_price !== undefined ? (s as any).discounted_price : s.price);
     setForm({
-      name: isKnownService ? s.name : CUSTOM_SERVICE_VALUE,
+      name: s.name,
       originalPrice: orig !== undefined && orig !== null ? String(orig) : '',
       discountedPrice: disc !== undefined && disc !== null ? String(disc) : '',
       duration: s.duration,
       homeServiceAvailable: !!s.homeServiceAvailable,
       homeServicePrice: s.homeServicePrice !== undefined && s.homeServicePrice !== null ? String(s.homeServicePrice) : '',
     });
-    setCustomServiceName(isKnownService ? '' : s.name);
     setShowModal(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const serviceName = form.name === CUSTOM_SERVICE_VALUE ? customServiceName.trim() : form.name;
+    const serviceName = form.name.trim();
     if (!serviceName || !form.originalPrice || !form.discountedPrice || !form.duration) return alert('All fields are required.');
     
     const orig = parseFloat(form.originalPrice);
@@ -198,7 +165,6 @@ export default function ServicesPage({ user, onLogout }: Props) {
         await api.createService(payload);
       }
       setShowModal(false);
-      setCustomServiceName('');
       fetchServices();
     } catch (err: any) {
       alert(err.message || 'Failed to save service.');
@@ -241,11 +207,6 @@ export default function ServicesPage({ user, onLogout }: Props) {
             {activeTab === 'services' && (
               <button className="btn-add" onClick={openCreate}>
                 <Plus size={16} /> Add Service
-              </button>
-            )}
-            {activeTab === 'categories' && (
-              <button className="btn-add" onClick={() => setShowCatForm(true)}>
-                <Plus size={16} /> Add Category
               </button>
             )}
           </div>
@@ -354,32 +315,31 @@ export default function ServicesPage({ user, onLogout }: Props) {
         {/* Categories Tab */}
         {activeTab === 'categories' && (
           <motion.div variants={itemVariants}>
-            {showCatForm && (
-              <div className="profile-card" style={{ marginBottom: 24 }}>
-                <h3 style={{ fontSize: 16, fontWeight: 700, margin: '0 0 16px 0', color: 'var(--text-h)' }}>New Category</h3>
-                <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
-                  <div className="form-group" style={{ flex: 1, minWidth: 160 }}>
-                    <label className="form-label">Category Name</label>
-                    <input className="form-input" placeholder="e.g. Bridal" value={catForm.name}
-                      onChange={e => setCatForm(p => ({ ...p, name: e.target.value }))} />
+            {(() => {
+              const palette = ['#7C5CFC', '#EC4899', '#10B981', '#F59E0B', '#3B82F6', '#EF4444'];
+              const counts: Record<string, number> = {};
+              services.forEach((s) => {
+                const key = (s.name || 'Other').trim().charAt(0).toUpperCase() || 'O';
+                counts[key] = (counts[key] || 0) + 1;
+              });
+              const categories = Object.entries(counts).map(([name, count], idx) => ({
+                id: name,
+                name,
+                count,
+                color: palette[idx % palette.length],
+              }));
+
+              if (categories.length === 0) {
+                return (
+                  <div className="empty-state" style={{ padding: 48 }}>
+                    <Tag size={48} style={{ opacity: 0.3, marginBottom: 12 }} />
+                    <h3>No service categories available</h3>
+                    <p>Categories appear automatically from saved services.</p>
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">Color</label>
-                    <input type="color" value={catForm.color} onChange={e => setCatForm(p => ({ ...p, color: e.target.value }))}
-                      style={{ width: 48, height: 38, padding: 2, borderRadius: 8, border: '1.5px solid var(--input-border)', cursor: 'pointer' }} />
-                  </div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="btn-add" onClick={() => {
-                      if (!catForm.name.trim()) return;
-                      setCategories(p => [...p, { id: Date.now().toString(), name: catForm.name.trim(), color: catForm.color }]);
-                      setCatForm({ name: '', color: '#7C5CFC' });
-                      setShowCatForm(false);
-                    }}>Save</button>
-                    <button className="btn-outline" onClick={() => setShowCatForm(false)}>Cancel</button>
-                  </div>
-                </div>
-              </div>
-            )}
+                );
+              }
+
+              return (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16 }}>
               {categories.map(cat => (
                 <div key={cat.id} className="stat-card" style={{ borderTop: `3px solid ${cat.color}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px' }}>
@@ -387,12 +347,14 @@ export default function ServicesPage({ user, onLogout }: Props) {
                     <div style={{ width: 14, height: 14, borderRadius: '50%', background: cat.color }} />
                     <span style={{ fontWeight: 700, color: 'var(--text-h)', fontSize: 15 }}>{cat.name}</span>
                   </div>
-                  <button onClick={() => setCategories(p => p.filter(c => c.id !== cat.id))}
-                    style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#EF4444', fontSize: 18, lineHeight: 1 }}
-                    title="Delete category">&times;</button>
+                  <span className="badge" style={{ background: 'rgba(124,92,252,0.1)', color: '#7C5CFC' }}>
+                    {cat.count}
+                  </span>
                 </div>
               ))}
             </div>
+              );
+            })()}
           </motion.div>
         )}
 
@@ -457,24 +419,11 @@ export default function ServicesPage({ user, onLogout }: Props) {
               <form onSubmit={handleSubmit}>
                 <div className="form-group">
                   <label>Service Name</label>
-                  <select
+                  <input
                     value={form.name}
                     onChange={(e) => setForm({ ...form, name: e.target.value })}
-                  >
-                    <option value="">Select a salon service</option>
-                    {SERVICE_OPTIONS.map((option) => (
-                      <option key={option} value={option}>{option}</option>
-                    ))}
-                    <option value={CUSTOM_SERVICE_VALUE}>Other / Custom</option>
-                  </select>
-                  {form.name === CUSTOM_SERVICE_VALUE && (
-                    <input
-                      style={{ marginTop: 8 }}
-                      value={customServiceName}
-                      onChange={(e) => setCustomServiceName(e.target.value)}
-                      placeholder="Enter custom service name"
-                    />
-                  )}
+                    placeholder="Enter service name"
+                  />
                 </div>
                 <div className="form-group" style={{ display: 'flex', gap: 12 }}>
                   <div style={{ flex: 1 }}>

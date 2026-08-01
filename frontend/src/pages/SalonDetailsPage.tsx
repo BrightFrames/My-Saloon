@@ -58,9 +58,19 @@ export function SalonDetailsPage() {
     tone: "info",
   });
 
+  // Debug log to track service data fetching
+  useEffect(() => {
+    if (salon?.services) {
+      console.log("Salon services loaded:", salon.services);
+    }
+  }, [salon]);
+
   // Fetch real salon details and services from backend
   useEffect(() => {
+    if (!id) return;
+
     const fetchSalonDetails = async () => {
+      setLoading(true);
       try {
         const res = await fetch(`${API_BASE_URL}/salons/${id}`);
         const body = await res.json();
@@ -100,7 +110,8 @@ export function SalonDetailsPage() {
         setLoading(false);
       }
     };
-    if (id) fetchSalonDetails();
+
+    fetchSalonDetails();
   }, [id]);
 
   const toggleService = (service: any) => {

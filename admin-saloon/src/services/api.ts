@@ -99,6 +99,23 @@ export const api = {
   allocateBarber: (bookingId: string, stylist: string) =>
     request("PUT", `/admin/bookings/${bookingId}`, { stylist }),
 
+  acceptBooking: (id: string) => request("POST", `/bookings/${id}/accept`),
+  rejectBooking: (id: string, rejectionReason: string) =>
+    request("POST", `/bookings/${id}/reject`, { rejectionReason }),
+  createBooking: (data: {
+    customer_name: string;
+    customer_email: string;
+    mobile?: string;
+    country_code?: string;
+    hairstyle?: string;
+    stylist?: string;
+    booking_date: string;
+    booking_time: string;
+    payment_method?: string;
+    total_price: number;
+    salon_id?: string | null;
+  }) => request("POST", "/bookings", data),
+
   // Services
   getServices: () => request("GET", "/admin/services"),
   createService: (data: { name: string; price?: number; originalPrice?: number; discountedPrice?: number; duration: string; homeServiceAvailable?: boolean; homeServicePrice?: number; is_active?: boolean }) =>
@@ -326,9 +343,12 @@ export const api = {
   deleteMembership: (id: string) => request("DELETE", `/admin/memberships/${id}`),
 
   // ── Notifications ─────────────────────────────────
-  getNotifications: () => request("GET", "/admin/notifications"),
-  markNotificationRead: (id: string) => request("PUT", `/admin/notifications/${id}/read`),
-  markAllNotificationsRead: () => request("PUT", "/admin/notifications/read-all"),
+  getNotifications: () => request("GET", "/notifications"),
+  markNotificationRead: (id: string) => request("PATCH", `/notifications/${id}/read`),
+  markAllNotificationsRead: async (ids: string[]) => {
+    await Promise.all(ids.map((id) => request("PATCH", `/notifications/${id}/read`)));
+    return { success: true };
+  },
 
   // ── Settings ──────────────────────────────────────
   getBankDetails:  () => request("GET", "/admin/settings/bank"),

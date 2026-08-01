@@ -52,9 +52,9 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
     video: "",
     home_service_charge: "",
     about: "",
-    opening_time: "09:00 AM",
-    closing_time: "08:00 PM",
-    slot_interval: "30",
+    opening_time: "",
+    closing_time: "",
+    slot_interval: "",
     gallery: [] as string[],
   });
 
@@ -129,8 +129,8 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
           video: res.data.video || "",
           home_service_charge: String(res.data.home_service_charge || 0),
           about: res.data.about || "",
-          opening_time: hours.open || "09:00 AM",
-          closing_time: hours.close || "08:00 PM",
+          opening_time: hours.open || res.data.opening_time || "",
+          closing_time: hours.close || res.data.closing_time || "",
           slot_interval: intervalVal,
           gallery: res.data.gallery || [],
         });
@@ -256,8 +256,8 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
         closing_time: form.closing_time,
         slot_interval: parseInt(form.slot_interval, 10) || 30,
         working_hours: {
-          open: form.opening_time || "09:00 AM",
-          close: form.closing_time || "08:00 PM",
+          open: form.opening_time,
+          close: form.closing_time,
           slot_interval: parseInt(form.slot_interval, 10) || 30,
         },
       });
@@ -519,7 +519,9 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
                 </div>
                 <div className="profile-field">
                   <div className="field-label">Rating</div>
-                  <div className="field-value" style={{ color: "#EAB308" }}>⭐ {profile.rating ? Number(profile.rating).toFixed(1) : "5.0"}</div>
+                  <div className="field-value" style={{ color: "#EAB308" }}>
+                    {profile.rating ? `⭐ ${Number(profile.rating).toFixed(1)}` : "—"}
+                  </div>
                 </div>
                 <div className="profile-field">
                   <div className="field-label">Starting Price</div>
@@ -533,7 +535,7 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
                   <div className="field-label">Working Hours</div>
                   <div className="field-value">
                     <Clock size={14} style={{ display: "inline", marginRight: 6 }} />
-                    {profile.working_hours?.open || form.opening_time || "09:00 AM"} – {profile.working_hours?.close || form.closing_time || "08:00 PM"} ({profile.slot_interval || 30} min slots)
+                    {profile.working_hours?.open || form.opening_time || "—"} – {profile.working_hours?.close || form.closing_time || "—"} ({profile.slot_interval || "—"} min slots)
                   </div>
                 </div>
                 <div className="profile-field">

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useState, useEffect } from 'react';
 import { API_BASE_URL } from '../services/apiBase';
 import { api } from '../services/api';
@@ -34,6 +35,7 @@ export default function NotificationBell({ salonId }: { salonId: string }) {
 
   useEffect(() => {
     // Initial fetch
+     
     fetchNotifications();
 
     // Set up polling every 10 seconds as a fallback

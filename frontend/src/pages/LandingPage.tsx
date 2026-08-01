@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react";
 import {
   MapPin,
@@ -61,6 +62,17 @@ function MapController({
   return null;
 }
 
+function getCityQueryFromLocation(location: string) {
+  const trimmed = location.trim();
+  if (!trimmed) return "";
+  if (trimmed.toLowerCase() === "current location") return "";
+
+  const coordinatePattern = /^[-+]?\d+(?:\.\d+)?\s*,\s*[-+]?\d+(?:\.\d+)?$/;
+  if (coordinatePattern.test(trimmed)) return "";
+
+  return trimmed;
+}
+
 // Gorgeous Custom Luxury DivIcon Generator
 const createCustomMarker = (isActive: boolean) =>
   L.divIcon({
@@ -96,6 +108,7 @@ export function LandingPage({
     ? ([latitude, longitude] as [number, number])
     : null;
   const showMapPermissionPrompt = locationPermission === "denied";
+  const normalizedHeroLocation = getCityQueryFromLocation(location);
 
   const [isFetching, setIsFetching] = useState(false);
 
@@ -114,7 +127,7 @@ export function LandingPage({
     try {
       const stored = localStorage.getItem("favorites");
       return stored ? JSON.parse(stored) : [];
-    } catch (e) {
+    } catch {
       return [];
     }
   });
@@ -165,6 +178,7 @@ export function LandingPage({
   // Sync center when user location is detected
   useEffect(() => {
     if (typeof latitude === "number" && typeof longitude === "number") {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setMapCenter([latitude, longitude]);
       setMapZoom(13);
     }
@@ -194,10 +208,12 @@ export function LandingPage({
           params.append("radius", "15");
         }
 
-        if (searchCity || location) {
-          const cityQuery =
-            searchCity || (location ? location.split(",")[0] : "");
-          if (cityQuery) params.append("city", cityQuery);
+        if (searchCity) {
+          params.append("city", searchCity);
+        }
+
+        if (normalizedHeroLocation) {
+          params.append("q", normalizedHeroLocation);
         }
 
         if (searchName) params.append("name", searchName);

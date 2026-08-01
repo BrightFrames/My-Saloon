@@ -23,6 +23,7 @@ export class SalonsController {
     const radius = req.query.radius
       ? parseFloat(String(req.query.radius))
       : undefined;
+    const keyword = req.query.q ? String(req.query.q) : undefined;
     const name = req.query.name ? String(req.query.name) : undefined;
     const rating = req.query.rating
       ? parseFloat(String(req.query.rating))
@@ -38,6 +39,7 @@ export class SalonsController {
       lat,
       lon,
       radius ?? 10,
+      keyword,
       name,
       rating,
       service,

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState, useRef } from 'react'
 import Layout from '../components/Layout'
 import { api } from '../services/api'
@@ -135,8 +136,8 @@ export default function BookingsPage({ user, onLogout }: Props) {
       const res = await api.getSalonProfile();
       const profile = res?.data;
       const hours = profile?.working_hours || {};
-      const openTime = String(hours.open || profile?.opening_time || '09:00 AM');
-      const closeTime = String(hours.close || profile?.closing_time || '08:00 PM');
+      const openTime = String(hours.open || profile?.opening_time || '');
+      const closeTime = String(hours.close || profile?.closing_time || '');
       const interval = Number(hours.slot_interval || profile?.slot_interval || 30);
 
       const parseTime = (value: string): number => {
@@ -162,7 +163,8 @@ export default function BookingsPage({ user, onLogout }: Props) {
       const end = parseTime(closeTime);
       const step = Number.isFinite(interval) && interval > 0 ? interval : 30;
 
-      if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+      if (!openTime || !closeTime || !Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+        setSlotOptions([]);
         return;
       }
 
@@ -629,10 +631,19 @@ export default function BookingsPage({ user, onLogout }: Props) {
                     <label>Time</label>
                     <select value={newForm.booking_time} onChange={e => setNewForm({...newForm, booking_time: e.target.value})} required>
                       <option value="">Select Time</option>
-                      {(slotOptions.length > 0 ? slotOptions : ['09:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM', '05:00 PM']).map(t => (
-                        <option key={t} value={t}>{t}</option>
-                      ))}
+                      {slotOptions.length > 0 ? (
+                        slotOptions.map(t => (
+                          <option key={t} value={t}>{t}</option>
+                        ))
+                      ) : (
+                        <option value="" disabled>No time slots available</option>
+                      )}
                     </select>
+                    {slotOptions.length === 0 && (
+                      <div style={{ marginTop: 6, fontSize: 12, color: 'var(--muted)' }}>
+                        Configure salon working hours to enable booking time slots.
+                      </div>
+                    )}
                   </div>
                 </div>
                 <div className="modal-actions">

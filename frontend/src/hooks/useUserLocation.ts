@@ -119,7 +119,7 @@ export function useUserLocation(): UseUserLocationResult {
         setLongitude(lon);
 
         const reverseLocation = await reverseGeocode(lat, lon);
-        const finalLocation = reverseLocation || `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+        const finalLocation = reverseLocation || "Current location";
         setLocation(finalLocation);
         saveCachedLocation(lat, lon, finalLocation);
 
@@ -128,7 +128,7 @@ export function useUserLocation(): UseUserLocationResult {
         }
       } catch (error) {
         console.error("Error fetching location details:", error);
-        const fallbackLocation = `${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`;
+        const fallbackLocation = "Current location";
         setLocation(fallbackLocation);
         saveCachedLocation(
           position.coords.latitude,

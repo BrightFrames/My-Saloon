@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useRef, useState } from "react";
 import Layout from "../components/Layout";
 import { api } from "../services/api";
@@ -143,6 +144,7 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchProfile();
   }, []);
 

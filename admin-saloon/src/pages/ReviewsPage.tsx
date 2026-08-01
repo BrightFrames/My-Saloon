@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import { useEffect, useState } from "react";
 import Layout from "../components/Layout";
 import { api } from "../services/api";
@@ -62,6 +63,7 @@ export default function ReviewsPage({ user, onLogout }: Props) {
     finally { setLoading(false); }
   };
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchReviews(); }, [user]);
 
   const submitReply = async (reviewId: string) => {

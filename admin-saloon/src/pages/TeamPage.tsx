@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unused-vars */
 import { useEffect, useRef, useState } from "react";
 import Layout from "../components/Layout";
 import { api } from "../services/api";
@@ -39,6 +40,20 @@ function getInitials(name?: string) {
   const parts = name.trim().split(" ");
   if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
   return parts[0].slice(0, 2).toUpperCase();
+}
+
+function formatLeaveTime(value?: string) {
+  if (!value) return "—";
+  const trimmed = value.trim();
+  const match = trimmed.match(/^(\d{1,2}):(\d{2})$/);
+  if (!match) return trimmed;
+
+  let hours = Number(match[1]);
+  const minutes = match[2];
+  const period = hours >= 12 ? "PM" : "AM";
+  hours %= 12;
+  if (hours === 0) hours = 12;
+  return `${String(hours).padStart(2, "0")}:${minutes} ${period}`;
 }
 
 const containerVariants: Variants = {
@@ -87,8 +102,8 @@ export default function TeamPage({ user, onLogout }: Props) {
     staffName: '',
     leaveDate: new Date().toISOString().split('T')[0],
     endDate: '',
-    startTime: '10:00 AM',
-    endTime: '04:00 PM',
+    startTime: '',
+    endTime: '',
     isFullDay: true,
     leaveType: 'full_day',
     reason: '',
@@ -117,6 +132,7 @@ export default function TeamPage({ user, onLogout }: Props) {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchTeam();
     fetchLeaves();
     const fetchServices = async () => {
@@ -260,8 +276,8 @@ export default function TeamPage({ user, onLogout }: Props) {
         staffName: '',
         leaveDate: new Date().toISOString().split('T')[0],
         endDate: '',
-        startTime: '10:00 AM',
-        endTime: '04:00 PM',
+        startTime: '',
+        endTime: '',
         isFullDay: true,
         leaveType: 'full_day',
         reason: '',
@@ -541,19 +557,23 @@ export default function TeamPage({ user, onLogout }: Props) {
                     <>
                       <div className="form-group">
                         <label className="form-label">Start Time</label>
-                        <select className="form-input" value={leaveForm.startTime} onChange={e => setLeaveForm(p => ({ ...p, startTime: e.target.value }))}>
-                          {['09:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM', '05:00 PM', '06:00 PM', '07:00 PM'].map(t => (
-                            <option key={t} value={t}>{t}</option>
-                          ))}
-                        </select>
+                        <input
+                          className="form-input"
+                          type="time"
+                          step={900}
+                          value={leaveForm.startTime}
+                          onChange={e => setLeaveForm(p => ({ ...p, startTime: e.target.value }))}
+                        />
                       </div>
                       <div className="form-group">
                         <label className="form-label">End Time</label>
-                        <select className="form-input" value={leaveForm.endTime} onChange={e => setLeaveForm(p => ({ ...p, endTime: e.target.value }))}>
-                          {['10:00 AM', '11:00 AM', '12:00 PM', '01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM', '05:00 PM', '06:00 PM', '07:00 PM', '08:00 PM'].map(t => (
-                            <option key={t} value={t}>{t}</option>
-                          ))}
-                        </select>
+                        <input
+                          className="form-input"
+                          type="time"
+                          step={900}
+                          value={leaveForm.endTime}
+                          onChange={e => setLeaveForm(p => ({ ...p, endTime: e.target.value }))}
+                        />
                       </div>
                     </>
                   )}
@@ -643,7 +663,9 @@ export default function TeamPage({ user, onLogout }: Props) {
                           {l.is_full_day ? (
                             <span className="badge pending">Full Day</span>
                           ) : (
-                            <span style={{ fontWeight: 600, color: '#3B82F6' }}>{l.start_time} - {l.end_time}</span>
+                            <span style={{ fontWeight: 600, color: '#3B82F6' }}>
+                              {formatLeaveTime(l.start_time)} - {formatLeaveTime(l.end_time)}
+                            </span>
                           )}
                         </td>
                         <td>

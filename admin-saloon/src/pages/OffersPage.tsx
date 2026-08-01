@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react";
 import Layout from "../components/Layout";
 import { api } from "../services/api";
@@ -10,8 +11,7 @@ import {
   Plus,
   RefreshCw,
   CheckCircle2,
-  Sparkles,
-  Calendar
+  Sparkles
 } from "lucide-react";
 import "./pages.css";
 
@@ -33,11 +33,6 @@ export default function OffersPage({ user, onLogout }: Props) {
   const [memberships, setMemberships] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Seasonal offers state
-  const [seasonalOffers, setSeasonalOffers] = useState<any[]>([]);
-  const [showSeasonalForm, setShowSeasonalForm] = useState(false);
-  const [seasonalForm, setSeasonalForm] = useState({ name: '', discount: '', startDate: '', endDate: '', description: '' });
-
   // Coupon form
   const [couponForm, setCouponForm] = useState({ code: "", discount_type: "percent", discount_value: "", min_order: "", expiry_date: "", max_uses: "" });
   const [savingCoupon, setSavingCoupon] = useState(false);
@@ -58,6 +53,7 @@ export default function OffersPage({ user, onLogout }: Props) {
     finally { setLoading(false); }
   };
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchAll(); }, [user]);
 
   const saveCoupon = async () => {
@@ -85,17 +81,6 @@ export default function OffersPage({ user, onLogout }: Props) {
       setMemberForm({ name: "", price: "", duration_days: "", benefits: "" });
     } catch (e) { console.error(e); }
     setSavingMember(false);
-  };
-
-  const saveSeasonalOffer = () => {
-    if (!seasonalForm.name || !seasonalForm.discount || !seasonalForm.startDate || !seasonalForm.endDate) return;
-    setSeasonalOffers(prev => [{
-      id: Date.now().toString(),
-      ...seasonalForm,
-      active: true
-    }, ...prev]);
-    setSeasonalForm({ name: '', discount: '', startDate: '', endDate: '', description: '' });
-    setShowSeasonalForm(false);
   };
 
   return (
@@ -325,78 +310,11 @@ export default function OffersPage({ user, onLogout }: Props) {
 
         {activeTab === "seasonal" && (
           <motion.div variants={itemVariants}>
-            <div style={{ marginBottom: 16, display: "flex", justifyContent: "flex-end" }}>
-              <button className="btn-add" onClick={() => setShowSeasonalForm(!showSeasonalForm)}>
-                <Plus size={16} /> {showSeasonalForm ? "Cancel" : "Create Seasonal Offer"}
-              </button>
+            <div className="empty-state" style={{ padding: 48 }}>
+              <Sparkles size={48} style={{ opacity: 0.3, marginBottom: 12 }} />
+              <h3>No seasonal offers connected yet</h3>
+              <p>Seasonal promotions are not wired to a backend source, so this tab stays empty until that API is added.</p>
             </div>
-            {showSeasonalForm && (
-              <div className="profile-card" style={{ marginBottom: 24 }}>
-                <h3 style={{ fontSize: 16, fontWeight: 700, margin: "0 0 16px 0", color: "var(--text-h)", display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Sparkles size={18} style={{ color: '#EC4899' }} /> New Seasonal Offer
-                </h3>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
-                  <div className="form-group">
-                    <label className="form-label">Offer Name</label>
-                    <input className="form-input" placeholder="e.g. Diwali Special" value={seasonalForm.name}
-                      onChange={e => setSeasonalForm(p => ({ ...p, name: e.target.value }))} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Discount (%)</label>
-                    <input className="form-input" type="number" placeholder="e.g. 25" value={seasonalForm.discount}
-                      onChange={e => setSeasonalForm(p => ({ ...p, discount: e.target.value }))} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">Start Date</label>
-                    <input className="form-input" type="date" value={seasonalForm.startDate}
-                      onChange={e => setSeasonalForm(p => ({ ...p, startDate: e.target.value }))} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">End Date</label>
-                    <input className="form-input" type="date" value={seasonalForm.endDate}
-                      onChange={e => setSeasonalForm(p => ({ ...p, endDate: e.target.value }))} />
-                  </div>
-                  <div className="form-group" style={{ gridColumn: '1 / -1' }}>
-                    <label className="form-label">Description (optional)</label>
-                    <input className="form-input" placeholder="e.g. Flat 25% off on all services this festival season!"
-                      value={seasonalForm.description} onChange={e => setSeasonalForm(p => ({ ...p, description: e.target.value }))} />
-                  </div>
-                </div>
-                <div className="modal-actions" style={{ marginTop: 16 }}>
-                  <button className="btn-add" onClick={saveSeasonalOffer}>Save Offer</button>
-                </div>
-              </div>
-            )}
-            {seasonalOffers.length === 0 ? (
-              <div className="empty-state" style={{ padding: 48 }}>
-                <Sparkles size={48} style={{ opacity: 0.3, marginBottom: 12 }} />
-                <h3>No seasonal offers yet</h3>
-                <p>Create festival and seasonal promotions to attract more customers.</p>
-              </div>
-            ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 18 }}>
-                {seasonalOffers.map(o => (
-                  <div key={o.id} className="stat-card" style={{ opacity: o.active ? 1 : 0.6, position: 'relative', borderTop: '3px solid #EC4899' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <Sparkles size={18} style={{ color: '#EC4899' }} />
-                        <span style={{ fontWeight: 800, color: 'var(--text-h)', fontSize: 15 }}>{o.name}</span>
-                      </div>
-                      {o.active ? (
-                        <button className="btn-sm danger" onClick={() => setSeasonalOffers(p => p.map(s => s.id === o.id ? { ...s, active: false } : s))} style={{ fontSize: 11 }}>
-                          End Offer
-                        </button>
-                      ) : <span className="badge cancelled">Ended</span>}
-                    </div>
-                    <div style={{ fontSize: 26, fontWeight: 900, color: '#EC4899', marginTop: 8 }}>{o.discount}% OFF</div>
-                    <div style={{ fontSize: 12, color: 'var(--muted)', display: 'flex', flexDirection: 'column', gap: 4, marginTop: 6 }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><Calendar size={12} /> {o.startDate} → {o.endDate}</span>
-                      {o.description && <span>{o.description}</span>}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
           </motion.div>
         )}
 
@@ -411,11 +329,11 @@ export default function OffersPage({ user, onLogout }: Props) {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 20 }}>
               <div className="form-group">
                 <label>Referrer Reward (₹)</label>
-                <input type="number" placeholder="e.g. 100" defaultValue="100" />
+                <input type="number" placeholder="e.g. 100" />
               </div>
               <div className="form-group">
                 <label>Referee Discount (%)</label>
-                <input type="number" placeholder="e.g. 10" defaultValue="10" />
+                <input type="number" placeholder="e.g. 10" />
               </div>
             </div>
             <div style={{ marginTop: 16 }}>

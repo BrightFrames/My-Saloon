@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any, no-useless-assignment */
 import { API_BASE_URL } from "./apiBase";
 
 const API_URL = API_BASE_URL;

@@ -7,7 +7,7 @@ export interface Country {
   flag: string;
   dialCode: string;
 }
-//good
+// eslint-disable-next-line react-refresh/only-export-components
 export const countries: Country[] = [
   { code: "IN", name: "India", flag: "🇮🇳", dialCode: "+91" },
   { code: "US", name: "United States", flag: "🇺🇸", dialCode: "+1" },

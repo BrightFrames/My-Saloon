@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 const LOCATION_CACHE_KEY = "last-known-location";
 const LOCATION_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 

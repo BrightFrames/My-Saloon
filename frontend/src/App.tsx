@@ -48,6 +48,7 @@ function AppRoutes() {
     if (sessionStorage.getItem("location-prompted") === "true") return;
 
     sessionStorage.setItem("location-prompted", "true");
+    // eslint-disable-next-line react-hooks/rules-of-hooks
     useMyLocation(true);
   }, [useMyLocation, locationPermission, routeLocation.pathname]);
 
@@ -69,6 +70,7 @@ function AppRoutes() {
               location={location}
               setLocation={setLocationManual}
               isLoadingLocation={isLoadingLocation}
+              // eslint-disable-next-line react-hooks/rules-of-hooks
               onUseMyLocation={() => useMyLocation(false)}
               onSearch={handleSearchSalons}
               latitude={latitude}

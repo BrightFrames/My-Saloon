@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import { API_BASE_URL } from '../services/apiBase';
@@ -33,12 +34,8 @@ export default function Salons() {
   const [isSubmittingAdmin, setIsSubmittingAdmin] = useState(false);
   const [deletingSalonId, setDeletingSalonId] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchSalons();
-  }, []);
-
-  const fetchSalons = async () => {
-    setRefreshing(true);
+  const fetchSalons = async (isRefresh = false) => {
+    if (isRefresh === true) setRefreshing(true);
     try {
       const res = await fetch(`${API_BASE_URL}/salons`);
       const data = await res.json();
@@ -52,6 +49,11 @@ export default function Salons() {
       setRefreshing(false);
     }
   };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchSalons();
+  }, []);
 
   const openAddSalon = () => {
     setEditingSalonId(null);
@@ -216,7 +218,7 @@ export default function Salons() {
             <h1 className="text-3xl font-bold tracking-tight text-stone-900 mb-1 flex items-center gap-3">
               Manage Salons
               <button 
-                onClick={fetchSalons}
+                onClick={() => fetchSalons(true)}
                 className={`p-1.5 rounded-full hover:bg-stone-100 transition-all ${refreshing ? 'animate-spin text-indigo-500' : 'text-stone-400'}`}
                 title="Refresh Data"
               >

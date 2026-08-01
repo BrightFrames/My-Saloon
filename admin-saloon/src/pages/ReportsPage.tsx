@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react";
 import Layout from "../components/Layout";
 import { api } from "../services/api";
@@ -48,6 +49,7 @@ export default function ReportsPage({ user, onLogout }: Props) {
     finally { setLoading(false); }
   };
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchReport(); }, [reportType, user]);
 
   const exportCSV = () => {

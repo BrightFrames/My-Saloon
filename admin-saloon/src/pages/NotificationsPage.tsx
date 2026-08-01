@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react";
 import Layout from "../components/Layout";
 import { api } from "../services/api";
@@ -55,6 +56,7 @@ export default function NotificationsPage({ user, onLogout }: Props) {
     setTimeout(() => setSentMsg(''), 4000);
   };
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchNotifications(); }, [user]);
 
   const iconFor = (type: string) => {

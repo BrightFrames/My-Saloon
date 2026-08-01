@@ -11,6 +11,7 @@ export class SalonsService {
     lat?: number,
     lon?: number,
     radiusKm: number = 10,
+    keyword?: string,
     name?: string,
     rating?: number,
     service?: string,
@@ -61,28 +62,47 @@ export class SalonsService {
         paramIndex += 1;
       }
 
-      // 3. Filter by name
+      // 3. Keyword search across the most useful salon fields
+      if (keyword) {
+        whereClauses.push(
+          `(
+            s.name ILIKE $${paramIndex}
+            OR s.city ILIKE $${paramIndex}
+            OR s.state ILIKE $${paramIndex}
+            OR s.address ILIKE $${paramIndex}
+            OR s.id IN (
+              SELECT salon_id
+              FROM public.services
+              WHERE name ILIKE $${paramIndex}
+            )
+          )`
+        );
+        queryParams.push(`%${keyword}%`);
+        paramIndex += 1;
+      }
+
+      // 4. Filter by name
       if (name) {
         whereClauses.push(`s.name ILIKE $${paramIndex}`);
         queryParams.push(`%${name}%`);
         paramIndex += 1;
       }
 
-      // 4. Filter by minimum rating
+      // 5. Filter by minimum rating
       if (rating) {
         whereClauses.push(`s.rating >= $${paramIndex}`);
         queryParams.push(rating);
         paramIndex += 1;
       }
 
-      // 5. Filter by price
+      // 6. Filter by price
       if (maxPrice) {
         whereClauses.push(`s.starting_price <= $${paramIndex}`);
         queryParams.push(maxPrice);
         paramIndex += 1;
       }
 
-      // 6. Filter by service
+      // 7. Filter by service
       if (service) {
         whereClauses.push(
           `s.id IN (SELECT salon_id FROM services WHERE name ILIKE $${paramIndex})`,

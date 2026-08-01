@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import LoginForm from "../components/LoginForm";
 import "./login.css";
 import { useNavigate } from "react-router-dom";

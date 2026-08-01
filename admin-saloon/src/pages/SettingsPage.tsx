@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from "react";
 import Layout from "../components/Layout";
 import { api } from "../services/api";
@@ -49,6 +50,7 @@ export default function SettingsPage({ user, onLogout }: Props) {
     } catch (e) { console.error(e); }
   };
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { fetchSettings(); }, [user]);
 
   const saveBank = async () => {

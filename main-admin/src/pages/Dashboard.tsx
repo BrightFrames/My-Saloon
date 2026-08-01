@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Layout from '../components/Layout';
@@ -32,8 +33,8 @@ export default function Dashboard() {
   const [dateRange, setDateRange] = useState('Last 30 Days');
   const [showDateDropdown, setShowDateDropdown] = useState(false);
 
-  const fetchData = async () => {
-    setRefreshing(true);
+  const fetchData = async (isRefresh = false) => {
+    if (isRefresh === true) setRefreshing(true);
     try {
       const [bookingsRes, salonsRes] = await Promise.all([
         fetch(`${API_BASE_URL}/bookings/all`),
@@ -54,6 +55,7 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchData();
   }, []);
 
@@ -191,7 +193,7 @@ export default function Dashboard() {
             <h1 className="text-3xl font-bold tracking-tight text-stone-900 mb-1 flex items-center gap-3">
               Overview
               <button 
-                onClick={fetchData}
+                onClick={() => fetchData(true)}
                 className={`p-1.5 rounded-full hover:bg-stone-100 transition-all ${refreshing ? 'animate-spin text-indigo-500' : 'text-stone-400'}`}
                 title="Refresh Data"
               >

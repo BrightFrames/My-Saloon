@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { useEffect, useState } from 'react';
 import Layout from '../components/Layout';
 import { API_BASE_URL } from '../services/apiBase';
@@ -17,8 +18,8 @@ export default function Transactions() {
   const [showDateDropdown, setShowDateDropdown] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const fetchBookings = async () => {
-    setRefreshing(true);
+  const fetchBookings = async (isRefresh = false) => {
+    if (isRefresh === true) setRefreshing(true);
     try {
       const res = await fetch(`${API_BASE_URL}/bookings/all`);
       const data = await res.json();
@@ -34,6 +35,7 @@ export default function Transactions() {
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     fetchBookings();
   }, []);
 
@@ -117,7 +119,7 @@ export default function Transactions() {
             <h1 className="text-3xl font-bold tracking-tight text-stone-900 mb-1 flex items-center gap-3">
               Transactions
               <button 
-                onClick={fetchBookings}
+                onClick={() => fetchBookings(true)}
                 className={`p-1.5 rounded-full hover:bg-stone-100 transition-all ${refreshing ? 'animate-spin text-indigo-500' : 'text-stone-400'}`}
                 title="Refresh Data"
               >

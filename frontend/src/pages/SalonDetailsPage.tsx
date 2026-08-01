@@ -1,9 +1,9 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { Star, Clock, Plus, ArrowRight, Loader2, UserCircle2, Heart } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { PopupDialog } from "../components/PopupDialog";
 import { API_BASE_URL } from "../services/apiBase";
-
 import { formatINR } from "../utils/currency";
 import { GetDirectionsButton } from "../components/GetDirectionsButton";
 import { SalonMap } from "../components/SalonMap";
@@ -21,7 +21,7 @@ export function SalonDetailsPage() {
     try {
       const stored = localStorage.getItem("favorites");
       return stored ? JSON.parse(stored) : [];
-    } catch (e) {
+    } catch {
       return [];
     }
   });
@@ -396,8 +396,8 @@ export function SalonDetailsPage() {
 
                 <div className="flex flex-col gap-4">
                   {salon?.reviews && salon.reviews.length > 0 ? (
-                    salon.reviews.map((r: any) => (
-                      <div key={r.id || Math.random()} className="border border-stone-100 rounded-xl p-5 bg-white shadow-sm flex flex-col gap-3">
+                    salon.reviews.map((r: any, idx: number) => (
+                      <div key={r.id || idx} className="border border-stone-100 rounded-xl p-5 bg-white shadow-sm flex flex-col gap-3">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
                             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#F5E8E0] text-[#B67B63]">

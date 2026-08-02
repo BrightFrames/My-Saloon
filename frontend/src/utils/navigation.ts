@@ -44,3 +44,33 @@ export function openGoogleMapsDirections(
   window.open(googleMapsUrl, "_blank", "noopener,noreferrer");
   return true;
 }
+
+export function openGoogleMapsLocation(
+  options: {
+    mapsLink?: string | null;
+    destinationAddress?: string | null;
+    placeName?: string | null;
+    lat?: number | string | null;
+    lon?: number | string | null;
+  } = {},
+): boolean {
+  const mapsLink = options.mapsLink?.trim();
+  if (mapsLink) {
+    const normalizedLink = mapsLink.startsWith("http")
+      ? mapsLink
+      : `https://${mapsLink}`;
+    window.open(normalizedLink, "_blank", "noopener,noreferrer");
+    return true;
+  }
+
+  const address = options.destinationAddress?.trim();
+  const placeName = options.placeName?.trim();
+  const query = [placeName, address].filter(Boolean).join(", ");
+  if (query) {
+    const searchUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+    window.open(searchUrl, "_blank", "noopener,noreferrer");
+    return true;
+  }
+
+  return openGoogleMapsDirections(options.lat, options.lon);
+}

@@ -10,8 +10,8 @@ import {
   BarChart3,
   FileText,
   RefreshCw,
-  Percent,
-  CheckCircle2
+  CheckCircle2,
+  Wallet
 } from "lucide-react";
 import RevenueAnalyticsChart from "../components/RevenueAnalyticsChart";
 import "./pages.css";
@@ -30,7 +30,7 @@ const itemVariants: Variants = {
 
 export default function EarningsPage({ user, onLogout }: Props) {
   const [earnings, setEarnings] = useState<any>({
-    total_revenue: 0, pending_amount: 0, commission_deducted: 0,
+    total_revenue: 0, pending_amount: 0,
     net_earnings: 0, monthly_trend: [], transactions: []
   });
   const [loading, setLoading] = useState(true);
@@ -64,7 +64,9 @@ export default function EarningsPage({ user, onLogout }: Props) {
     setWithdrawing(false);
   };
 
-  const COMMISSION_RATE = 0.10;
+  const totalRevenue = Number(earnings.total_revenue ?? 0);
+  const netBalance = Number(earnings.net_payout ?? earnings.net_earnings ?? totalRevenue);
+  const pendingBalance = Number(earnings.pending_amount ?? earnings.pending_payout ?? 0);
 
   return (
     <Layout user={user?.email || "Admin"} onLogout={onLogout}>
@@ -80,7 +82,7 @@ export default function EarningsPage({ user, onLogout }: Props) {
               <IndianRupee size={26} style={{ color: "#10B981" }} />
               Revenue & Payouts
             </h1>
-            <p className="page-sub">Track total salon revenue, platform commission, and withdrawal requests.</p>
+            <p className="page-sub">Track total salon revenue and withdrawal requests.</p>
           </div>
           <button onClick={fetch} className="btn-outline">
             <RefreshCw size={15} /> Refresh
@@ -90,10 +92,10 @@ export default function EarningsPage({ user, onLogout }: Props) {
         {/* Summary Stat Cards */}
         <motion.div className="earnings-cards-grid" variants={containerVariants}>
           {[
-            { label: "Total Lifetime Revenue", val: `₹${Number(earnings.total_revenue || 0).toLocaleString()}`, color: "#7C5CFC", icon: IndianRupee },
-            { label: "Platform Commission (10%)", val: `₹${(Number(earnings.total_revenue || 0) * COMMISSION_RATE).toLocaleString()}`, color: "#EF4444", icon: Percent },
-            { label: "Net Lifetime Earnings", val: `₹${(Number(earnings.total_revenue || 0) * (1 - COMMISSION_RATE)).toLocaleString()}`, color: "#10B981", icon: CheckCircle2 },
-            { label: "Pending Payments", val: `₹${Number(earnings.pending_amount || 0).toLocaleString()}`, color: "#F59E0B", icon: Clock },
+            { label: "Total Lifetime Revenue", val: `₹${totalRevenue.toLocaleString()}`, color: "#7C5CFC", icon: IndianRupee },
+            { label: "Net Lifetime Earnings", val: `₹${netBalance.toLocaleString()}`, color: "#10B981", icon: CheckCircle2 },
+            { label: "Pending Payments", val: `₹${pendingBalance.toLocaleString()}`, color: "#F59E0B", icon: Clock },
+            { label: "Available Balance", val: `₹${netBalance.toLocaleString()}`, color: "#06B6D4", icon: Wallet },
           ].map(c => {
             const Icon = c.icon;
             return (
@@ -157,8 +159,6 @@ export default function EarningsPage({ user, onLogout }: Props) {
                       <th>Customer</th>
                       <th>Service</th>
                       <th>Total Amount</th>
-                      <th>Commission (10%)</th>
-                      <th>Net Payout</th>
                       <th>Status</th>
                     </tr>
                   </thead>
@@ -169,8 +169,6 @@ export default function EarningsPage({ user, onLogout }: Props) {
                         <td style={{ fontWeight: 700, color: "var(--text-h)" }}>{t.customer_name}</td>
                         <td>{t.hairstyle || "Hair Service"}</td>
                         <td style={{ fontWeight: 700 }}>₹{Number(t.total_price || 0).toFixed(0)}</td>
-                        <td style={{ color: "#EF4444", fontWeight: 600 }}>-₹{(Number(t.total_price || 0) * 0.10).toFixed(0)}</td>
-                        <td style={{ color: "#10B981", fontWeight: 800 }}>₹{(Number(t.total_price || 0) * 0.90).toFixed(0)}</td>
                         <td><span className={`badge ${t.booking_status}`}>{t.booking_status}</span></td>
                       </tr>
                     ))}
@@ -187,8 +185,8 @@ export default function EarningsPage({ user, onLogout }: Props) {
               <CreditCard size={20} style={{ color: "#10B981" }} /> Request Withdrawal
             </h3>
             <p style={{ color: "var(--muted)", fontSize: 14, marginBottom: 18 }}>
-              Available Net Balance: <strong style={{ color: "#10B981", fontSize: 16 }}>
-                ₹{(Number(earnings.total_revenue || 0) * 0.90).toLocaleString()}
+              Available Balance: <strong style={{ color: "#10B981", fontSize: 16 }}>
+                ₹{netBalance.toLocaleString()}
               </strong>
             </p>
             <div className="form-group">

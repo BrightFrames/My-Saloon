@@ -10,6 +10,7 @@ export interface SalonMapPopupProps {
     address?: string;
     city?: string;
     state?: string;
+    google_maps_link?: string;
     latitude?: number | string | null;
     longitude?: number | string | null;
     image?: string;
@@ -74,6 +75,9 @@ export const SalonMapPopup: React.FC<SalonMapPopupProps> = ({
             <GetDirectionsButton
               latitude={salon.latitude}
               longitude={salon.longitude}
+              mapsLink={salon.google_maps_link}
+              destinationAddress={displayAddress}
+              placeName={salon.name}
               variant="primary"
               size="sm"
               label="Get Directions"

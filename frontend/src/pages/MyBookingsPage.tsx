@@ -372,6 +372,9 @@ export function MyBookingsPage() {
                             <GetDirectionsButton
                               latitude={booking.salon_latitude || booking.latitude}
                               longitude={booking.salon_longitude || booking.longitude}
+                              mapsLink={booking.salon_google_maps_link || booking.google_maps_link}
+                              destinationAddress={booking.salon_address || booking.salon_city || booking.salon_state}
+                              placeName={booking.salon_name || booking.salonName}
                               variant="secondary"
                               size="sm"
                               label="Get Directions"

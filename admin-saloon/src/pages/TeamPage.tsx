@@ -179,6 +179,18 @@ export default function TeamPage({ user, onLogout }: Props) {
     setShowModal(true);
   };
 
+  const openCreate = () => {
+    setEditingMember(null);
+    setForm({
+      name: "",
+      role: "",
+      experience: "",
+      image_url: "",
+      service_ids: [],
+    });
+    setShowModal(true);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.name || !form.role) return alert("Name and role are required.");
@@ -317,6 +329,11 @@ export default function TeamPage({ user, onLogout }: Props) {
             <button className="btn-outline" onClick={fetchTeam}>
               <RefreshCw size={15} /> Refresh
             </button>
+            {activeTab === 'staff' && (
+              <button className="btn-add" onClick={openCreate}>
+                <Plus size={16} /> Add Team Member
+              </button>
+            )}
             {activeTab === 'leave' && (
               <button className="btn-add" onClick={() => setShowLeaveForm(!showLeaveForm)}>
                 <Plus size={16} /> {showLeaveForm ? "Cancel" : "Apply Staff Leave"}

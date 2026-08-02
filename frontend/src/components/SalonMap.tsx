@@ -46,6 +46,7 @@ export interface SalonMapProps {
     address?: string;
     city?: string;
     state?: string;
+    google_maps_link?: string;
     latitude?: number | string | null;
     longitude?: number | string | null;
     image?: string;
@@ -90,6 +91,9 @@ export const SalonMap: React.FC<SalonMapProps> = ({
         <GetDirectionsButton
           latitude={singleSalon?.latitude}
           longitude={singleSalon?.longitude}
+          mapsLink={singleSalon?.google_maps_link}
+          destinationAddress={[singleSalon?.address, singleSalon?.city, singleSalon?.state].filter(Boolean).join(", ")}
+          placeName={singleSalon?.name}
           variant="secondary"
           size="md"
         />

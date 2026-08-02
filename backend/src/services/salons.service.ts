@@ -2,6 +2,24 @@ import { query } from "../config/db";
 import { ApiError } from "../exceptions/ApiError";
 
 export class SalonsService {
+  private buildLocationSearchTerms(keyword: string): string[] {
+    const raw = keyword.trim();
+    if (!raw) return [];
+
+    const commaParts = raw
+      .split(",")
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+    const tokenParts = raw
+      .split(/\s+/)
+      .map((part) => part.trim())
+      .filter((part) => part.length >= 3);
+
+    const terms = commaParts.length > 0 ? [...commaParts, ...tokenParts, raw] : [...tokenParts, raw];
+    return [...new Set(terms.filter(Boolean))];
+  }
+
   /**
    * Retrieves a list of salons from the Postgres DB
    */
@@ -43,8 +61,12 @@ export class SalonsService {
 
         selectFields += `, ${haversine} AS distance_km`;
 
-        // Filter by distance/radius ONLY if no specific city or name is searched
-        if (!city && !name) {
+        const hasLocationKeyword = Boolean(keyword && keyword.trim());
+
+        // Filter by distance/radius only when the request is purely geo-based.
+        // If the user typed a location keyword, keep the distance sort but do not
+        // clamp the results to a narrow radius.
+        if (!city && !name && !hasLocationKeyword) {
           whereClauses.push(`${haversine} <= $${paramIndex}`);
           queryParams.push(radiusKm);
           paramIndex += 1;
@@ -56,7 +78,7 @@ export class SalonsService {
       // 2. Filter by city, state, or address
       if (city) {
         whereClauses.push(
-          `(s.city ILIKE $${paramIndex} OR s.state ILIKE $${paramIndex} OR s.address ILIKE $${paramIndex})`
+          `(s.city ILIKE $${paramIndex} OR s.state ILIKE $${paramIndex} OR s.country ILIKE $${paramIndex} OR s.address ILIKE $${paramIndex})`
         );
         queryParams.push(`%${city}%`);
         paramIndex += 1;
@@ -64,21 +86,30 @@ export class SalonsService {
 
       // 3. Keyword search across the most useful salon fields
       if (keyword) {
-        whereClauses.push(
-          `(
-            s.name ILIKE $${paramIndex}
-            OR s.city ILIKE $${paramIndex}
-            OR s.state ILIKE $${paramIndex}
-            OR s.address ILIKE $${paramIndex}
-            OR s.id IN (
-              SELECT salon_id
-              FROM public.services
-              WHERE name ILIKE $${paramIndex}
-            )
-          )`
-        );
-        queryParams.push(`%${keyword}%`);
-        paramIndex += 1;
+        const terms = this.buildLocationSearchTerms(keyword);
+
+        if (terms.length > 0) {
+          const termClauses = terms.map((term) => {
+            const currentIndex = paramIndex;
+            queryParams.push(`%${term}%`);
+            paramIndex += 1;
+
+            return `(
+              s.name ILIKE $${currentIndex}
+              OR s.city ILIKE $${currentIndex}
+              OR s.state ILIKE $${currentIndex}
+              OR s.country ILIKE $${currentIndex}
+              OR s.address ILIKE $${currentIndex}
+              OR s.id IN (
+                SELECT salon_id
+                FROM public.services
+                WHERE name ILIKE $${currentIndex}
+              )
+            )`;
+          });
+
+          whereClauses.push(`(${termClauses.join(" OR ")})`);
+        }
       }
 
       // 4. Filter by name

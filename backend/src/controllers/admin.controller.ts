@@ -1112,24 +1112,21 @@ export const getEarnings = asyncHandler(async (req: Request, res: Response) => {
       [salon_id],
     );
     const totalRevenue = parseFloat(totalRes.rows[0]?.total_revenue || 0);
-    const commission = Math.round(totalRevenue * 0.10);
-    const netPayout = totalRevenue - commission;
 
     res.json({
       success: true,
       data: {
         total_revenue: totalRevenue,
-        commission: commission,
-        net_payout: netPayout,
-        pending_payout: Math.round(netPayout * 0.3),
-        completed_payout: Math.round(netPayout * 0.7),
+        net_payout: totalRevenue,
+        pending_payout: 0,
+        completed_payout: totalRevenue,
         paid_bookings: parseInt(totalRes.rows[0]?.paid_bookings || 0, 10),
       },
     });
   } catch (err) {
     res.json({
       success: true,
-      data: { total_revenue: 0, commission: 0, net_payout: 0, pending_payout: 0, completed_payout: 0 },
+      data: { total_revenue: 0, net_payout: 0, pending_payout: 0, completed_payout: 0 },
     });
   }
 });
@@ -1567,4 +1564,3 @@ export const getRevenueAnalytics = asyncHandler(async (req: Request, res: Respon
     }
   });
 });
-

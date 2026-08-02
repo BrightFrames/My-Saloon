@@ -20,6 +20,12 @@ export type CachedLocation = {
   updatedAt: number;
 };
 
+export type ResolvedLocation = {
+  lat: number;
+  lon: number;
+  displayLocation: string;
+};
+
 export function saveCachedLocation(
   lat: number,
   lon: number,
@@ -119,6 +125,56 @@ export async function reverseGeocode(
       if (displayLocation) return displayLocation;
     } catch {
       // Fall through to next provider.
+    }
+  }
+
+  return null;
+}
+
+function parseGeocodedLocation(payload: any): ResolvedLocation | null {
+  const lat = Number(payload?.lat);
+  const lon = Number(payload?.lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+
+  const address = payload?.address || {};
+  const displayLocation =
+    payload?.display_name ||
+    [address.city || address.town || address.village || address.county || "", address.state || address.country || ""]
+      .filter(Boolean)
+      .join(", ") ||
+    "";
+
+  return {
+    lat,
+    lon,
+    displayLocation,
+  };
+}
+
+export async function geocodeLocation(
+  location: string,
+): Promise<ResolvedLocation | null> {
+  const query = location.trim();
+  if (!query) return null;
+
+  const providers = [
+    `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(query)}`,
+    `https://api.bigdatacloud.net/data/geocode-by-text?text=${encodeURIComponent(query)}&localityLanguage=en`,
+  ];
+
+  for (const url of providers) {
+    try {
+      const response = await fetch(url, {
+        headers: { "Accept-Language": "en" },
+      });
+      if (!response.ok) continue;
+
+      const data = await response.json();
+      const raw = Array.isArray(data) ? data[0] : data?.results?.[0] || data;
+      const resolved = parseGeocodedLocation(raw);
+      if (resolved) return resolved;
+    } catch {
+      // Try the next provider.
     }
   }
 

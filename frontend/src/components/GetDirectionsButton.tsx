@@ -1,10 +1,17 @@
 import React from "react";
 import { MapPin } from "lucide-react";
-import { openGoogleMapsDirections, isValidLocation } from "../utils/navigation";
+import {
+  openGoogleMapsDirections,
+  openGoogleMapsLocation,
+  isValidLocation,
+} from "../utils/navigation";
 
 export interface GetDirectionsButtonProps {
   latitude?: number | string | null;
   longitude?: number | string | null;
+  mapsLink?: string | null;
+  destinationAddress?: string | null;
+  placeName?: string | null;
   className?: string;
   variant?: "primary" | "secondary" | "outline" | "compact" | "dark";
   icon?: boolean;
@@ -15,6 +22,9 @@ export interface GetDirectionsButtonProps {
 export const GetDirectionsButton: React.FC<GetDirectionsButtonProps> = ({
   latitude,
   longitude,
+  mapsLink,
+  destinationAddress,
+  placeName,
   className = "",
   variant = "primary",
   icon = true,
@@ -22,11 +32,25 @@ export const GetDirectionsButton: React.FC<GetDirectionsButtonProps> = ({
   size = "md",
 }) => {
   const hasValidLocation = isValidLocation(latitude, longitude);
+  const hasLocationHint = Boolean(
+    mapsLink?.trim() || destinationAddress?.trim() || placeName?.trim(),
+  );
 
   const handleClick = (e: React.MouseEvent<HTMLButtonElement>) => {
     e.stopPropagation();
     e.preventDefault();
-    if (hasValidLocation) {
+    if (hasLocationHint || hasValidLocation) {
+      if (
+        openGoogleMapsLocation({
+          mapsLink,
+          destinationAddress,
+          placeName,
+          lat: latitude,
+          lon: longitude,
+        })
+      ) {
+        return;
+      }
       openGoogleMapsDirections(latitude, longitude);
     }
   };
@@ -67,7 +91,7 @@ export const GetDirectionsButton: React.FC<GetDirectionsButtonProps> = ({
       onClick={handleClick}
       disabled={!hasValidLocation}
       title={
-        !hasValidLocation
+        !hasLocationHint && !hasValidLocation
           ? "Location is not available for this salon."
           : "Open directions in Google Maps"
       }
@@ -81,7 +105,7 @@ export const GetDirectionsButton: React.FC<GetDirectionsButtonProps> = ({
       )}
       <span>{label}</span>
 
-      {!hasValidLocation && (
+      {!hasLocationHint && !hasValidLocation && (
         <span className="pointer-events-none absolute bottom-full mb-2 left-1/2 -translate-x-1/2 hidden group-hover:block whitespace-nowrap rounded-lg bg-stone-900 px-3 py-1.5 text-xs font-medium text-white shadow-xl z-50 animate-in fade-in zoom-in-95">
           Location is not available for this salon.
         </span>

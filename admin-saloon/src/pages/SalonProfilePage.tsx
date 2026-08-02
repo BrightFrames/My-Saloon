@@ -45,6 +45,9 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
   const [form, setForm] = useState({
     name: "",
     city: "",
+    address: "",
+    state: "",
+    country: "",
     starting_price: "",
     latitude: "",
     longitude: "",
@@ -73,16 +76,91 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
     return null;
   };
 
-  const handleGoogleMapsUrlChange = (urlVal: string) => {
-    setForm((prev) => {
-      const updated = { ...prev, google_maps_link: urlVal };
-      const coords = extractCoordsFromUrl(urlVal);
-      if (coords) {
-        updated.latitude = coords.lat;
-        updated.longitude = coords.lon;
+  const parseDisplayLocation = (payload: any) => {
+    const address = payload?.address || payload?.localityInfo?.administrative || null;
+    if (!address) return { city: "", state: "", country: "", address: "" };
+
+    const city =
+      address.city ||
+      address.town ||
+      address.village ||
+      address.county ||
+      address.locality ||
+      payload?.city ||
+      "";
+
+    const state =
+      address.state ||
+      address.principalSubdivision ||
+      payload?.principalSubdivision ||
+      "";
+
+    const country =
+      address.country ||
+      address.countryName ||
+      payload?.countryName ||
+      "";
+
+    const displayAddress = [
+      address.road,
+      address.neighbourhood,
+      address.suburb,
+      city,
+      state,
+      country,
+    ].filter(Boolean).join(", ");
+
+    return { city, state, country, address: displayAddress };
+  };
+
+  const reverseGeocodeLocation = async (lat: string, lon: string) => {
+    const providers = [
+      `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}`,
+      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`,
+    ];
+
+    for (const url of providers) {
+      try {
+        const response = await fetch(url, {
+          headers: { "Accept-Language": "en" },
+        });
+        if (!response.ok) continue;
+        const data = await response.json();
+        const parsed = parseDisplayLocation(data);
+        if (parsed.city || parsed.state || parsed.country || parsed.address) {
+          return parsed;
+        }
+      } catch {
+        // Try the next provider.
       }
-      return updated;
-    });
+    }
+
+    return null;
+  };
+
+  const applyResolvedLocation = async (lat: string, lon: string) => {
+    const resolved = await reverseGeocodeLocation(lat, lon);
+    if (!resolved) return;
+    setForm((prev) => ({
+      ...prev,
+      city: resolved.city || prev.city,
+      state: resolved.state || prev.state,
+      country: resolved.country || prev.country,
+      address: resolved.address || prev.address,
+    }));
+  };
+
+  const handleGoogleMapsUrlChange = (urlVal: string) => {
+    setForm((prev) => ({ ...prev, google_maps_link: urlVal }));
+    const coords = extractCoordsFromUrl(urlVal);
+    if (coords) {
+      setForm((prev) => ({
+        ...prev,
+        latitude: coords.lat,
+        longitude: coords.lon,
+      }));
+      void applyResolvedLocation(coords.lat, coords.lon);
+    }
   };
 
   const handleAutoDetectLocation = () => {
@@ -93,11 +171,14 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
     setDetectingLocation(true);
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        const lat = position.coords.latitude.toFixed(6);
+        const lon = position.coords.longitude.toFixed(6);
         setForm((prev) => ({
           ...prev,
-          latitude: position.coords.latitude.toFixed(6),
-          longitude: position.coords.longitude.toFixed(6),
+          latitude: lat,
+          longitude: lon,
         }));
+        void applyResolvedLocation(lat, lon);
         setDetectingLocation(false);
         alert("Location coordinates auto-detected successfully!");
       },
@@ -122,6 +203,9 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
         setForm({
           name: res.data.name || "",
           city: res.data.city || "",
+          address: res.data.address || "",
+          state: res.data.state || "",
+          country: res.data.country || "",
           starting_price: String(res.data.starting_price || 0),
           latitude: String(res.data.latitude || ""),
           longitude: String(res.data.longitude || ""),
@@ -242,6 +326,9 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
       await api.updateSalonProfile({
         name: form.name,
         city: form.city,
+        address: form.address || undefined,
+        state: form.state || undefined,
+        country: form.country || undefined,
         starting_price: parseFloat(form.starting_price),
         rating: profile?.rating
           ? parseFloat(String(profile.rating))
@@ -332,6 +419,30 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
                       value={form.city}
                       onChange={(e) => setForm({ ...form, city: e.target.value })}
                       required
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Address</label>
+                    <input
+                      value={form.address}
+                      onChange={(e) => setForm({ ...form, address: e.target.value })}
+                      placeholder="Street address or landmark"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>State</label>
+                    <input
+                      value={form.state}
+                      onChange={(e) => setForm({ ...form, state: e.target.value })}
+                      placeholder="State / region"
+                    />
+                  </div>
+                  <div className="form-group">
+                    <label>Country</label>
+                    <input
+                      value={form.country}
+                      onChange={(e) => setForm({ ...form, country: e.target.value })}
+                      placeholder="Country"
                     />
                   </div>
                   <div className="form-group">
@@ -518,6 +629,18 @@ export default function SalonProfilePage({ user, onLogout }: Props) {
                 <div className="profile-field">
                   <div className="field-label">City</div>
                   <div className="field-value">{profile.city}</div>
+                </div>
+                <div className="profile-field">
+                  <div className="field-label">Address</div>
+                  <div className="field-value">{profile.address || "—"}</div>
+                </div>
+                <div className="profile-field">
+                  <div className="field-label">State</div>
+                  <div className="field-value">{profile.state || "—"}</div>
+                </div>
+                <div className="profile-field">
+                  <div className="field-label">Country</div>
+                  <div className="field-value">{profile.country || "—"}</div>
                 </div>
                 <div className="profile-field">
                   <div className="field-label">Rating</div>

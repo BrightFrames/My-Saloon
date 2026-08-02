@@ -247,6 +247,9 @@ export function SalonDetailsPage() {
               <GetDirectionsButton
                 latitude={salon?.latitude}
                 longitude={salon?.longitude}
+                mapsLink={salon?.google_maps_link}
+                destinationAddress={[salon?.address, salon?.city, salon?.state].filter(Boolean).join(", ")}
+                placeName={salon?.name}
                 variant="dark"
                 size="md"
                 label="Get Directions"
@@ -462,6 +465,9 @@ export function SalonDetailsPage() {
                     <GetDirectionsButton
                       latitude={salon?.latitude}
                       longitude={salon?.longitude}
+                      mapsLink={salon?.google_maps_link}
+                      destinationAddress={[salon?.address, salon?.city, salon?.state].filter(Boolean).join(", ")}
+                      placeName={salon?.name}
                       variant="primary"
                       size="sm"
                     />

@@ -22,6 +22,7 @@ import { useTheme } from "../context/ThemeContext";
 import { GetDirectionsButton } from "../components/GetDirectionsButton";
 import { SalonMapPopup } from "../components/SalonMapPopup";
 import { API_BASE_URL } from "../services/apiBase";
+import { geocodeLocation } from "../services/location";
 
 interface LandingPageProps {
   location: string;
@@ -109,6 +110,12 @@ export function LandingPage({
     : null;
   const showMapPermissionPrompt = locationPermission === "denied";
   const normalizedHeroLocation = getCityQueryFromLocation(location);
+  const activeLocationLabel = normalizedHeroLocation || location.trim();
+  const [resolvedSearchCoordinates, setResolvedSearchCoordinates] = useState<
+    [number, number] | null
+  >(null);
+  const [isResolvingSearchLocation, setIsResolvingSearchLocation] =
+    useState(false);
 
   const [isFetching, setIsFetching] = useState(false);
 
@@ -184,28 +191,118 @@ export function LandingPage({
     }
   }, [latitude, longitude]);
 
-  // Fetch salons dynamically with applied filters
   useEffect(() => {
-    // Skip fetching if we don't have valid location data AND no search criteria
     if (
-      ((!latitude && !longitude && !location) &&
-       !(searchName || searchCity || filterRating || filterService || filterMaxPrice))
+      !hasAreaSearch &&
+      Array.isArray(resolvedSearchCoordinates) &&
+      resolvedSearchCoordinates.length === 2
     ) {
+      setMapCenter(resolvedSearchCoordinates);
+      setMapZoom(13);
+    }
+  }, [hasAreaSearch, resolvedSearchCoordinates]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    if (!normalizedHeroLocation) {
+      setIsResolvingSearchLocation(false);
+      setResolvedSearchCoordinates(null);
       return;
     }
 
-    // Skip if fetching is already in progress to prevent duplicate calls
-    if (isFetching) return;
+    const resolveTypedLocation = async () => {
+      try {
+        setIsResolvingSearchLocation(true);
+        const result = await geocodeLocation(normalizedHeroLocation);
+        if (cancelled) return;
+        if (result) {
+          setResolvedSearchCoordinates([result.lat, result.lon]);
+        } else {
+          setResolvedSearchCoordinates(null);
+        }
+      } catch (error) {
+        if (!cancelled) {
+          console.debug("[LandingPage] geocode failed", error);
+          setResolvedSearchCoordinates(null);
+        }
+      } finally {
+        if (!cancelled) {
+          setIsResolvingSearchLocation(false);
+        }
+      }
+    };
+
+    resolveTypedLocation();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [normalizedHeroLocation, latitude, longitude]);
+
+  // Fetch salons dynamically with applied filters
+  useEffect(() => {
+    const hasManualLocationSearch = Boolean(normalizedHeroLocation);
+    const hasResolvedSearchCoordinates = Array.isArray(resolvedSearchCoordinates) && resolvedSearchCoordinates.length === 2;
+    const hasLiveCoordinates =
+      typeof latitude === "number" && typeof longitude === "number";
+    const hasCoordinates =
+      (hasManualLocationSearch ? hasResolvedSearchCoordinates : hasLiveCoordinates) ||
+      (!hasManualLocationSearch && hasResolvedSearchCoordinates);
+    const hasSearchFilters =
+      Boolean(searchName) ||
+      Boolean(searchCity) ||
+      Boolean(filterRating) ||
+      Boolean(filterService) ||
+      Boolean(filterMaxPrice);
+    const isWaitingForLocation =
+      isLoadingLocation &&
+      typeof latitude !== "number" &&
+      typeof longitude !== "number" &&
+      !hasResolvedSearchCoordinates &&
+      !resolvedSearchCoordinates &&
+      !location &&
+      !hasSearchFilters;
+    const isWaitingForTypedLocation =
+      hasManualLocationSearch && isResolvingSearchLocation;
+
+    // Skip fetching while the browser is still resolving location and the user
+    // has not entered any manual search criteria yet.
+    if (
+      isWaitingForLocation ||
+      isWaitingForTypedLocation ||
+      (!hasCoordinates && !location && !hasSearchFilters && !hasManualLocationSearch)
+    ) {
+      return;
+    }
 
     const fetchSalons = async () => {
       setIsFetching(true);
       try {
         const params = new URLSearchParams();
+        const searchLat = hasManualLocationSearch
+          ? resolvedSearchCoordinates?.[0]
+          : hasLiveCoordinates
+            ? latitude
+            : resolvedSearchCoordinates?.[0];
+        const searchLon = hasManualLocationSearch
+          ? resolvedSearchCoordinates?.[1]
+          : hasLiveCoordinates
+            ? longitude
+            : resolvedSearchCoordinates?.[1];
+        const searchRadius =
+          hasManualLocationSearch && hasResolvedSearchCoordinates
+            ? 25
+            : hasLiveCoordinates
+            ? 15
+            : typeof searchLat === "number" && typeof searchLon === "number"
+              ? 25
+              : null;
 
-        if (typeof latitude === "number" && typeof longitude === "number") {
-          params.append("lat", String(latitude));
-          params.append("lon", String(longitude));
-          params.append("radius", "15");
+        if (typeof searchLat === "number" && typeof searchLon === "number") {
+          params.append("lat", String(searchLat));
+          params.append("lon", String(searchLon));
+          params.append("radius", String(searchRadius ?? 15));
         }
 
         if (searchCity) {
@@ -221,6 +318,17 @@ export function LandingPage({
         if (filterService) params.append("service", filterService);
         if (filterMaxPrice) params.append("maxPrice", String(filterMaxPrice));
 
+        if (import.meta.env.DEV) {
+          console.debug("[LandingPage] fetching salons", {
+            location,
+            latitude,
+            longitude,
+            resolvedSearchCoordinates,
+            isResolvingSearchLocation,
+            params: params.toString(),
+          });
+        }
+
         const res = await fetch(`${API_BASE_URL}/salons?${params.toString()}`);
         if (!res.ok) {
           setSalons([]);
@@ -231,7 +339,7 @@ export function LandingPage({
           const fetchedSalons = body.data || [];
           setSalons(fetchedSalons);
 
-          if (fetchedSalons.length > 0 && !latitude && !longitude) {
+          if (fetchedSalons.length > 0 && !hasLiveCoordinates && !hasResolvedSearchCoordinates) {
             // Update map center to the first salon's location if user location is not strictly tracking
             setMapCenter([
               Number(fetchedSalons[0].latitude),
@@ -259,13 +367,15 @@ export function LandingPage({
     latitude,
     longitude,
     location,
+    isLoadingLocation,
+    resolvedSearchCoordinates,
+    isResolvingSearchLocation,
     searchName,
     searchCity,
     filterRating,
     filterService,
     filterMaxPrice,
-    // Adding isFetching to dependency array to prevent duplicate calls
-    isFetching
+    normalizedHeroLocation,
   ]);
 
   const handleSalonSelect = (id: string, lat: number, lon: number) => {
@@ -282,6 +392,13 @@ export function LandingPage({
     event.preventDefault();
     onSearch?.();
   };
+
+  const isWaitingForLocation =
+    isLoadingLocation &&
+    typeof latitude !== "number" &&
+    typeof longitude !== "number" &&
+    !resolvedSearchCoordinates &&
+    !location;
 
   useTheme();
 
@@ -536,7 +653,20 @@ export function LandingPage({
         <div className="grid grid-cols-1 gap-8 items-start lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
           {/* Left Column: Salon List */}
           <div className="flex flex-col gap-5 xl:max-h-200 xl:overflow-y-auto xl:pr-2 scrollbar-thin scrollbar-thumb-stone-200 scrollbar-track-transparent">
-            {isFetching ? (
+            {isWaitingForLocation ? (
+              <div className="bg-white rounded-2xl p-12 border border-stone-100 text-center text-stone-500 shadow-sm">
+                <Loader2
+                  size={32}
+                  className="mx-auto text-[#C49B89] animate-spin mb-3"
+                />
+                <h3 className="font-serif text-lg font-medium text-stone-700 mb-1">
+                  Detecting your location...
+                </h3>
+                <p className="text-sm text-stone-400">
+                  We are waiting for your browser location result before loading nearby salons.
+                </p>
+              </div>
+            ) : isFetching ? (
               <div className="bg-white rounded-2xl p-12 border border-stone-100 text-center text-stone-500 shadow-sm">
                 <Loader2
                   size={32}
@@ -558,14 +688,18 @@ export function LandingPage({
             ) : (filterFavoritesOnly ? salons.filter(s => favorites.includes(s.id)) : salons).length === 0 ? (
               <div className="bg-white rounded-2xl p-12 border border-stone-100 text-center text-stone-500 shadow-sm">
                 <h3 className="font-serif text-lg font-medium text-stone-700 mb-1">
-                  {hasAreaSearch
-                    ? "No salons in your area affiliated with us"
-                    : "No matching salons found"}
+                  {activeLocationLabel
+                    ? `No salons found for ${activeLocationLabel}`
+                    : hasAreaSearch
+                      ? "No salons in your area affiliated with us"
+                      : "No matching salons found"}
                 </h3>
                 <p className="text-stone-400 text-sm">
-                  {hasAreaSearch
-                    ? "Try expanding your search radius or switching to a nearby city."
-                    : "Try relaxing your search terms or filters."}
+                  {activeLocationLabel
+                    ? "Try a nearby neighborhood, a shorter city name, or verify the salon has that location on its profile."
+                    : hasAreaSearch
+                      ? "Try expanding your search radius or switching to a nearby city."
+                      : "Try relaxing your search terms or filters."}
                 </p>
               </div>
             ) :

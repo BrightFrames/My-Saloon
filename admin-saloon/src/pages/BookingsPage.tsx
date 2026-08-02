@@ -74,6 +74,13 @@ function statusPill(status: string) {
   return <span className="badge">{status}</span>;
 }
 
+function formatBookingDate(value?: string) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.05 } }
@@ -437,8 +444,10 @@ export default function BookingsPage({ user, onLogout }: Props) {
                   <th>Customer</th>
                   <th>Service</th>
                   <th>Type</th>
-                  <th>Date</th>
-                  <th>Time</th>
+                  <th>Booking Date</th>
+                  <th>Booking Time</th>
+                  <th>Appointment Date</th>
+                  <th>Appointment Time</th>
                   <th>Stylist</th>
                   <th>Amount</th>
                   <th>Status</th>
@@ -483,9 +492,17 @@ export default function BookingsPage({ user, onLogout }: Props) {
                       )}
                     </td>
                     <td style={{ fontWeight: 600 }}>
-                      {new Date(b.appointment_date || b.booking_date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      {formatBookingDate(b.booking_date)}
                     </td>
-                    <td style={{ fontWeight: 600 }}>{b.appointment_time || b.booking_time}</td>
+                    <td style={{ fontWeight: 600 }}>
+                      {b.booking_time || "—"}
+                    </td>
+                    <td style={{ fontWeight: 600 }}>
+                      {formatBookingDate(b.appointment_date)}
+                    </td>
+                    <td style={{ fontWeight: 600 }}>
+                      {b.appointment_time || "—"}
+                    </td>
                     <td>
                       {b.stylist ? (
                         <span className="badge confirmed">

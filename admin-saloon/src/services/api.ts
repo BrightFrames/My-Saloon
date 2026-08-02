@@ -173,6 +173,9 @@ export const api = {
   updateSalonProfile: async (data: {
     name: string;
     city: string;
+    address?: string;
+    state?: string;
+    country?: string;
     starting_price: number;
     rating?: number;
     latitude?: number;
@@ -194,6 +197,9 @@ export const api = {
   createSalonProfile: (data: {
     name: string;
     city: string;
+    address?: string;
+    state?: string;
+    country?: string;
     starting_price: number;
     rating?: number;
     latitude?: number;
@@ -361,4 +367,3 @@ export const api = {
   getBizPrefs:   () => request("GET", "/admin/settings/preferences"),
   saveBizPrefs:  (data: any) => request("PUT", "/admin/settings/preferences", data),
 };
-

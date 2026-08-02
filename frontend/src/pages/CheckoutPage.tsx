@@ -1371,6 +1371,9 @@ export function CheckoutPage() {
                 <GetDirectionsButton
                   latitude={salonData?.latitude}
                   longitude={salonData?.longitude}
+                  mapsLink={salonData?.google_maps_link}
+                  destinationAddress={[salonData?.address, salonData?.city, salonData?.state].filter(Boolean).join(", ")}
+                  placeName={salonData?.name}
                   variant={salonData?.image ? "dark" : "secondary"}
                   size="sm"
                   label="Directions"

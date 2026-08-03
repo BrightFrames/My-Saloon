@@ -74,10 +74,19 @@ export class SalonsController {
    * @desc    Create a new salon
    */
   public createSalon = asyncHandler(async (req: Request, res: Response) => {
-    const { name, city, latitude, longitude, starting_price, address, phone, admin_email, google_maps_link } = req.body;
+    const { name, city, latitude, longitude, starting_price, address, phone, admin_email, email, google_maps_link } = req.body;
 
     if (!name || !city) {
       throw ApiError.badRequest("Please provide name and city");
+    }
+
+    const targetEmail = admin_email || email || null;
+
+    if (phone && phone.trim()) {
+      const cleanPhone = phone.trim();
+      if (/[^\d]/.test(cleanPhone) || cleanPhone.length !== 10) {
+        throw ApiError.badRequest("Mobile number must contain only digits and be exactly 10 digits.");
+      }
     }
 
     const salon = await this.salonsService.createSalon({
@@ -88,7 +97,7 @@ export class SalonsController {
       starting_price,
       address,
       phone,
-      admin_email,
+      admin_email: targetEmail,
       google_maps_link,
     });
 
@@ -104,25 +113,39 @@ export class SalonsController {
    */
   public updateSalon = asyncHandler(async (req: Request, res: Response) => {
     const { id } = req.params;
-    const { name, city, latitude, longitude, starting_price, address, phone, admin_email, google_maps_link } = req.body;
+    const { name, city, latitude, longitude, starting_price, address, phone, admin_email, email, google_maps_link } = req.body;
 
     if (!name || !city) {
       throw ApiError.badRequest("Please provide name and city");
     }
 
+    const targetEmail = admin_email || email || null;
+
+    if (phone && phone.trim()) {
+      const cleanPhone = phone.trim();
+      if (/[^\d]/.test(cleanPhone) || cleanPhone.length !== 10) {
+        throw ApiError.badRequest("Mobile number must contain only digits and be exactly 10 digits.");
+      }
+    }
+
     const result = await query(
       `UPDATE salons SET name=$1, city=$2, latitude=$3, longitude=$4, starting_price=$5, address=$6, phone=$7, google_maps_link=$8, email=$9
        WHERE id=$10 RETURNING *`,
-      [name, city, latitude || null, longitude || null, starting_price || 0, address || null, phone || null, google_maps_link || null, admin_email || null, id]
+      [name, city, latitude || null, longitude || null, starting_price || 0, address || null, phone || null, google_maps_link || null, targetEmail, id]
     );
 
     if (result.rowCount === 0) {
       throw ApiError.notFound("Salon not found");
     }
 
+    const updated = result.rows[0];
+
     res.status(200).json({
       success: true,
-      data: result.rows[0],
+      data: {
+        ...updated,
+        admin_email: updated.email || targetEmail
+      },
     });
   });
 

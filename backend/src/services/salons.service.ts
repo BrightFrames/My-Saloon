@@ -39,7 +39,7 @@ export class SalonsService {
       const queryParams: any[] = [];
       let paramIndex = 1;
 
-      let selectFields = "s.*, COALESCE(NULLIF(r.avg_rating, 0), NULLIF(s.rating, 0), 5.0) as rating, COALESCE(r.reviews_count, 0) as reviews_count";
+      let selectFields = "s.*, COALESCE(s.email, (SELECT email FROM users WHERE salon_id::text = s.id::text AND role = 'admin' ORDER BY created_at DESC LIMIT 1)) as admin_email, COALESCE(NULLIF(r.avg_rating, 0), NULLIF(s.rating, 0), 5.0) as rating, COALESCE(r.reviews_count, 0) as reviews_count";
       const fromClause = `salons s LEFT JOIN (
         SELECT salon_id, ROUND(AVG(rating)::numeric, 1) as avg_rating, COUNT(*)::int as reviews_count
         FROM public.reviews
@@ -194,6 +194,7 @@ export class SalonsService {
 
       return {
         ...salon,
+        admin_email: salon.admin_email || salon.email || null,
         rating: computedRating > 0 ? computedRating : 5.0,
         reviews_count: totalReviews,
         services: servicesRes.rows || [],
@@ -243,7 +244,11 @@ export class SalonsService {
       ];
 
       const res = await query(sql, values);
-      return res.rows[0];
+      const created = res.rows[0];
+      return {
+        ...created,
+        admin_email: created.email || data.admin_email || null
+      };
     } catch (err: any) {
       throw ApiError.internal(
         `Failed to create salon: ${err.message}`,

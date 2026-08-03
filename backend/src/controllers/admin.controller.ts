@@ -847,6 +847,7 @@ export const createSuperAdminSalon = asyncHandler(
       longitude,
       phone,
       email,
+      admin_email,
       google_maps_link,
     } = req.body;
 
@@ -855,6 +856,16 @@ export const createSuperAdminSalon = asyncHandler(
         .status(400)
         .json({ message: "Name, city, and starting_price are required." });
       return;
+    }
+
+    const targetEmail = admin_email || email || null;
+
+    if (phone && phone.trim()) {
+      const cleanPhone = phone.trim();
+      if (/[^\d]/.test(cleanPhone) || cleanPhone.length !== 10) {
+        res.status(400).json({ message: "Mobile number must contain only digits and be exactly 10 digits." });
+        return;
+      }
     }
 
     const result = await query(
@@ -872,12 +883,20 @@ export const createSuperAdminSalon = asyncHandler(
         latitude ?? null,
         longitude ?? null,
         phone || null,
-        email || null,
+        targetEmail,
         google_maps_link || null,
       ],
     );
 
-    res.status(201).json({ success: true, data: result.rows[0] });
+    const created = result.rows[0];
+
+    res.status(201).json({
+      success: true,
+      data: {
+        ...created,
+        admin_email: created.email || targetEmail,
+      },
+    });
   },
 );
 
@@ -897,8 +916,19 @@ export const updateSuperAdminSalon = asyncHandler(
       longitude,
       phone,
       email,
+      admin_email,
       google_maps_link,
     } = req.body;
+
+    const targetEmail = admin_email || email || null;
+
+    if (phone && phone.trim()) {
+      const cleanPhone = phone.trim();
+      if (/[^\d]/.test(cleanPhone) || cleanPhone.length !== 10) {
+        res.status(400).json({ message: "Mobile number must contain only digits and be exactly 10 digits." });
+        return;
+      }
+    }
 
     const result = await query(
       "UPDATE public.salons SET name = $1, address = $2, city = $3, state = $4, country = $5, image = $6, starting_price = $7, rating = $8, latitude = $9, longitude = $10, phone = $11, email = $12, google_maps_link = $13 WHERE id = $14 RETURNING *",
@@ -915,7 +945,7 @@ export const updateSuperAdminSalon = asyncHandler(
         latitude ?? null,
         longitude ?? null,
         phone || null,
-        email || null,
+        targetEmail,
         google_maps_link || null,
         id,
       ],

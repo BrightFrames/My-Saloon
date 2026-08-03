@@ -206,15 +206,31 @@ html.dark .tab-btn:hover {
 }
 
 /* ── Data Tables ─────────────────────────────────────── */
+.dash-table-wrap {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--panel-bg);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.dash-table-wrap::-webkit-scrollbar {
+  display: none !important; /* Hide horizontal scrollbar track/thumb in WebKit browsers */
+  height: 0px !important;
+  width: 0px !important;
+}
+
 .data-table {
   width: 100%;
   border-collapse: separate;
   border-spacing: 0;
   background: var(--panel-bg);
-  border: 1px solid var(--border);
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+  border: none;
 }
 
 .data-table thead {
@@ -226,19 +242,20 @@ html.dark .data-table thead {
 }
 
 .data-table th {
-  padding: 14px 18px;
+  padding: 12px 10px;
   text-align: left;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   border-bottom: 1px solid var(--border);
+  white-space: nowrap;
 }
 
 .data-table td {
-  padding: 16px 18px;
-  font-size: 14px;
+  padding: 12px 10px;
+  font-size: 13px;
   color: var(--text-h);
   border-bottom: 1px solid var(--border);
   vertical-align: middle;

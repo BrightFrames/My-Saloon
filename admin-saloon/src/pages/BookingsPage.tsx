@@ -444,10 +444,7 @@ export default function BookingsPage({ user, onLogout }: Props) {
                   <th>Customer</th>
                   <th>Service</th>
                   <th>Type</th>
-                  <th>Booking Date</th>
-                  <th>Booking Time</th>
-                  <th>Appointment Date</th>
-                  <th>Appointment Time</th>
+                  <th>Date & Time</th>
                   <th>Stylist</th>
                   <th>Amount</th>
                   <th>Status</th>
@@ -459,13 +456,13 @@ export default function BookingsPage({ user, onLogout }: Props) {
                 {bookings.map((b) => (
                   <tr key={b.id}>
                     <td>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                        <div className="avatar-circle" style={{ width: 34, height: 34, fontSize: 13 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <div className="avatar-circle" style={{ width: 32, height: 32, fontSize: 12 }}>
                           {getInitials(b.customer_name)}
                         </div>
                         <div>
-                          <div style={{ fontWeight: 700, color: 'var(--text-h)' }}>{b.customer_name}</div>
-                          <div style={{ fontSize: 12, color: 'var(--muted)' }}>{b.customer_email}</div>
+                          <div style={{ fontWeight: 700, color: 'var(--text-h)', fontSize: 13 }}>{b.customer_name}</div>
+                          <div style={{ fontSize: 11, color: 'var(--muted)' }}>{b.customer_email}</div>
                         </div>
                       </div>
                     </td>
@@ -492,16 +489,10 @@ export default function BookingsPage({ user, onLogout }: Props) {
                       )}
                     </td>
                     <td style={{ fontWeight: 600 }}>
-                      {formatBookingDate(b.booking_date)}
-                    </td>
-                    <td style={{ fontWeight: 600 }}>
-                      {b.booking_time || "—"}
-                    </td>
-                    <td style={{ fontWeight: 600 }}>
-                      {formatBookingDate(b.appointment_date)}
-                    </td>
-                    <td style={{ fontWeight: 600 }}>
-                      {b.appointment_time || "—"}
+                      <div>{formatBookingDate(b.appointment_date || b.booking_date)}</div>
+                      <div style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 500, marginTop: 2 }}>
+                        {b.appointment_time || b.booking_time || "—"}
+                      </div>
                     </td>
                     <td>
                       {b.stylist ? (

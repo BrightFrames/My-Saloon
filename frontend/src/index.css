@@ -24,6 +24,21 @@
     line-height: 1.5;
   }
 
+  ::-webkit-scrollbar:horizontal {
+    display: none !important;
+    height: 0px !important;
+  }
+
+  .overflow-x-auto, .dash-table-wrap {
+    scrollbar-width: none !important;
+    -ms-overflow-style: none !important;
+  }
+
+  .overflow-x-auto::-webkit-scrollbar, .dash-table-wrap::-webkit-scrollbar {
+    display: none !important;
+    height: 0px !important;
+  }
+
   img,
   picture,
   video,

@@ -71,7 +71,7 @@ export default function Salons() {
       city: salon.city || '',
       address: salon.address || '',
       phone: salon.phone || '',
-      admin_email: salon.admin_email || '',
+      admin_email: salon.admin_email || salon.email || '',
       google_maps_link: salon.google_maps_link || '',
       latitude: salon.latitude || '',
       longitude: salon.longitude || ''
@@ -105,6 +105,17 @@ export default function Salons() {
   const handleSaveSalon = async () => {
     if (!salonForm.name) return alert('Name is required');
     if (!salonForm.city) return alert('City is required');
+
+    if (salonForm.phone && salonForm.phone.trim()) {
+      const cleanPhone = salonForm.phone.trim();
+      if (/[^\d]/.test(cleanPhone)) {
+        return alert('Mobile number must contain only numbers.');
+      }
+      if (cleanPhone.length !== 10) {
+        return alert('Mobile number must be exactly 10 digits.');
+      }
+    }
+
     setIsSubmittingSalon(true);
     try {
       const url = editingSalonId 
@@ -155,6 +166,7 @@ export default function Salons() {
       if (data.success) {
         setShowAdminModal(false);
         alert('Admin account created/updated successfully');
+        fetchSalons();
       } else {
         alert(data.message || 'Failed to create admin');
       }
@@ -285,8 +297,8 @@ export default function Salons() {
                       </div>
                       <div className="flex items-center gap-3 text-sm text-stone-600">
                         <User size={16} className="text-stone-400 shrink-0" />
-                        <span className={s.admin_email ? 'text-stone-800 font-medium' : 'text-stone-400 italic'}>
-                          {s.admin_email || 'No admin email assigned'}
+                        <span className={(s.admin_email || s.email) ? 'text-stone-800 font-medium' : 'text-stone-400 italic'}>
+                          {s.admin_email || s.email || 'No admin email assigned'}
                         </span>
                       </div>
                     </div>
@@ -377,11 +389,17 @@ export default function Salons() {
                   </div>
                   
                   <div className="flex flex-col gap-1.5">
-                    <label className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">Phone</label>
+                    <label className="text-[11px] font-bold text-stone-500 uppercase tracking-wider">Mobile Number</label>
                     <Input 
+                      type="tel"
+                      inputMode="numeric"
+                      maxLength={10}
                       value={salonForm.phone} 
-                      onChange={e => setSalonForm({...salonForm, phone: e.target.value})} 
-                      placeholder="(555) 123-4567"
+                      onChange={e => {
+                        const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                        setSalonForm({...salonForm, phone: val});
+                      }} 
+                      placeholder="10-digit mobile number"
                     />
                   </div>
                   

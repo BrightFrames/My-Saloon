@@ -474,6 +474,7 @@ export const createSalonAdmin = async (req: Request, res: Response) => {
         "UPDATE users SET password=$1, role='admin', salon_id=$2 WHERE email=$3 RETURNING id, email, role, salon_id",
         [hashedPassword, salon_id, email],
       );
+      await query("UPDATE salons SET email=$1 WHERE id=$2", [email, salon_id]);
       return res.status(200).json({
         success: true,
         message: "Salon admin updated successfully",
@@ -485,6 +486,8 @@ export const createSalonAdmin = async (req: Request, res: Response) => {
       "INSERT INTO users (email, password, role, salon_id) VALUES ($1, $2, $3, $4) RETURNING id, email, role, salon_id",
       [email, hashedPassword, "admin", salon_id],
     );
+
+    await query("UPDATE salons SET email=$1 WHERE id=$2", [email, salon_id]);
 
     res.status(201).json({
       success: true,

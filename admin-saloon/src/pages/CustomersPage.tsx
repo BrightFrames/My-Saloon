@@ -54,14 +54,17 @@ export default function CustomersPage({ user, onLogout }: Props) {
   const fetchData = async () => {
     setLoading(true);
     try {
+      const salonId = user?.salon_id || user?.id;
       const [revRes, qRes, custRes] = await Promise.all([
-        api.getReviews().catch(() => ({ data: [] })),
+        api.getReviews(salonId).catch(() => ({ data: [] })),
         api.getQueries().catch(() => ({ data: [] })),
         api.getCustomers().catch(() => ({ data: [] })),
       ]);
-      setFeedbacks(revRes?.data || []);
-      setQueries(qRes?.data || []);
-      setCustomers(custRes?.data || []);
+
+      const revData = Array.isArray(revRes?.data) ? revRes.data : Array.isArray(revRes) ? revRes : [];
+      setFeedbacks(revData);
+      setQueries(Array.isArray(qRes?.data) ? qRes.data : Array.isArray(qRes) ? qRes : []);
+      setCustomers(Array.isArray(custRes?.data) ? custRes.data : Array.isArray(custRes) ? custRes : []);
     } catch (e) {
       console.error(e);
     } finally {
@@ -73,15 +76,16 @@ export default function CustomersPage({ user, onLogout }: Props) {
     fetchData();
   }, [user]);
 
-  // Reply handler for Feedback
+  // Reply handler for Feedback / Review
   const handleReplyFeedback = async (id: string) => {
     const text = replyText[id];
     if (!text?.trim()) return;
     setSubmitting(prev => ({ ...prev, [id]: true }));
     try {
       await api.replyToReview(id, text);
-      setFeedbacks(prev => prev.map(f => f.id === id ? { ...f, reply: text } : f));
+      setFeedbacks(prev => prev.map(f => f.id === id ? { ...f, reply: text, admin_reply: text, status: 'Replied' } : f));
       setReplyText(prev => ({ ...prev, [id]: "" }));
+      fetchData();
     } catch (e) {
       console.error(e);
     } finally {
@@ -105,15 +109,27 @@ export default function CustomersPage({ user, onLogout }: Props) {
     }
   };
 
-  // Filtered Feedbacks
+  // Filtered Feedbacks / Reviews
   const filteredFeedbacks = feedbacks.filter(f => {
+    const searchLower = search.toLowerCase().trim();
+    const nameStr = (f.user_name || f.customer_name || "").toLowerCase();
+    const emailStr = (f.customer_email || "").toLowerCase();
+    const revStr = (f.review || f.comment || "").toLowerCase();
+    const feedStr = (f.feedback || "").toLowerCase();
+    const qStr = (f.query || "").toLowerCase();
+
     const matchesSearch =
-      f.customer_name?.toLowerCase().includes(search.toLowerCase()) ||
-      f.customer_email?.toLowerCase().includes(search.toLowerCase()) ||
-      f.comment?.toLowerCase().includes(search.toLowerCase());
-    if (ratingFilter === "5") return matchesSearch && f.rating === 5;
-    if (ratingFilter === "4") return matchesSearch && f.rating === 4;
-    if (ratingFilter === "3below") return matchesSearch && f.rating <= 3;
+      !searchLower ||
+      nameStr.includes(searchLower) ||
+      emailStr.includes(searchLower) ||
+      revStr.includes(searchLower) ||
+      feedStr.includes(searchLower) ||
+      qStr.includes(searchLower);
+
+    const rNum = Math.round(Number(f.rating) || 5);
+    if (ratingFilter === "5") return matchesSearch && rNum === 5;
+    if (ratingFilter === "4") return matchesSearch && rNum === 4;
+    if (ratingFilter === "3below") return matchesSearch && rNum <= 3;
     return matchesSearch;
   });
 
@@ -254,12 +270,19 @@ export default function CustomersPage({ user, onLogout }: Props) {
                     {/* Top Row */}
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
                       <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                        <div className="dash-avatar" style={{ width: 42, height: 42, fontSize: 16 }}>
-                          {getInitials(f.customer_name)}
+                        <div className="dash-avatar" style={{ width: 42, height: 42, fontSize: 16, background: "linear-gradient(135deg, #EAB308 0%, #7C5CFC 100%)", color: "#fff", fontWeight: 800 }}>
+                          {getInitials(f.user_name || f.customer_name)}
                         </div>
                         <div>
-                          <div style={{ fontWeight: 700, fontSize: 16, color: "var(--text-h)" }}>{f.customer_name}</div>
-                          <div style={{ fontSize: 12, color: "var(--muted)" }}>{f.customer_email}</div>
+                          <div style={{ fontWeight: 800, fontSize: 16, color: "var(--text-h)", display: "flex", alignItems: "center", gap: 8 }}>
+                            <span>{f.user_name || f.customer_name || "Valued Client"}</span>
+                            {f.is_anonymous && (
+                              <span style={{ fontSize: 10, background: "rgba(124, 92, 252, 0.1)", color: "#7C5CFC", padding: "2px 6px", borderRadius: 4, fontWeight: 700 }}>
+                                Anonymous
+                              </span>
+                            )}
+                          </div>
+                          {f.customer_email && <div style={{ fontSize: 12, color: "var(--muted)" }}>{f.customer_email}</div>}
                         </div>
                       </div>
 
@@ -277,7 +300,7 @@ export default function CustomersPage({ user, onLogout }: Props) {
                             gap: 4
                           }}
                         >
-                          <Star size={13} fill="#FFFFFF" /> {f.rating}.0
+                          <Star size={13} fill="#FFFFFF" /> {Number(f.rating || 5).toFixed(1)} ★
                         </span>
                       </div>
                     </div>
@@ -291,13 +314,46 @@ export default function CustomersPage({ user, onLogout }: Props) {
                       </div>
                     )}
 
-                    {/* Feedback Comment */}
-                    <p style={{ margin: "0 0 16px 0", fontSize: 14, color: "var(--text-h)", lineHeight: "1.5" }}>
-                      "{f.comment}"
-                    </p>
+                    {/* Review Content */}
+                    {(f.review || f.comment) && (
+                      <p style={{ margin: "0 0 12px 0", fontSize: 14, color: "var(--text-h)", lineHeight: "1.5", fontStyle: "italic" }}>
+                        "{f.review || f.comment}"
+                      </p>
+                    )}
+
+                    {/* Optional Feedback */}
+                    {f.feedback && (
+                      <div style={{ background: "rgba(234, 179, 8, 0.08)", borderLeft: "3px solid #EAB308", borderRadius: 8, padding: "8px 12px", marginBottom: 12, fontSize: 13, color: "var(--text-h)" }}>
+                        <strong style={{ color: "#D97706", display: "block", fontSize: 11, marginBottom: 2 }}>Customer Suggestion:</strong>
+                        {f.feedback}
+                      </div>
+                    )}
+
+                    {/* Optional Query */}
+                    {f.query && (
+                      <div style={{ background: "rgba(59, 130, 246, 0.08)", borderLeft: "3px solid #3B82F6", borderRadius: 8, padding: "8px 12px", marginBottom: 12, fontSize: 13, color: "var(--text-h)" }}>
+                        <strong style={{ color: "#2563EB", display: "block", fontSize: 11, marginBottom: 2 }}>Customer Query:</strong>
+                        {f.query}
+                      </div>
+                    )}
+
+                    {/* Category Breakdown Badges */}
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
+                      {[
+                        { label: "Overall", val: f.overall_experience },
+                        { label: "Stylist", val: f.stylist_skill },
+                        { label: "Staff", val: f.staff_behaviour },
+                        { label: "Hygiene", val: f.cleanliness_hygiene },
+                        { label: "Value", val: f.value_for_money },
+                      ].map((cat, idx) => (
+                        <span key={idx} style={{ fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 6, background: "var(--bg)", border: "1px solid var(--border)", color: "var(--text-h)" }}>
+                          {cat.label}: <span style={{ color: "#EAB308" }}>{cat.val || f.rating || 5} ★</span>
+                        </span>
+                      ))}
+                    </div>
 
                     {/* Owner Reply Block */}
-                    {f.reply ? (
+                    {(f.reply || f.admin_reply) ? (
                       <div
                         style={{
                           background: "rgba(124, 92, 252, 0.06)",
@@ -310,13 +366,13 @@ export default function CustomersPage({ user, onLogout }: Props) {
                         <div style={{ fontSize: 12, fontWeight: 700, color: "#7C5CFC", marginBottom: 4, display: "flex", alignItems: "center", gap: 6 }}>
                           <UserCheck size={14} /> Salon Response:
                         </div>
-                        <div style={{ fontSize: 13, color: "var(--text-h)" }}>{f.reply}</div>
+                        <div style={{ fontSize: 13, color: "var(--text-h)" }}>{f.reply || f.admin_reply}</div>
                       </div>
                     ) : (
                       <div style={{ display: "flex", gap: 10, marginTop: 12 }}>
                         <input
                           type="text"
-                          placeholder="Write a response to this feedback..."
+                          placeholder="Write a response to this review..."
                           value={replyText[f.id] || ""}
                           onChange={(e) => setReplyText({ ...replyText, [f.id]: e.target.value })}
                           style={{

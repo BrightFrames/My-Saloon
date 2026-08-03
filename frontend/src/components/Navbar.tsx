@@ -127,12 +127,18 @@ const Navbar: React.FC = () => {
             </div>
           ) : (
             // LOGGED IN: Show avatar (email first letter) + name + logout
-            <div className="hidden md:flex items-center gap-3">
+            <div className="hidden md:flex items-center gap-2 sm:gap-3">
               <button
                 onClick={() => navigate("/my-bookings")}
                 className="flex min-h-11 items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-stone-600 transition-all hover:text-[#C49B89] cursor-pointer"
               >
                 My Bookings
+              </button>
+              <button
+                onClick={() => navigate("/my-reviews")}
+                className="flex min-h-11 items-center gap-1.5 rounded-lg px-3 py-2 text-sm font-medium text-stone-600 transition-all hover:text-[#C49B89] cursor-pointer"
+              >
+                My Reviews
               </button>
               {/* Circular avatar with first letter of email */}
               <div className="flex items-center gap-2">

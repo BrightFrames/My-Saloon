@@ -59,6 +59,51 @@ export async function ensureSalonsSchema() {
         ADD COLUMN IF NOT EXISTS break_time JSONB;
     `);
 
+    // Ensure reviews table and complete rating, feedback & query columns exist
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS public.reviews (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        salon_id UUID REFERENCES public.salons(id) ON DELETE CASCADE,
+        booking_id UUID,
+        customer_id TEXT,
+        customer_email TEXT,
+        user_name TEXT NOT NULL DEFAULT 'Valued Customer',
+        rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+        comment TEXT,
+        review TEXT,
+        feedback TEXT,
+        query TEXT,
+        reply TEXT,
+        admin_reply TEXT,
+        status TEXT DEFAULT 'Pending',
+        is_anonymous BOOLEAN DEFAULT false,
+        image_url TEXT,
+        overall_experience INTEGER DEFAULT 5,
+        stylist_skill INTEGER DEFAULT 5,
+        staff_behaviour INTEGER DEFAULT 5,
+        cleanliness_hygiene INTEGER DEFAULT 5,
+        value_for_money INTEGER DEFAULT 5,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+      ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS booking_id UUID;
+      ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS customer_id TEXT;
+      ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS customer_email TEXT;
+      ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS review TEXT;
+      ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS feedback TEXT;
+      ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS query TEXT;
+      ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS admin_reply TEXT;
+      ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'Pending';
+      ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS is_anonymous BOOLEAN DEFAULT false;
+      ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS image_url TEXT;
+      ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS overall_experience INTEGER DEFAULT 5;
+      ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS stylist_skill INTEGER DEFAULT 5;
+      ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS staff_behaviour INTEGER DEFAULT 5;
+      ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS cleanliness_hygiene INTEGER DEFAULT 5;
+      ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS value_for_money INTEGER DEFAULT 5;
+      ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP;
+    `);
+
     // Create staff_leaves table
     await client.query(`
       CREATE TABLE IF NOT EXISTS public.staff_leaves (

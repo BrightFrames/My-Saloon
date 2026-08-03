@@ -25,6 +25,7 @@ import bookingRoutes from "./bookings.routes";
 import adminRoutes from "./admin.routes";
 import uploadRoutes from "./upload.routes";
 import notificationsRoutes from "./notifications.routes";
+import reviewsRoutes from "./reviews.routes";
 
 const router = Router();
 const authLimiter = createRateLimit({
@@ -40,6 +41,7 @@ router.use("/salons", salonsRoutes);
 router.get("/services", getPublicServices);
 router.get("/team", getPublicTeam);
 router.use("/bookings", bookingRoutes);
+router.use("/reviews", reviewsRoutes);
 router.use("/admin", authenticateJWT, requireAdmin, adminRoutes);
 router.use("/upload", uploadRoutes);
 router.use("/notifications", notificationsRoutes);

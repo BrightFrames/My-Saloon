@@ -4,10 +4,12 @@ import { useNavigate, Link } from "react-router-dom";
 import signImage from "../assets/admin.png";
 import { PopupDialog } from "../components/PopupDialog";
 import { API_BASE_URL } from "../services/apiBase";
+import { Eye, EyeOff } from "lucide-react";
 
 const SignInPage: React.FC = () => {
   const [identifier, setIdentifier] = useState("");
   const [pin, setPin] = useState("");
+  const [showPin, setShowPin] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const [popup, setPopup] = useState<{
@@ -158,15 +160,25 @@ const SignInPage: React.FC = () => {
           </div>
 
           <div className="flex flex-col gap-1 w-full">
-            <input
-              type="password"
-              placeholder="4–6 Digit PIN"
-              value={pin}
-              maxLength={6}
-              onChange={(e) => setPin(e.target.value)}
-              className="w-full rounded-lg border border-[#c9ada7] px-4 py-3 tracking-widest outline-none focus:border-[#6B554D] focus:ring-1 focus:ring-[#6B554D]"
-              required
-            />
+            <div className="relative w-full">
+              <input
+                type={showPin ? "text" : "password"}
+                placeholder="4–6 Digit PIN"
+                value={pin}
+                maxLength={6}
+                onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+                className="w-full rounded-lg border border-[#c9ada7] px-4 py-3 pr-11 tracking-widest outline-none focus:border-[#6B554D] focus:ring-1 focus:ring-[#6B554D]"
+                required
+              />
+              <button
+                type="button"
+                onClick={() => setShowPin(!showPin)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-500 hover:text-[#6B554D] p-1 transition-colors cursor-pointer"
+                aria-label={showPin ? "Hide PIN" : "Show PIN"}
+              >
+                {showPin ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
             <div className="flex justify-end mt-0.5">
               <Link
                 to="/forgot-pin"

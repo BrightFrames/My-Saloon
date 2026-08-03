@@ -12,9 +12,12 @@ const writeLimiter = createRateLimit({
 	message: 'Too many salon changes. Please wait and try again.',
 });
 
+import { createReview } from '../controllers/reviews.controller';
+
 router.get('/', salonsController.getSalons);
 router.get('/:id', salonsController.getSalonById);
-router.post('/:id/reviews', writeLimiter, salonsController.createReview);
+router.post('/reviews', writeLimiter, createReview);
+router.post('/:id/reviews', writeLimiter, createReview);
 router.post('/', writeLimiter, salonsController.createSalon);
 router.put('/:id', writeLimiter, salonsController.updateSalon);
 router.delete('/:id', writeLimiter, salonsController.deleteSalon);

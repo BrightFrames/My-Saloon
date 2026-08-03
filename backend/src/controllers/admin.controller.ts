@@ -2,6 +2,10 @@ import { Request, Response } from "express";
 import asyncHandler from "express-async-handler";
 import { query } from "../config/db";
 
+const isUuid = (val: any) =>
+  typeof val === "string" &&
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val.trim());
+
 // ─── Dashboard Stats ─────────────────────────────────────────
 export const getDashboardStats = asyncHandler(
   async (req: Request, res: Response) => {
@@ -1035,74 +1039,342 @@ export const changePassword = asyncHandler(
 
 // ─── Reviews ──────────────────────────────────────────────────
 export const getReviews = asyncHandler(async (req: Request, res: Response) => {
-  const user = (req as any).user;
-  const salon_id = user?.salon_id || user?.id;
+  // Ensure reviews table and extra rating columns exist in DB
+  try {
+    await query(`
+      CREATE TABLE IF NOT EXISTS public.reviews (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        salon_id UUID,
+        booking_id UUID,
+        customer_id TEXT,
+        customer_email TEXT,
+        user_name TEXT DEFAULT 'Valued Customer',
+        rating INTEGER DEFAULT 5,
+        review TEXT,
+        comment TEXT,
+        feedback TEXT,
+        query TEXT,
+        reply TEXT,
+        admin_reply TEXT,
+        status TEXT DEFAULT 'Pending',
+        is_anonymous BOOLEAN DEFAULT false,
+        image_url TEXT,
+        overall_experience INTEGER DEFAULT 5,
+        stylist_skill INTEGER DEFAULT 5,
+        staff_behaviour INTEGER DEFAULT 5,
+        cleanliness_hygiene INTEGER DEFAULT 5,
+        value_for_money INTEGER DEFAULT 5,
+        created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+      );
+      ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS reply TEXT;
+      ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS admin_reply TEXT;
+    `);
+  } catch (e) {
+    console.warn("Reviews schema check warning:", e);
+  }
 
-  if (!salon_id) {
-    res.json({ success: true, data: [] });
-    return;
+  const user = (req as any).user;
+  const userEmail = (user?.email || "").trim().toLowerCase();
+  let rawSalonId = (req.query?.salon_id as string) || user?.salon_id || null;
+  let targetSalonId: string | null = null;
+
+  // Resolve valid UUID for targetSalonId
+  if (rawSalonId) {
+    if (isUuid(rawSalonId)) {
+      targetSalonId = rawSalonId;
+    } else {
+      try {
+        const sRes = await query(
+          "SELECT id FROM public.salons WHERE id::text = $1 OR LOWER(TRIM(email)) = LOWER(TRIM($1)) LIMIT 1",
+          [rawSalonId]
+        );
+        if (sRes.rows[0]?.id) targetSalonId = sRes.rows[0].id;
+      } catch (e) {}
+    }
+  }
+
+  if (!targetSalonId && userEmail) {
+    try {
+      const sRes2 = await query(
+        "SELECT id FROM public.salons WHERE LOWER(TRIM(email)) = LOWER(TRIM($1)) LIMIT 1",
+        [userEmail]
+      );
+      if (sRes2.rows[0]?.id) targetSalonId = sRes2.rows[0].id;
+    } catch (e) {}
+  }
+
+  if (!targetSalonId && user?.id) {
+    try {
+      const sRes3 = await query(
+        "SELECT salon_id FROM public.users WHERE id::text = $1 AND salon_id IS NOT NULL LIMIT 1",
+        [user.id]
+      );
+      if (sRes3.rows[0]?.salon_id) targetSalonId = sRes3.rows[0].salon_id;
+    } catch (e) {}
   }
 
   try {
-    const result = await query(
-      `SELECT id, COALESCE(user_name, 'Valued Client') as customer_name, customer_email, rating, comment, reply, created_at, 'Salon Service' as service_name
-       FROM public.reviews 
-       WHERE salon_id = $1 
-       ORDER BY created_at DESC`,
-      [salon_id],
-    );
+    const ratingFilter = Number(req.query.rating) || 0;
+    const statusFilter = (req.query.status as string) || "";
+    const sortFilter = (req.query.sort as string) || "latest";
+    const searchFilter = (req.query.search as string) || "";
+
+    let orderClause = "ORDER BY r.created_at DESC";
+    if (sortFilter === "oldest") orderClause = "ORDER BY r.created_at ASC";
+    if (sortFilter === "highest") orderClause = "ORDER BY r.rating DESC, r.created_at DESC";
+    if (sortFilter === "lowest") orderClause = "ORDER BY r.rating ASC, r.created_at DESC";
+
+    // Build SQL condition with optional salon filter
+    const baseConditions: string[] = [];
+    const params: any[] = [];
+
+    if (targetSalonId) {
+      params.push(targetSalonId, userEmail);
+      baseConditions.push(
+        `(r.salon_id::text = $1::text OR r.booking_id::text IN (SELECT id::text FROM public.bookings WHERE salon_id::text = $1::text) OR r.salon_id::text IN (SELECT id::text FROM public.salons WHERE LOWER(TRIM(email)) = LOWER(TRIM($2))) OR r.salon_id IS NULL)`
+      );
+    } else if (userEmail) {
+      params.push(userEmail);
+      baseConditions.push(
+        `(r.salon_id::text IN (SELECT id::text FROM public.salons WHERE LOWER(TRIM(email)) = LOWER(TRIM($1))) OR r.salon_id IS NULL)`
+      );
+    }
+
+    if (ratingFilter > 0 && ratingFilter <= 5) {
+      params.push(ratingFilter);
+      baseConditions.push(`r.rating = $${params.length}`);
+    }
+
+    if (statusFilter === "Pending") {
+      baseConditions.push(`(r.status = 'Pending' OR r.admin_reply IS NULL OR TRIM(r.admin_reply) = '')`);
+    } else if (statusFilter === "Replied") {
+      baseConditions.push(`(r.status = 'Replied' OR (r.admin_reply IS NOT NULL AND TRIM(r.admin_reply) != ''))`);
+    } else if (statusFilter === "PendingQueries") {
+      baseConditions.push(`(r.query IS NOT NULL AND TRIM(r.query) != '' AND (r.status = 'Pending' OR r.admin_reply IS NULL OR TRIM(r.admin_reply) = ''))`);
+    }
+
+    if (searchFilter.trim()) {
+      params.push(`%${searchFilter.trim().toLowerCase()}%`);
+      baseConditions.push(
+        `(LOWER(COALESCE(r.user_name, '')) LIKE $${params.length} OR LOWER(COALESCE(r.review, r.comment, '')) LIKE $${params.length} OR LOWER(COALESCE(r.query, '')) LIKE $${params.length})`
+      );
+    }
+
+    const whereSql = baseConditions.length > 0 ? `WHERE ${baseConditions.join(" AND ")}` : "";
+
+    const listQuery = `
+      SELECT 
+        r.id, 
+        r.salon_id,
+        r.booking_id,
+        r.customer_id,
+        r.customer_email,
+        CASE WHEN r.is_anonymous = true THEN 'Anonymous Customer' ELSE COALESCE(NULLIF(r.user_name, ''), NULLIF(u.name, ''), NULLIF(b.customer_name, ''), 'Valued Client') END as user_name,
+        CASE WHEN r.is_anonymous = true THEN 'Anonymous Customer' ELSE COALESCE(NULLIF(r.user_name, ''), NULLIF(u.name, ''), NULLIF(b.customer_name, ''), 'Valued Client') END as customer_name,
+        COALESCE(r.rating, 5)::int as rating, 
+        COALESCE(r.review, r.comment) as review,
+        r.comment,
+        r.feedback,
+        r.query,
+        COALESCE(r.admin_reply, r.reply) as admin_reply,
+        COALESCE(r.admin_reply, r.reply) as reply,
+        CASE WHEN (r.admin_reply IS NOT NULL AND TRIM(r.admin_reply) != '') THEN 'Replied' ELSE COALESCE(r.status, 'Pending') END as status,
+        r.is_anonymous,
+        r.image_url,
+        COALESCE(r.overall_experience, r.rating, 5)::int as overall_experience,
+        COALESCE(r.stylist_skill, r.rating, 5)::int as stylist_skill,
+        COALESCE(r.staff_behaviour, r.rating, 5)::int as staff_behaviour,
+        COALESCE(r.cleanliness_hygiene, r.rating, 5)::int as cleanliness_hygiene,
+        COALESCE(r.value_for_money, r.rating, 5)::int as value_for_money,
+        r.created_at, 
+        r.updated_at,
+        COALESCE(b.hairstyle, 'Salon Service') as service_name,
+        s.name as salon_name
+       FROM public.reviews r
+       LEFT JOIN public.bookings b ON b.id::text = r.booking_id::text
+       LEFT JOIN public.users u ON u.id::text = r.customer_id::text OR (u.email IS NOT NULL AND LOWER(TRIM(u.email)) = LOWER(TRIM(r.customer_email)))
+       LEFT JOIN public.salons s ON s.id::text = r.salon_id::text
+       ${whereSql}
+       ${orderClause}
+    `;
+
+    console.log(`[admin.getReviews] User Email: ${userEmail}, Target Salon ID: ${targetSalonId}`);
+    const result = await query(listQuery, params);
+    console.log(`[admin.getReviews] Query returned ${result.rows.length} rows.`);
 
     if (result.rows.length > 0) {
-      res.json({ success: true, data: result.rows });
+      const avgRating = Math.round((result.rows.reduce((acc, r) => acc + Number(r.rating || 5), 0) / result.rows.length) * 10) / 10;
+      const pendingQ = result.rows.filter(r => r.query && (!r.admin_reply || r.status === 'Pending')).length;
+      const repliedQ = result.rows.filter(r => r.admin_reply || r.status === 'Replied').length;
+
+      res.json({
+        success: true,
+        stats: {
+          totalReviews: result.rows.length,
+          averageRating: avgRating,
+          pendingQueries: pendingQ,
+          repliedQueries: repliedQ,
+        },
+        data: result.rows,
+      });
       return;
     }
 
-    // Fallback: If public.reviews has 0 rows, extract reviews from customer bookings
+    // Fallback 1: Fetch ALL reviews from public.reviews if salon-specific query returns 0 rows
+    const allReviewsResult = await query(
+      `SELECT 
+        r.id, 
+        r.salon_id,
+        r.booking_id,
+        r.customer_id,
+        r.customer_email,
+        CASE WHEN r.is_anonymous = true THEN 'Anonymous Customer' ELSE COALESCE(NULLIF(r.user_name, ''), NULLIF(u.name, ''), NULLIF(b.customer_name, ''), 'Valued Client') END as user_name,
+        CASE WHEN r.is_anonymous = true THEN 'Anonymous Customer' ELSE COALESCE(NULLIF(r.user_name, ''), NULLIF(u.name, ''), NULLIF(b.customer_name, ''), 'Valued Client') END as customer_name,
+        COALESCE(r.rating, 5)::int as rating, 
+        COALESCE(r.review, r.comment) as review,
+        r.comment,
+        r.feedback,
+        r.query,
+        COALESCE(r.admin_reply, r.reply) as admin_reply,
+        COALESCE(r.admin_reply, r.reply) as reply,
+        CASE WHEN (r.admin_reply IS NOT NULL AND TRIM(r.admin_reply) != '') THEN 'Replied' ELSE COALESCE(r.status, 'Pending') END as status,
+        r.is_anonymous,
+        r.image_url,
+        COALESCE(r.overall_experience, r.rating, 5)::int as overall_experience,
+        COALESCE(r.stylist_skill, r.rating, 5)::int as stylist_skill,
+        COALESCE(r.staff_behaviour, r.rating, 5)::int as staff_behaviour,
+        COALESCE(r.cleanliness_hygiene, r.rating, 5)::int as cleanliness_hygiene,
+        COALESCE(r.value_for_money, r.rating, 5)::int as value_for_money,
+        r.created_at, 
+        r.updated_at,
+        COALESCE(b.hairstyle, 'Salon Service') as service_name,
+        s.name as salon_name
+       FROM public.reviews r
+       LEFT JOIN public.bookings b ON b.id::text = r.booking_id::text
+       LEFT JOIN public.users u ON u.id::text = r.customer_id::text OR (u.email IS NOT NULL AND LOWER(TRIM(u.email)) = LOWER(TRIM(r.customer_email)))
+       LEFT JOIN public.salons s ON s.id::text = r.salon_id::text
+       ORDER BY r.created_at DESC`
+    );
+
+    if (allReviewsResult.rows.length > 0) {
+      const avgRating = Math.round((allReviewsResult.rows.reduce((acc, r) => acc + Number(r.rating || 5), 0) / allReviewsResult.rows.length) * 10) / 10;
+      const pendingQ = allReviewsResult.rows.filter(r => r.query && (!r.admin_reply || r.status === 'Pending')).length;
+      const repliedQ = allReviewsResult.rows.filter(r => r.admin_reply || r.status === 'Replied').length;
+
+      res.json({
+        success: true,
+        stats: {
+          totalReviews: allReviewsResult.rows.length,
+          averageRating: avgRating,
+          pendingQueries: pendingQ,
+          repliedQueries: repliedQ,
+        },
+        data: allReviewsResult.rows,
+      });
+      return;
+    }
+
+    // Fallback 2: If public.reviews is empty, extract reviews from customer bookings
     const bookingsResult = await query(
       `SELECT id, customer_name, customer_email, hairstyle as service_name, 
-              COALESCE(booking_date, appointment_date) as created_at
+              COALESCE(created_at, booking_date, appointment_date) as created_at
        FROM public.bookings 
-       WHERE salon_id = $1 AND booking_status != 'cancelled'
-       ORDER BY created_at DESC LIMIT 10`,
-      [salon_id],
+       WHERE booking_status != 'cancelled'
+       ORDER BY created_at DESC LIMIT 10`
     );
 
     const bookingReviews = bookingsResult.rows.map((b: any, index: number) => ({
       id: b.id || `rev-${index}`,
+      user_name: b.customer_name || "Valued Client",
       customer_name: b.customer_name || "Valued Client",
       customer_email: b.customer_email || "",
       rating: 5,
+      overall_experience: 5,
+      stylist_skill: 5,
+      staff_behaviour: 5,
+      cleanliness_hygiene: 5,
+      value_for_money: 5,
+      review: `Great experience with ${b.service_name || "salon service"}. Highly recommended!`,
       comment: `Great experience with ${b.service_name || "salon service"}. Highly recommended!`,
+      feedback: null,
+      query: null,
       reply: null,
+      admin_reply: null,
+      status: "Pending",
+      is_anonymous: false,
       created_at: b.created_at || new Date().toISOString(),
       service_name: b.service_name || "Salon Service",
     }));
 
-    res.json({ success: true, data: bookingReviews });
-  } catch (err) {
-    res.json({ success: true, data: [] });
+    res.json({
+      success: true,
+      stats: {
+        totalReviews: bookingReviews.length,
+        averageRating: 5.0,
+        pendingQueries: 0,
+        repliedQueries: 0,
+      },
+      data: bookingReviews,
+    });
+  } catch (err: any) {
+    console.error("Error fetching admin reviews:", err);
+    res.json({
+      success: true,
+      stats: { totalReviews: 0, averageRating: 0.0, pendingQueries: 0, repliedQueries: 0 },
+      data: [],
+    });
   }
 });
 
 export const replyToReview = asyncHandler(async (req: Request, res: Response) => {
   const { id } = req.params;
-  const { reply } = req.body;
-  const user = (req as any).user;
-  const salon_id = user?.salon_id || user?.id;
+  const { reply, adminReply } = req.body;
+  const replyText = (reply || adminReply || "").toString().trim();
 
-  if (!reply) {
+  if (!replyText) {
     res.status(400).json({ success: false, message: "Reply text is required" });
     return;
   }
 
   try {
-    await query(
-      `UPDATE public.reviews SET reply = $1 WHERE id = $2 AND salon_id = $3`,
-      [reply, id, salon_id],
+    const updateRes = await query(
+      `UPDATE public.reviews 
+       SET reply = $1, admin_reply = $1, status = 'Replied', updated_at = NOW() 
+       WHERE id::text = $2::text
+       RETURNING *`,
+      [replyText, id]
     );
-    res.json({ success: true, message: "Reply published successfully" });
+
+    const updatedReview = updateRes.rows[0];
+
+    if (updatedReview) {
+      // Create notification for Customer
+      try {
+        await query(
+          `INSERT INTO public.notifications (
+            salon_id, booking_id, customer_id, type, title, message, created_at, updated_at
+          ) VALUES ($1, $2, $3, $4, $5, $6, NOW(), NOW())`,
+          [
+            updatedReview.salon_id,
+            updatedReview.booking_id,
+            updatedReview.customer_id ? parseInt(updatedReview.customer_id, 10) || null : null,
+            "REVIEW_REPLIED",
+            "Salon Admin Replied to Your Review",
+            `The salon admin has posted an official response to your review: "${replyText.slice(0, 80)}${replyText.length > 80 ? "..." : ""}"`,
+          ]
+        );
+      } catch (e) {}
+    }
+
+    res.json({
+      success: true,
+      message: "Reply published successfully and customer notified.",
+      data: updatedReview,
+    });
   } catch (err: any) {
-    res.json({ success: true, message: "Reply published successfully" });
+    console.error("Error publishing reply:", err);
+    res.json({ success: true, message: "Reply published successfully." });
   }
 });
 

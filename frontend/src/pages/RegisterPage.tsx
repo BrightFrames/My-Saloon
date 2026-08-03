@@ -5,6 +5,7 @@ import signImage from "../assets/admin.png";
 import { PopupDialog } from "../components/PopupDialog";
 import { API_BASE_URL } from "../services/apiBase";
 import { validateFullName, validatePhoneNumber } from "../utils/validation";
+import { Eye, EyeOff } from "lucide-react";
 
 const RegisterPage: React.FC = () => {
   const [form, setForm] = useState({
@@ -14,6 +15,9 @@ const RegisterPage: React.FC = () => {
     pin: "",
     confirmPin: "",
   });
+
+  const [showPin, setShowPin] = useState(false);
+  const [showConfirmPin, setShowConfirmPin] = useState(false);
 
   const [step, setStep] = useState<"details" | "otp" | "pin">("details");
   const [otp, setOtp] = useState("");
@@ -55,14 +59,19 @@ const RegisterPage: React.FC = () => {
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
+    if (name === "pin" || name === "confirmPin") {
+      const numericVal = value.replace(/\D/g, "");
+      setForm((prev) => ({ ...prev, [name]: numericVal }));
+      setPinError(null);
+      return;
+    }
+
     setForm((prev) => ({ ...prev, [name]: value }));
 
     if (name === "name" && value) {
       setNameError(validateFullName(value));
     } else if (name === "mobile" && value) {
       setMobileError(validatePhoneNumber(value));
-    } else if (name === "pin" || name === "confirmPin") {
-      setPinError(null);
     }
   };
 
@@ -458,29 +467,49 @@ const RegisterPage: React.FC = () => {
         {step === "pin" && (
           <form className="w-full flex flex-col gap-4" onSubmit={handleCreatePin}>
             <div className="flex flex-col gap-1 w-full">
-              <input
-                type="password"
-                name="pin"
-                placeholder="Set 4–6 Digit PIN"
-                value={form.pin}
-                maxLength={6}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-[#c9ada7] px-4 py-3 tracking-widest outline-none focus:border-[#6B554D] focus:ring-1 focus:ring-[#6B554D]"
-                required
-              />
+              <div className="relative w-full">
+                <input
+                  type={showPin ? "text" : "password"}
+                  name="pin"
+                  placeholder="Set 4–6 Digit PIN"
+                  value={form.pin}
+                  maxLength={6}
+                  onChange={handleChange}
+                  className="w-full rounded-lg border border-[#c9ada7] px-4 py-3 pr-11 tracking-widest outline-none focus:border-[#6B554D] focus:ring-1 focus:ring-[#6B554D]"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPin(!showPin)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-500 hover:text-[#6B554D] p-1 transition-colors cursor-pointer"
+                  aria-label={showPin ? "Hide PIN" : "Show PIN"}
+                >
+                  {showPin ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             <div className="flex flex-col gap-1 w-full">
-              <input
-                type="password"
-                name="confirmPin"
-                placeholder="Confirm PIN"
-                value={form.confirmPin}
-                maxLength={6}
-                onChange={handleChange}
-                className="w-full rounded-lg border border-[#c9ada7] px-4 py-3 tracking-widest outline-none focus:border-[#6B554D] focus:ring-1 focus:ring-[#6B554D]"
-                required
-              />
+              <div className="relative w-full">
+                <input
+                  type={showConfirmPin ? "text" : "password"}
+                  name="confirmPin"
+                  placeholder="Confirm PIN"
+                  value={form.confirmPin}
+                  maxLength={6}
+                  onChange={handleChange}
+                  className="w-full rounded-lg border border-[#c9ada7] px-4 py-3 pr-11 tracking-widest outline-none focus:border-[#6B554D] focus:ring-1 focus:ring-[#6B554D]"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPin(!showConfirmPin)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-stone-500 hover:text-[#6B554D] p-1 transition-colors cursor-pointer"
+                  aria-label={showConfirmPin ? "Hide PIN" : "Show PIN"}
+                >
+                  {showConfirmPin ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
             </div>
 
             {pinError && <span className="text-xs text-red-600 font-medium">{pinError}</span>}

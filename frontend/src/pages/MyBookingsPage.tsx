@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import { PopupDialog } from "../components/PopupDialog";
 import { ServiceRatingCard } from "../components/ServiceRatingCard";
+import { ReviewModal } from "../components/ReviewModal";
 import { GetDirectionsButton } from "../components/GetDirectionsButton";
 import { formatINR } from "../utils/currency";
 import { API_BASE_URL } from "../services/apiBase";
@@ -423,12 +424,18 @@ export function MyBookingsPage() {
 
                         {isCompleted && (
                           <>
-                            <button
-                              onClick={() => setRatingBooking(booking)}
-                              className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#8C6454] bg-[#FAF4F0] hover:bg-[#F2E8E4] px-3.5 py-1.5 rounded-lg transition-colors border border-[#DEB5A4]/50 cursor-pointer"
-                            >
-                              ⭐ Rate & Review
-                            </button>
+                            {!booking.is_reviewed ? (
+                              <button
+                                onClick={() => setRatingBooking(booking)}
+                                className="inline-flex items-center gap-1.5 text-xs font-semibold text-white bg-amber-500 hover:bg-amber-600 px-3.5 py-1.5 rounded-lg transition-colors shadow-xs cursor-pointer"
+                              >
+                                ⭐ Rate Your Experience
+                              </button>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-lg">
+                                <CheckCircle2 size={13} /> Reviewed
+                              </span>
+                            )}
 
                             <button
                               onClick={() => handleRebook(booking)}
@@ -697,26 +704,14 @@ export function MyBookingsPage() {
 
       {/* Service Rating Modal */}
       {ratingBooking && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
-          <div className="relative w-full max-w-xl max-h-[90vh] overflow-y-auto rounded-3xl">
-            <button
-              onClick={() => setRatingBooking(null)}
-              className="absolute top-4 right-4 z-10 w-9 h-9 bg-stone-100 hover:bg-stone-200 text-stone-600 rounded-full flex items-center justify-center cursor-pointer transition-colors shadow-sm"
-            >
-              <X size={18} />
-            </button>
-            <ServiceRatingCard
-              salonId={ratingBooking.salon_id || ratingBooking.salonId || "default"}
-              bookingId={ratingBooking.id}
-              customerName={ratingBooking.customer_name || ratingBooking.customerName || sessionStorage.getItem("userName") || ""}
-              customerEmail={ratingBooking.customer_email || ratingBooking.customerEmail || sessionStorage.getItem("userEmail") || ""}
-              onSuccess={() => {
-                fetchBookings(true);
-                setTimeout(() => setRatingBooking(null), 2500);
-              }}
-            />
-          </div>
-        </div>
+        <ReviewModal
+          isOpen={Boolean(ratingBooking)}
+          onClose={() => setRatingBooking(null)}
+          booking={ratingBooking}
+          onSuccess={() => {
+            fetchBookings(true);
+          }}
+        />
       )}
     </div>
   );

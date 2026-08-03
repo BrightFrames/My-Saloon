@@ -315,7 +315,10 @@ export const api = {
     request("PUT", `/admin/customers/${encodeURIComponent(email)}/loyalty`, { is_loyal }),
 
   // ── Reviews & Queries ──────────────────────────────
-  getReviews: () => request("GET", "/admin/reviews"),
+  getReviews: (salonId?: string) => {
+    const q = salonId ? `?salon_id=${encodeURIComponent(salonId)}` : "";
+    return request("GET", `/admin/reviews${q}`);
+  },
   replyToReview: (id: string, reply: string) =>
     request("POST", `/admin/reviews/${id}/reply`, { reply }),
   getQueries: () => request("GET", "/admin/queries"),

@@ -20,6 +20,7 @@ import RegisterPage from "./pages/RegisterPage";
 import ForgotPinPage from "./pages/ForgotPinPage";
 import { BookingConfirmationPage } from "./pages/BookingConfirmationPage";
 import { MyBookingsPage } from "./pages/MyBookingsPage";
+import { MyReviewsPage } from "./pages/MyReviewsPage";
 import { PopupDialog } from "./components/PopupDialog";
 import { useUserLocation } from "./hooks/useUserLocation";
 

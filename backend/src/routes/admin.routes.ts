@@ -82,8 +82,10 @@ router.put("/salon-profile", writeLimiter, updateSalonProfile);
 // Reviews & Queries
 router.get("/reviews", getReviews);
 router.post("/reviews/:id/reply", writeLimiter, replyToReview);
+router.patch("/reviews/:id/reply", writeLimiter, replyToReview);
 router.get("/queries", getQueries);
 router.post("/queries/:id/reply", writeLimiter, replyToQuery);
+router.patch("/queries/:id/reply", writeLimiter, replyToQuery);
 
 // Customers
 router.get("/customers", getCustomers);

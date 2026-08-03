@@ -23,7 +23,6 @@ import {
   RotateCcw
 } from "lucide-react";
 import { PopupDialog } from "../components/PopupDialog";
-import { ServiceRatingCard } from "../components/ServiceRatingCard";
 import { ReviewModal } from "../components/ReviewModal";
 import { GetDirectionsButton } from "../components/GetDirectionsButton";
 import { formatINR } from "../utils/currency";

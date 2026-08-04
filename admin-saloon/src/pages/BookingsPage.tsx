@@ -81,6 +81,40 @@ function formatBookingDate(value?: string) {
   return date.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
+function isPastOrCurrentSlot(b: any) {
+  const dateStr = b.appointment_date || b.booking_date;
+  const timeStr = b.appointment_time || b.booking_time;
+  if (!dateStr) return true;
+  
+  const today = new Date();
+  const bookDate = new Date(dateStr);
+  
+  if (bookDate.getFullYear() < today.getFullYear()) return true;
+  if (bookDate.getFullYear() > today.getFullYear()) return false;
+  if (bookDate.getMonth() < today.getMonth()) return true;
+  if (bookDate.getMonth() > today.getMonth()) return false;
+  if (bookDate.getDate() < today.getDate()) return true;
+  if (bookDate.getDate() > today.getDate()) return false;
+  
+  if (!timeStr) return true;
+  const timeMatch = String(timeStr).match(/(\d+):(\d+)\s*(am|pm)?/i);
+  if (timeMatch) {
+    let hours = parseInt(timeMatch[1], 10);
+    const mins = parseInt(timeMatch[2], 10);
+    const ampm = timeMatch[3]?.toLowerCase();
+    
+    if (ampm === 'pm' && hours < 12) hours += 12;
+    if (ampm === 'am' && hours === 12) hours = 0;
+    
+    const slotTime = hours * 60 + mins;
+    const currentTime = today.getHours() * 60 + today.getMinutes();
+    
+    return currentTime >= slotTime;
+  }
+  
+  return true;
+}
+
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
   visible: { opacity: 1, transition: { staggerChildren: 0.05 } }
@@ -514,9 +548,11 @@ export default function BookingsPage({ user, onLogout }: Props) {
                       <div style={{ display: 'flex', gap: 6, justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap' }}>
                         {b.booking_status === 'confirmed' && (
                           <>
-                            <button className="btn-sm save" onClick={() => handleComplete(b.id)}>
-                              Complete
-                            </button>
+                            {isPastOrCurrentSlot(b) && (
+                              <button className="btn-sm save" onClick={() => handleComplete(b.id)}>
+                                Complete
+                              </button>
+                            )}
                             <button className="btn-sm danger" onClick={() => handleCancel(b.id)}>
                               Cancel
                             </button>

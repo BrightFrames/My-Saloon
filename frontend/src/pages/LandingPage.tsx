@@ -807,14 +807,7 @@ export function LandingPage({
                           </p>
                         </div>
                         <div className="flex flex-wrap gap-2 sm:justify-end">
-                          <GetDirectionsButton
-                            latitude={s.latitude}
-                            longitude={s.longitude}
-                            variant="secondary"
-                            size="sm"
-                            label=""
-                            className="min-h-11 min-w-11 px-3"
-                          />
+
                           <button
                             onClick={(e) => {
                               e.stopPropagation();

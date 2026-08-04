@@ -64,8 +64,8 @@ export function useUserLocation(): UseUserLocationResult {
       });
 
     const geolocationOptions: PositionOptions[] = [
-      { enableHighAccuracy: true, maximumAge: 60_000, timeout: 12_000 },
-      { enableHighAccuracy: false, maximumAge: 5 * 60_000, timeout: 12_000 },
+      { enableHighAccuracy: true, maximumAge: 0, timeout: 15_000 },
+      { enableHighAccuracy: false, maximumAge: 0, timeout: 15_000 },
     ];
 
     const requestLocation = async () => {

@@ -39,7 +39,7 @@ export class SalonsService {
       const queryParams: any[] = [];
       let paramIndex = 1;
 
-      let selectFields = "s.*, COALESCE(s.email, (SELECT email FROM users WHERE salon_id::text = s.id::text AND role = 'admin' ORDER BY created_at DESC LIMIT 1)) as admin_email, COALESCE(NULLIF(r.avg_rating, 0), NULLIF(s.rating, 0), 5.0) as rating, COALESCE(r.reviews_count, 0) as reviews_count";
+      let selectFields = "s.*, COALESCE((SELECT MIN(price) FROM public.services WHERE salon_id = s.id AND (is_active = true OR is_active IS NULL)), s.starting_price) as starting_price, COALESCE(s.email, (SELECT email FROM users WHERE salon_id::text = s.id::text AND role = 'admin' ORDER BY created_at DESC LIMIT 1)) as admin_email, COALESCE(NULLIF(r.avg_rating, 0), NULLIF(s.rating, 0), 5.0) as rating, COALESCE(r.reviews_count, 0) as reviews_count";
       const fromClause = `salons s LEFT JOIN (
         SELECT salon_id, ROUND(AVG(rating)::numeric, 1) as avg_rating, COUNT(*)::int as reviews_count
         FROM public.reviews
@@ -166,7 +166,7 @@ export class SalonsService {
    */
   public async findSalonById(id: string) {
     try {
-      const salonRes = await query("SELECT * FROM salons WHERE id = $1", [id]);
+      const salonRes = await query("SELECT s.*, COALESCE((SELECT MIN(price) FROM public.services WHERE salon_id = s.id AND (is_active = true OR is_active IS NULL)), s.starting_price) as starting_price FROM salons s WHERE id = $1", [id]);
       if (salonRes.rowCount === 0) {
         throw ApiError.notFound(
           `Salon with ID ${id} not found`,

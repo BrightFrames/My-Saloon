@@ -24,7 +24,7 @@ export default function LoginForm({ onSuccess }: Props) {
   return (
     <form className="login-form" onSubmit={submit}>
       <label>
-        Email
+        Username
         <input value={email} onChange={(e) => setEmail(e.target.value)} />
       </label>
       <label>

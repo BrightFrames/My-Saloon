@@ -752,11 +752,12 @@ export function LandingPage({
                             <h3 className="mb-0.5 truncate font-serif text-lg font-medium text-stone-800 transition-colors group-hover:text-[#C49B89]">
                               {s.name}
                             </h3>
-                            <p className="mb-1 flex items-center gap-1 text-xs text-stone-400">
-                              <MapPin size={12} className="text-stone-300" />
-                              <span aria-hidden="true">📍</span>
-                              {s.city || "New York"}
-                            </p>
+                            {(s.address || s.city) && (
+                              <p className="mb-1 flex items-center gap-1 text-xs text-stone-400 truncate max-w-full">
+                                <MapPin size={12} className="text-stone-300 flex-shrink-0" />
+                                <span className="truncate">{s.address || s.city}</span>
+                              </p>
+                            )}
                           </div>
                           <button
                             onClick={(e) => {
@@ -786,11 +787,6 @@ export function LandingPage({
                             />
                             {s.rating && Number(s.rating) > 0 ? Number(s.rating).toFixed(1) : "5.0"}
                           </span>
-                          {s.distance_km && (
-                            <span className="font-medium text-stone-400">
-                              {parseFloat(s.distance_km).toFixed(1)} km away
-                            </span>
-                          )}
                         </div>
                       </div>
 

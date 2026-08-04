@@ -24,18 +24,6 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
   const [rating, setRating] = useState<number>(0);
   const [hoverRating, setHoverRating] = useState<number>(0);
 
-  // Sub-ratings
-  const [overallExp, setOverallExp] = useState<number>(0);
-  const [stylistSkill, setStylistSkill] = useState<number>(0);
-  const [staffBeh, setStaffBeh] = useState<number>(0);
-  const [cleanliness, setCleanliness] = useState<number>(0);
-  const [valueMoney, setValueMoney] = useState<number>(0);
-
-  const [review, setReview] = useState<string>("");
-  const [feedback, setFeedback] = useState<string>("");
-  const [query, setQuery] = useState<string>("");
-  const [isAnonymous, setIsAnonymous] = useState<boolean>(false);
-  const [imageUrl, setImageUrl] = useState<string>("");
 
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -52,10 +40,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
       return;
     }
 
-    if (!review.trim()) {
-      setErrorMsg("Please enter your review details.");
-      return;
-    }
+
 
     setSubmitting(true);
 
@@ -72,17 +57,13 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
         bookingId: booking.id,
         salonId: booking.salon_id,
         rating,
-        review: review.trim(),
-        comment: review.trim(),
-        feedback: feedback.trim() || undefined,
-        query: query.trim() || undefined,
-        is_anonymous: isAnonymous,
-        image_url: imageUrl.trim() || undefined,
-        overall_experience: overallExp || rating,
-        stylist_skill: stylistSkill || rating,
-        staff_behaviour: staffBeh || rating,
-        cleanliness_hygiene: cleanliness || rating,
-        value_for_money: valueMoney || rating,
+        review: "",
+        comment: "",
+        overall_experience: rating,
+        stylist_skill: rating,
+        staff_behaviour: rating,
+        cleanliness_hygiene: rating,
+        value_for_money: rating,
       };
 
       let res = await fetch(`${API_BASE_URL}/reviews`, {
@@ -226,117 +207,6 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
               </span>
             </div>
 
-            {/* Sub-Ratings Category Breakdown */}
-            <div className="flex flex-col gap-3 rounded-2xl bg-stone-50 p-4 border border-stone-200/70">
-              <span className="text-xs font-bold text-stone-700 tracking-wide uppercase">
-                Detailed Ratings Breakdown
-              </span>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-                <div className="flex items-center justify-between bg-white p-2.5 rounded-xl border border-stone-200/60">
-                  <span className="font-medium text-stone-700">Overall Experience</span>
-                  {renderStarInput(overallExp, setOverallExp, 16)}
-                </div>
-
-                <div className="flex items-center justify-between bg-white p-2.5 rounded-xl border border-stone-200/60">
-                  <span className="font-medium text-stone-700">Stylist Skill</span>
-                  {renderStarInput(stylistSkill, setStylistSkill, 16)}
-                </div>
-
-                <div className="flex items-center justify-between bg-white p-2.5 rounded-xl border border-stone-200/60">
-                  <span className="font-medium text-stone-700">Staff Behaviour</span>
-                  {renderStarInput(staffBeh, setStaffBeh, 16)}
-                </div>
-
-                <div className="flex items-center justify-between bg-white p-2.5 rounded-xl border border-stone-200/60">
-                  <span className="font-medium text-stone-700">Cleanliness & Hygiene</span>
-                  {renderStarInput(cleanliness, setCleanliness, 16)}
-                </div>
-
-                <div className="flex items-center justify-between bg-white p-2.5 rounded-xl border border-stone-200/60 sm:col-span-2">
-                  <span className="font-medium text-stone-700">Value for Money</span>
-                  {renderStarInput(valueMoney, setValueMoney, 16)}
-                </div>
-              </div>
-            </div>
-
-            {/* Review Comment (Required) */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-stone-700 flex items-center justify-between">
-                <span>
-                  📝 Write your Review <span className="text-red-500">*</span>
-                </span>
-                <span className="text-[10px] text-stone-400">Required</span>
-              </label>
-              <textarea
-                rows={3}
-                value={review}
-                onChange={(e) => setReview(e.target.value)}
-                placeholder="Describe your appointment, stylist service, or salon ambiance..."
-                className="w-full rounded-xl border border-stone-300 p-3 text-xs outline-none focus:border-[#6B554D] focus:ring-1 focus:ring-[#6B554D] transition-colors"
-                required
-              />
-            </div>
-
-            {/* Feedback / Suggestions (Optional) */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-stone-700">
-                💬 Feedback or Suggestions <span className="text-stone-400 font-normal">(Optional)</span>
-              </label>
-              <textarea
-                rows={2}
-                value={feedback}
-                onChange={(e) => setFeedback(e.target.value)}
-                placeholder="Any suggestions for improvement or appreciation for staff?"
-                className="w-full rounded-xl border border-stone-300 p-3 text-xs outline-none focus:border-[#6B554D] focus:ring-1 focus:ring-[#6B554D] transition-colors"
-              />
-            </div>
-
-            {/* Query / Complaint / Question (Optional) */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-stone-700">
-                ❓ Query, Question or Complaint <span className="text-stone-400 font-normal">(Optional - Salon Admin will reply)</span>
-              </label>
-              <textarea
-                rows={2}
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Ask a question or report an issue. The salon admin will answer you directly."
-                className="w-full rounded-xl border border-stone-300 p-3 text-xs outline-none focus:border-[#6B554D] focus:ring-1 focus:ring-[#6B554D] transition-colors"
-              />
-            </div>
-
-            {/* Image URL (Optional) */}
-            <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-semibold text-stone-700 flex items-center gap-1.5">
-                <ImageIcon size={14} className="text-stone-500" />
-                <span>Photo URL <span className="text-stone-400 font-normal">(Optional)</span></span>
-              </label>
-              <input
-                type="url"
-                value={imageUrl}
-                onChange={(e) => setImageUrl(e.target.value)}
-                placeholder="https://example.com/photo.jpg"
-                className="w-full rounded-xl border border-stone-300 px-3 py-2 text-xs outline-none focus:border-[#6B554D] focus:ring-1 focus:ring-[#6B554D]"
-              />
-            </div>
-
-            {/* Options: Anonymous Checkbox */}
-            <div className="flex items-center justify-between rounded-xl bg-stone-50 p-3 border border-stone-200/60">
-              <div className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id="anonymousCheck"
-                  checked={isAnonymous}
-                  onChange={(e) => setIsAnonymous(e.target.checked)}
-                  className="h-4 w-4 rounded border-stone-300 text-[#6B554D] focus:ring-[#6B554D] cursor-pointer"
-                />
-                <label htmlFor="anonymousCheck" className="text-xs font-medium text-stone-700 cursor-pointer select-none">
-                  Submit Review Anonymously
-                </label>
-              </div>
-              <span className="text-[10px] text-stone-500 font-medium">Hides your name publicly</span>
-            </div>
 
             {/* Action Buttons */}
             <div className="flex items-center justify-end gap-3 pt-2">

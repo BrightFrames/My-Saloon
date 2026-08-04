@@ -14,6 +14,7 @@ export const createReview = asyncHandler(async (req: Request, res: Response) => 
   // Ensure schema columns exist
   try {
     await query(`
+      ALTER TABLE public.bookings ADD COLUMN IF NOT EXISTS is_reviewed BOOLEAN DEFAULT false;
       ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS booking_id UUID;
       ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS customer_id TEXT;
       ALTER TABLE public.reviews ADD COLUMN IF NOT EXISTS customer_email TEXT;
@@ -81,10 +82,7 @@ export const createReview = asyncHandler(async (req: Request, res: Response) => 
     return;
   }
 
-  if (!reviewText) {
-    res.status(400).json({ success: false, message: "Please write your review text." });
-    return;
-  }
+
 
   if (!targetBookingId) {
     res.status(400).json({ success: false, message: "Booking ID is required." });
@@ -235,7 +233,11 @@ export const createReview = asyncHandler(async (req: Request, res: Response) => 
   }
 
   // 5. Update Booking is_reviewed = true
-  await query("UPDATE public.bookings SET is_reviewed = true WHERE id::text = $1", [targetBookingId]);
+  try {
+    await query("UPDATE public.bookings SET is_reviewed = true WHERE id::text = $1", [targetBookingId]);
+  } catch (e) {
+    console.error("Failed to update booking is_reviewed:", e);
+  }
 
   // 6. Update Salon Average Rating
   if (finalSalonId) {

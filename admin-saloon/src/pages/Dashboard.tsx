@@ -181,9 +181,10 @@ export default function Dashboard({ user, onLogout }: Props) {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [res, analyticsRes] = await Promise.all([
+      const [res, analyticsRes, salonRes] = await Promise.all([
         api.getDashboardStats().catch(() => ({ data: null })),
-        api.getRevenueAnalytics("1m").catch(() => ({ data: null }))
+        api.getRevenueAnalytics("1m").catch(() => ({ data: null })),
+        api.getSalonProfile().catch(() => ({ data: null }))
       ]);
 
       if (res?.data) {
@@ -191,6 +192,7 @@ export default function Dashboard({ user, onLogout }: Props) {
           ...prev,
           ...res.data,
           analyticsSummary: analyticsRes?.data || null,
+          salonName: salonRes?.data?.name || null,
           recent_bookings: res.data.recent_bookings ?? [],
           monthly_trend: res.data.monthly_trend ?? []
         }));
@@ -225,7 +227,16 @@ export default function Dashboard({ user, onLogout }: Props) {
     weekday: "long", month: "long", day: "numeric",
   });
 
-  const userName = user?.email?.split("@")[0] || "Admin";
+  const userName = loading 
+    ? "..." 
+    : (stats.salonName || user?.email?.split("@")[0] || "Admin");
+
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 18) return "Good afternoon";
+    return "Good evening";
+  };
 
   const pieData = [
     { name: "Confirmed", value: stats.today_bookings - stats.pending_bookings > 0 ? stats.today_bookings - stats.pending_bookings : 0 },
@@ -250,7 +261,7 @@ export default function Dashboard({ user, onLogout }: Props) {
               {today}
             </div>
             <h1 className="dash-greeting">
-              Welcome back, <span className="dash-greeting-name">{userName}</span> 👋
+              {getGreeting()}, <span className="dash-greeting-name">{userName}</span> 👋
             </h1>
           </div>
           <div className="dash-header-actions">

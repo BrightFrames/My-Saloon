@@ -41,7 +41,7 @@ export default function Layout({ children, user, salonId, onLogout }: Props) {
 
   return (
     <div className={`app-root ${isCollapsed ? 'sidebar-collapsed' : ''}`}>
-      <Sidebar isCollapsed={isCollapsed} onToggle={toggleSidebar} />
+      <Sidebar isCollapsed={isCollapsed} onToggle={toggleSidebar} onLogout={onLogout} />
       <div className="main">
         <header className="topbar">
           <div className="topbar-title" style={{ fontWeight: 600, color: 'var(--text-h)', fontSize: '18px' }}>
@@ -64,9 +64,6 @@ export default function Layout({ children, user, salonId, onLogout }: Props) {
               </motion.div>
             </button>
             {currentSalonId && <NotificationBell salonId={currentSalonId} />}
-            <button className="btn-ghost" onClick={onLogout} title="Logout">
-              <img className="btn-icon" src="/icons-high/logout.svg" alt="Logout" />
-            </button>
           </div>
         </header>
 

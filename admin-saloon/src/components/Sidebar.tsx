@@ -38,9 +38,10 @@ const navGroups = [
 interface SidebarProps {
   isCollapsed: boolean;
   onToggle: () => void;
+  onLogout: () => void;
 }
 
-export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
+export default function Sidebar({ isCollapsed, onToggle, onLogout }: SidebarProps) {
   return (
     <aside className={`sidebar ${isCollapsed ? 'collapsed' : ''}`}>
       <div
@@ -126,6 +127,35 @@ export default function Sidebar({ isCollapsed, onToggle }: SidebarProps) {
           </div>
         ))}
       </nav>
+
+      <div style={{ padding: '16px 12px', borderTop: '1px solid var(--border)' }}>
+        <button
+          onClick={onLogout}
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: isCollapsed ? 'center' : 'flex-start',
+            gap: isCollapsed ? 0 : 10,
+            width: '100%',
+            background: 'transparent',
+            border: 'none',
+            color: 'var(--danger, #EF4444)',
+            padding: '9px 12px',
+            borderRadius: 8,
+            cursor: 'pointer',
+            transition: 'background 0.2s',
+          }}
+          className="btn-ghost"
+          title="Logout"
+        >
+          <span style={{ fontSize: 18, lineHeight: 1 }}>🚪</span>
+          {!isCollapsed && (
+            <span style={{ fontSize: 14, fontWeight: 500 }}>
+              Logout
+            </span>
+          )}
+        </button>
+      </div>
     </aside>
   )
 }

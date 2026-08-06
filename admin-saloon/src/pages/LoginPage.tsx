@@ -50,8 +50,11 @@ export default function LoginPage({ onLogin }: Props) {
         <p className="lead">Sign in to manage bookings, services and team.</p>
 
         <LoginForm onSuccess={handleLogin} />
+        
+        <div style={{ marginTop: '24px', textAlign: 'center', fontSize: '14px', color: 'var(--text-p)' }}>
+          Having trouble logging in? <a href="mailto:support@example.com" style={{ color: '#7C5CFC', textDecoration: 'none', fontWeight: 600 }}>Contact Support</a>
+        </div>
       </div>
     </div>
   );
 }
-

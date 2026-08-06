@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Star, X, Send, Image as ImageIcon, ShieldCheck, Sparkles, AlertCircle } from "lucide-react";
+import { Star, X, Send, ShieldCheck, Sparkles, AlertCircle } from "lucide-react";
 import { API_BASE_URL } from "../services/apiBase";
 
 interface ReviewModalProps {
@@ -104,31 +104,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
     }
   };
 
-  const renderStarInput = (
-    value: number,
-    onChange: (val: number) => void,
-    size = 22
-  ) => {
-    return (
-      <div className="flex items-center gap-1">
-        {[1, 2, 3, 4, 5].map((star) => (
-          <button
-            key={star}
-            type="button"
-            onClick={() => onChange(star)}
-            className="p-1 hover:scale-110 transition-transform cursor-pointer focus:outline-none"
-          >
-            <Star
-              size={size}
-              className={`${
-                star <= value ? "fill-amber-400 text-amber-400" : "text-stone-300"
-              } transition-colors`}
-            />
-          </button>
-        ))}
-      </div>
-    );
-  };
+
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs animate-in fade-in duration-200">

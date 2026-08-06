@@ -19,7 +19,6 @@ import { formatINR } from "../utils/currency";
 import heroImage from "../assets/sign.jpg";
 import { motion } from "framer-motion";
 import { useTheme } from "../context/ThemeContext";
-import { GetDirectionsButton } from "../components/GetDirectionsButton";
 import { SalonMapPopup } from "../components/SalonMapPopup";
 import { API_BASE_URL } from "../services/apiBase";
 import { geocodeLocation } from "../services/location";
